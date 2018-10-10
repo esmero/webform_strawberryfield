@@ -1,0 +1,22 @@
+{
+    "name": "strawberryfield/webform_strawberryfield",
+    "description": "A Webform/strawberryfield integration module for Drupal 8",
+    "type": "drupal-module",
+    "license": "GPL-2.0+",
+    "homepage": "https://github.com/esmero/webform_strawberryfield",
+    "authors": [
+        {
+            "name": "Diego Pino Navarro",
+            "email": "dpino@metro.org",
+            "homepage": "https://github.com/DiegoPino",
+            "role": "Owner"
+        }
+    ],
+    "require": {
+        "ml/json-ld": "^1.0",
+        "mtdowling/jmespath.php":"^2.4",
+        "strawberryfield/strawberryfield":">=1.0",
+        "drupal/webform": "^5.0",
+        "drupal/webform_views": "^5.0"
+    }
+}

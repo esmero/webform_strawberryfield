@@ -1,0 +1,196 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: dpino
+ * Date: 4/23/18
+ * Time: 9:02 PM
+ */
+
+namespace Drupal\webform_strawberryfield\Controller;
+
+use Drupal\webform\WebformInterface;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\OpenModalDialogCommand;
+use Drupal\Core\Ajax\CloseDialogCommand;
+use Drupal\Core\Ajax\AlertCommand;
+use Drupal\Core\Controller\ControllerBase;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Url;
+use Psy\Util\Json;
+use Symfony\Component\VarDumper\Dumper\CliDumper;
+use Symfony\Component\VarDumper\Cloner\VarCloner;
+
+
+/**
+ * StrawberryRunnerModalController class.
+ */
+class StrawberryRunnerModalController extends ControllerBase
+{
+
+    /**
+     * Callback for opening the modal form.
+     * @param WebformInterface|NULL $webform
+     * @param Request $request
+     * @return AjaxResponse
+     *
+     * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+     *   Thrown when update.php should not be accessible.
+     */
+    public function openModalForm(WebformInterface $webform = NULL, Request $request)
+    {
+
+        // @see \Drupal\archipel\Plugin\Field\FieldWidget\StrawberryFieldWebFormWidget::formElement
+        //  Request Arguments we are expecting:
+        // 'webform' =>  $my_webform_machinename,
+        // 'source_entity_types' => $entity_type,
+        // 'state'=> "$entity_uuid:$this_field_name";
+        // Check!
+
+        \Drupal::entityTypeManager()->getAccessControlHandler('node')->createAccess('article');
+
+        $source_entity_types = $request->get('source_entity_types');
+
+        list($source_entity_type, $bundle) = explode(':', $source_entity_types);
+
+        $state = $request->get('state');
+
+
+        // with $uuid the uuid of the entity that is being edited and for which
+        // a widget is being openend in the form of a webform
+        // field name the machine name of the field that contains the original data
+        // inside that source entity
+
+        list($source_uuid, $field_name, $delta, $widgetid) = explode(':', $state);
+
+        // @TODO check if all our arguments pass the format test.
+        // Can be done via regex but i prefer next option...
+        // throw new \InvalidArgumentException('Data type must be in the form of
+        // "entityUUID:FIELD_NAME:DELTA:someSHA1hashthatidentifiesthegtriggeringwidget"');
+
+        // If uuid does not exist then well, we need to return with an error..
+        // if field name missing/non existing the same
+        // @TODO deal with exceptions
+
+        try {
+            //@var \Drupal\Core\Entity\EntityInterface[] $entities
+            $entities = \Drupal::entityTypeManager()->getStorage($source_entity_type)->loadByProperties(['uuid' => $source_uuid]);
+            // IF this does not work, either the entity is new! or it does not exist at all.
+        }
+        catch (\Exception $e) {
+            // @todo really make some fuzz if this happens.
+            // @todo we need to be super responsive about all the errors
+            // I image two layers, simple to follow issues with a code for endusers
+            // And a very deep explanation for admins and devs that match the code
+
+            \Drupal::messenger()->addError($this->t('We could not find the referenced Entity @entity_type. Please report this to your Site Manage.',['@entity_type' => $source_entity_type]));
+            // Really no need to persist after this.
+            return;
+        }
+        //@var \Drupal\Core\Entity\EntityInterface $source_entity
+        $source_entity = null;
+
+        foreach($entities as $entity) {
+            // Means there was an entity stored! hu!
+            // if you are following this you will know this foreach
+            // makes little sense because we will either get a single one or none
+            // but! makes sense anyway, shorter than checking if there, and if so
+            // getting the first!
+            $source_entity = $entity;
+            if (!$source_entity->access('update')) {
+                throw new AccessDeniedHttpException('Sorry, seems like you can are not allowed to see this or to be here at all!');
+            }
+
+        }
+
+        $data = array();
+
+        // Stores our original field data
+        // @TODO i know it needs to have a base value
+        // but looks weird... refactor!
+
+        $fielddata = array();
+        // If new this won't exist
+        $entityid = NULL;
+        // If we actually loaded the entity then lets fetch the saved field value
+        // @see \Drupal\archipel\Plugin\Field\FieldType\StrawberryField::propertyDefinitions
+        if ($source_entity) {
+            // In case we are editing an existing entity, this one gets the
+            // Strawberryfield value
+           $alldata = $source_entity->get($field_name)->getValue();
+           $fielddata['value'] = !empty($alldata) ? $alldata[$delta]['value']: "{}";
+           $entityid = $source_entity->id();
+        }
+
+        $stored_value = (isset($fielddata['value']) && !empty($fielddata['value'])) ? $fielddata['value'] : "{}";
+        $data_defaults = [
+            'strawberry_field_widget_state_id' => $widgetid,
+            // Can't remember why, but seems useful to pass around
+            'strawberry_field_widget_source_entity_uuid' => $source_uuid,
+            'strawberry_field_widget_source_entity_id' => $entityid,
+            'strawberry_field_stored_values' => json_decode($stored_value,true)
+        ];
+
+        if (!isset($fielddata['value']) || empty($fielddata['value'])) {
+            // No data
+            $data['data'] = $data_defaults  +
+                [
+                'label' => 'New metadata'
+                ];
+        }
+        else {
+            $data['data'] = $data_defaults + json_decode($stored_value,true);
+        }
+
+        // Lets make sure this puppy never redirects
+        // And also we need to reset some defaults here
+        // @see \Drupal\webform\Entity\Webform::getDefaultSettings
+        // @TODO autofill needs to be a setting that is respected
+        // But Kerri thought this could get in our way
+        // Need to thing about this.
+        // @TODO research option of using WebformInterface::CONFIRMATION_NONE
+        // @SEE https://www.drupal.org/node/2996780
+        // Does not work right now.
+        // See workaround at \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::preprocessConfirmation
+        $new_settings = [
+            //'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
+            'confirmation_type' => WebformInterface::CONFIRMATION_NONE,
+            //'confirmation_url' => Url::fromRoute('<current>'),
+            'confirmation_back' => FALSE,
+            'results_disabled' => TRUE,
+            'autofill' => FALSE
+        ];
+
+        // @todo make autofill v/s none a user setting.
+
+        $webform->setSettingsOverride($new_settings);
+
+        $lawebforma = $webform->getSubmissionForm($data);
+
+        $response = new AjaxResponse();
+        //@TODO deal with people opening, closing, reopening.
+        // Do we show them the original data, every time they open the form?
+        // As we do right now? Do we restore the ongoing session?
+        // Idea. Store original info into original data structure of the
+        // submission
+        // Whatever is stored in temp storage as active one.
+        // Make reset button clear deal with swapping back original to active.
+        // Makes sense?
+
+        // Add an AJAX command to open a modal dialog with the form as the content.
+        $response->addCommand(new OpenModalDialogCommand(t('Please follow the steps.'), $lawebforma, ['width' => '90%']));
+        return $response;
+
+    }
+
+    public function closeModalForm(Request $request)
+    {
+
+        $response = new AjaxResponse();
+        $response->addCommand(new CloseDialogCommand());
+        return $response;
+
+    }
+
+
+}

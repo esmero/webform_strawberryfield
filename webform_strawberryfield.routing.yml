@@ -1,0 +1,13 @@
+webform_strawberryfield.modal_webform:
+  path: '/webform_strawberry/modal-widget/{webform}'
+  defaults:
+    _controller: '\Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController::openModalForm'
+    _title: 'Strawberry Webform Widget'
+  requirements:
+    _permission: 'access content'
+webform_strawberryfield.close_modal_webform:
+  path: '/webform_strawberry/close-modal-widget'
+  defaults:
+    _controller: '\Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController::closeModalForm'
+  requirements:
+    _permission: 'access content'
