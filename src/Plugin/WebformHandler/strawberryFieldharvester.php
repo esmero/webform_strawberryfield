@@ -227,7 +227,6 @@ class strawberryFieldharvester extends WebformHandlerBase
 
             $this->setIsWidgetDriven(TRUE);
 
-            $this->messenger()->addMessage($this->t('super persistent!'));
             $tempstore = \Drupal::service('user.private_tempstore')->get('archipel');
 
 
@@ -274,7 +273,7 @@ class strawberryFieldharvester extends WebformHandlerBase
     {
 
         $values = $webform_submission->getData();
-        $this->messenger()->addMessage($webform_submission->getState());
+        //$this->messenger()->addMessage($webform_submission->getState());
 
 
         // Temporary persistance of data while we collect them for Node Entity use
@@ -381,7 +380,7 @@ class strawberryFieldharvester extends WebformHandlerBase
         foreach ($files as $file) {
             $uri = $file->getFileUri();
             $md5 = md5_file($uri);
-            // This is working but just proof of concept.
+
             $fileinfo=[
               'type' => 'Image',
               'url' =>  $uri,

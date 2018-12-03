@@ -11,3 +11,10 @@ webform_strawberryfield.close_modal_webform:
     _controller: '\Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController::closeModalForm'
   requirements:
     _permission: 'access content'
+webform_strawberryfield.auth_autocomplete:
+  path: '/webform_strawberry/auth_autocomplete/{auth_type}/{count}'
+  defaults:
+    _controller: '\Drupal\webform_strawberryfield\Controller\AuthAutocompleteController::handleAutocomplete'
+    _format: json
+  requirements:
+    _access: 'TRUE'

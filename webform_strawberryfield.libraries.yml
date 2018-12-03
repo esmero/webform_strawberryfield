@@ -1,0 +1,5 @@
+webform_strawberryfield.metadataauth.autocomplete:
+  js:
+    js/metadataauth-webform_strawberryfield.js: {}
+  dependencies:
+    - core/drupal.autocomplete

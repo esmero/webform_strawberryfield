@@ -80,7 +80,7 @@ class OcflHelper
      * Given an fid return the Drupal URI to that file..
      *
      * @param int $fid
-     * @return null
+     * @return null | \Drupal\file\FileInterface
      * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
      * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
      */
@@ -89,9 +89,9 @@ class OcflHelper
         if (!is_integer($fid)) {
             return null;
         }
-        /* @var \Drupal\file\FileInterface[] $files */
-        $files = \Drupal::entityTypeManager()->getStorage('file')->load($fid);
-        return $files ? current($files) : null;
+        /* @var \Drupal\file\FileInterface $file */
+        $file = \Drupal::entityTypeManager()->getStorage('file')->load($fid);
+        return $file;
     }
 
 
