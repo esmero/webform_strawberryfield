@@ -383,7 +383,8 @@ class strawberryFieldharvester extends WebformHandlerBase
 
             $fileinfo=[
               'type' => 'Image',
-              'url' =>  $uri,
+              'dr:url' =>  $uri,
+              'url' => $uri,
               'checksum' => $md5,
               'dr:for' =>  $key,
               'dr:fid' => (int) $file->id(),
