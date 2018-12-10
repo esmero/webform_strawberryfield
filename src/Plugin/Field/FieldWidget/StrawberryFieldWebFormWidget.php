@@ -190,7 +190,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
             // Happens that this is my demo default
             // @todo this for a configurable setting
             // @todo create a webform  on the fly if all fails?
-            // @todo we need to ship this default webform with the module
+            // @todo we need to ship this default webform with the module named 'webform_strawberry_default
             $my_webform_machinename = 'webform_strawberry_default';
 
         }
