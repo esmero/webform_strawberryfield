@@ -383,10 +383,11 @@ class strawberryFieldharvester extends WebformHandlerBase
 
             $fileinfo=[
               'type' => 'Image',
-              'url' =>  $uri,
+              'dr:url' =>  $uri,
+              'url' => $uri,
               'checksum' => $md5,
-              'for' =>  $key,
-              'fid' => (int) $file->id(),
+              'dr:for' =>  $key,
+              'dr:fid' => (int) $file->id(),
               'name' => $file->getFilename()
             ];
             $relativefolder = substr($md5,0,3);
@@ -407,7 +408,7 @@ class strawberryFieldharvester extends WebformHandlerBase
             $fileinfo_many[$destination_uri] = $fileinfo;
 
         }
-        $cleanvalues['Media'] = $fileinfo_many;
+        $cleanvalues['as:image'] = $fileinfo_many;
 
     }
 

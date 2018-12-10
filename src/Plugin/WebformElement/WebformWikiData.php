@@ -30,7 +30,7 @@ class WebformWikiData extends WebformCompositeBase {
    * {@inheritdoc}
    */
   public function getPluginLabel() {
-     $this->t('Wikidata Items Autocomplete');
+    return $this->elementManager->isExcluded('webform_metadata_wikidata') ? $this->t('WIKIDATA Subject Headings') : parent::getPluginLabel();
   }
 
   /**

@@ -30,7 +30,7 @@ class WebformLoC extends WebformCompositeBase {
    * {@inheritdoc}
    */
   public function getPluginLabel() {
-     $this->t('LoC Subject Headings Autocomplete');
+    return $this->elementManager->isExcluded('webform_metadata_loc') ? $this->t('Subject Headings') : parent::getPluginLabel();
   }
 
   /**

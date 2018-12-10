@@ -12,3 +12,5 @@
 .idea/webform_strawberry.iml
 
 .idea/vcs.xml
+
+src/Tools/Iiif/IiifHelper.php
