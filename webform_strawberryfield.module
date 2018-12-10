@@ -198,7 +198,7 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
   // Get the default image settings, return if not saving an image field storage
   // or image field entity.
   //@TODO refactor this into OcfHelper. That class will deal with Media and Storage
-  // @TODO even better, refactor this as part of the AS/event driven architecture
+  //@TODO even better, refactor this as part of the AS/event driven architecture
   // And make all this efforts JSON based plugins.
   foreach ($field_item_lists as $field)
     $type = $field->getFieldDefinition()->getType();
@@ -206,14 +206,14 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
     if (!$field->isEmpty) {
       foreach($field->getValue() as $delta => $fieldvalue) {
         $arrayMedia = json_decode($fieldvalue['value'], true);
-        if (isset($arrayMedia['Media'])){
-          foreach ($arrayMedia['Media'] as $id => &$info) {
-            if (isset($info['url'])) {
-              if (($id != $info['url']) && isset($info['fid']) && is_numeric($info['fid'])) {
+        if (isset($arrayMedia['as:image'])){
+          foreach ($arrayMedia['as:image'] as $id => &$info) {
+            if (isset($info['dr:url'])) {
+              if (($id != $info['dr:url']) && isset($info['dr:fid']) && is_numeric($info['dr:fid'])) {
                 $destination_folder = \Drupal::service('file_system')->dirname($id);
                 file_prepare_directory($destination_folder, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
-                $destination_uri = file_unmanaged_move($info['url'], $id );
-                $file = File::load($info['fid']);
+                $destination_uri = file_unmanaged_move($info['dr:url'], $id );
+                $file = File::load($info['dr:fid']);
                 $file->setFileUri($destination_uri);
                 //@TODO we want probaly here to maintain the original file that was uploaded.
                 $file->setFileName(\Drupal::service('file_system')->basename($destination_uri));
@@ -226,7 +226,7 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
                     $entity->id()
                   );
                 }
-                $info['url'] = $id;
+                $info['dr:url'] = $id;
               }
             }
           }
