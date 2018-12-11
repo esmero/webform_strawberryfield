@@ -328,6 +328,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         $json_error = json_last_error();
         if ($json_error == JSON_ERROR_NONE) {
             $form_state->setValueForElement($element['strawberry_webform_widget']['json'], $json_string);
+            $tempstore->delete($tempstoreId);
             return;
         }
         else {
