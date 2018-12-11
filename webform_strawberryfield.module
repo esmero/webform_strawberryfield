@@ -5,8 +5,6 @@
  */
 
 use Drupal\Core\Form\FormStateInterface;
-use Symfony\Component\VarDumper\Dumper\CliDumper;
-use Symfony\Component\VarDumper\Cloner\VarCloner;
 use Drupal\Core\Url;
 use Drupal\webform\WebformSubmissionForm;
 use Drupal\Core\Entity\EntityInterface;
@@ -200,66 +198,137 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
   //@TODO refactor this into OcfHelper. That class will deal with Media and Storage
   //@TODO even better, refactor this as part of the AS/event driven architecture
   // And make all this efforts JSON based plugins.
-  foreach ($field_item_lists as $field)
+  foreach ($field_item_lists as $field) {
+    //@TODO diff with original data, if less images, remove usage
     $type = $field->getFieldDefinition()->getType();
-  if ($type == 'strawberryfield_field') {
-    if (!$field->isEmpty) {
-      foreach($field->getValue() as $delta => $fieldvalue) {
-        $arrayMedia = json_decode($fieldvalue['value'], true);
-        if (isset($arrayMedia['as:image'])){
-          foreach ($arrayMedia['as:image'] as $id => &$info) {
-            if (isset($info['dr:url'])) {
-              if (($id != $info['dr:url']) && isset($info['dr:fid']) && is_numeric($info['dr:fid'])) {
-                $destination_folder = \Drupal::service('file_system')->dirname($id);
-                file_prepare_directory($destination_folder, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
-                $destination_uri = file_unmanaged_move($info['dr:url'], $id );
-                $file = File::load($info['dr:fid']);
-                $file->setFileUri($destination_uri);
-                //@TODO we want probaly here to maintain the original file that was uploaded.
-                $file->setFileName(\Drupal::service('file_system')->basename($destination_uri));
-                $file->save();
-                if (!$entity->isNew()) {
-                  \Drupal::service('file.usage')->add(
-                    $file,
-                    'strawberryfield',
-                    'node',
-                    $entity->id()
-                  );
+    if ($type == 'strawberryfield_field') {
+      if (!$field->isEmpty) {
+        foreach ($field->getValue() as $delta => $fieldvalue) {
+          $arrayMedia = json_decode($fieldvalue['value'], TRUE);
+          if (isset($arrayMedia['as:image'])) {
+            foreach ($arrayMedia['as:image'] as $id => &$info) {
+              if (isset($info['dr:url'])) {
+                // #id and $info['dr:url'] differ when just saved from a webform
+                if (($id != $info['dr:url'])
+                  && isset($info['dr:fid'])
+                  && is_numeric($info['dr:fid'])) {
+                  // @NOTE benefits of this approach is avoiding https://www.drupal.org/project/drupal/issues/2821423
+                  /** @var \Drupal\file\FileInterface[] $files */
+                  $file = File::load($info['dr:fid']);
+                  if ($file) {
+                   $destination_folder = \Drupal::service('file_system')
+                      ->dirname($id);
+                    file_prepare_directory(
+                      $destination_folder,
+                      FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS
+                    );
+
+                    $destination_uri = file_unmanaged_move(
+                      $info['dr:url'],
+                      $id
+                    );
+
+                    $file->setFileUri($destination_uri);
+                    $file->save();
+                    if (!$entity->isNew()) {
+                      _update_file_usage($file, $entity->id());
+                    }
+                    $info['dr:url'] = $info['url'] = $id;
+                  }
                 }
-                $info['dr:url'] = $id;
+              }
+            }
+          }
+          $freshvalues = json_encode(
+            $arrayMedia,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+          );
+          $json_error = json_last_error();
+          if ($json_error == JSON_ERROR_NONE) {
+            // Never ever destroy y peoples meta data!
+            try {
+              $field->setValue($freshvalues);
+            } /* @throws \InvalidArgumentException
+             * If the value input is inappropriate.
+             *
+             * @throws \Drupal\Core\TypedData\Exception\ReadOnlyException
+             *   If the data is read-only. */
+            catch (\Exception $e) {
+              $message = $e->getMessage();
+              \Drupal::messenger()->addError(
+                $this->t(
+                  'Something went wrong when saving your metadata: @msg',
+                  ['@msg' => trim(sprintf('%s: %s', get_class($e), $message))]
+                )
+              );
+              if (!$entity->isNew()) {
+                $message = t(
+                  'We could not save provided metadata for field @fieldname at node @id, defaulting to base formatter configuration.',
+                  [
+                    '@fieldname' => $field->getName(),
+                    '@id' => $entity->id(),
+                  ]
+                );
+                \Drupal::logger('strawberryfield')->warning($message);
+              }
+            }
+          }
+          else {
+            \Drupal::messenger()->addError(
+              t(
+                'Something went wrong when saving your metadata:, please check your logs'
+              )
+            );
+          }
+        }
+        \Drupal::messenger()->addStatus(
+          t('All your files were correctly and permanently stored')
+        );
+      }
+    }
+  }
+}
+
+function webform_strawberryfield_node_insert(ContentEntityInterface $entity) {
+  //Only applies to newly created nodes
+  if ($entity->isNew()) {
+    $field_item_lists = $entity->getFields();
+    foreach ($field_item_lists as $field) {
+      //@TODO diff with original data, if less images, remove usage
+      $type = $field->getFieldDefinition()->getType();
+      if ($type == 'strawberryfield_field') {
+        if (!$field->isEmpty) {
+          foreach ($field->getValue() as $delta => $fieldvalue) {
+            $arrayMedia = json_decode($fieldvalue['value'], TRUE);
+            if (isset($arrayMedia['as:image'])) {
+              foreach ($arrayMedia['as:image'] as $id => &$info) {
+                if (($id == $info['dr:url'])
+                  && isset($info['dr:fid'])
+                  && is_numeric($info['dr:fid'])) {
+                  $file = File::load($info['dr:fid']);
+                  _update_file_usage($file, $entity->id());
+                }
               }
             }
           }
         }
-        $freshvalues = json_encode($arrayMedia, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
-        $json_error = json_last_error();
-        if ($json_error == JSON_ERROR_NONE) {
-          // Never ever destroy y peoples meta data!
-          try {
-            $field->setValue($freshvalues);
-          }
-            /* @throws \InvalidArgumentException
-            If the value input is inappropriate.
-            @throws \Drupal\Core\TypedData\Exception\ReadOnlyException
-             *   If the data is read-only. */
-          catch (\Exception $e) {
-            $message = $e->getMessage();
-            \Drupal::messenger()->addError($this->t('Something went wrong when saving your metadata: @msg',array('@msg' => trim(sprintf('%s: %s', get_class($e), $message)))));
-            if (!$entity->isNew()) {
-              $message= t('We could not save provided metadata for field @fieldname at node @id, defaulting to base formatter configuration.',
-                [
-                  '@fieldname' => $field->getName(),
-                  '@id' => $entity->id(),
-                ]);
-              \Drupal::logger('strawberryfield')->warning($message);
-            }}
-        }
-        else {
-          \Drupal::messenger()->addError(t('Something went wrong when saving your metadata:, please check your logs'));
-        }
       }
-      \Drupal::messenger()->addStatus(t('All your files were correctly and permanently stored'));
     }
   }
+}
+function _update_file_usage(\Drupal\File\FileInterface $file, int $nodeid) {
+  if (!$file || !\Drupal::moduleHandler()->moduleExists('file')) {
+    return;
+  }
 
+  /** @var \Drupal\file\FileUsage\FileUsageInterface $file_usage */
+  $file_usage = \Drupal::service('file.usage');
+
+    if ($file) {
+      if ($file->status !== FILE_STATUS_PERMANENT) {
+        $file->status = FILE_STATUS_PERMANENT;
+        $file->save();
+      }
+      $file_usage->add($file, 'strawberryfield', 'node', $nodeid);
+  }
 }
