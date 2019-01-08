@@ -4,10 +4,8 @@ namespace Drupal\webform_strawberryfield\Plugin\WebformHandler;
 
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\Plugin\WebformHandlerBase;
-use Drupal\webform\WebformInterface;
-use Drupal\webform\webformSubmissionInterface;
-use Symfony\Component\VarDumper\Dumper\CliDumper;
-use Symfony\Component\VarDumper\Cloner\VarCloner;
+
+
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
@@ -18,7 +16,7 @@ use Drupal\webform\WebformTokenManagerInterface;
 use Drupal\Component\Transliteration\TransliterationInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\file\FileUsage\FileUsageInterface;
-use Drupal\file\FileInterface;
+
 use Drupal\Core\Field\FieldTypePluginManager;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Component\Utility\NestedArray;
@@ -85,23 +83,24 @@ class strawberryFieldhandPicker extends WebformHandlerBase
      */
     protected $entityTypeBundleInfo;
 
-    /**
-     * strawberryFieldharvester constructor.
-     * @param array $configuration
-     * @param $plugin_id
-     * @param $plugin_definition
-     * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
-     * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-     * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-     * @param \Drupal\webform\WebformSubmissionConditionsValidatorInterface $conditions_validator
-     * @param \Drupal\webform\WebformTokenManagerInterface $token_manager
-     * @param \Drupal\Core\File\FileSystemInterface $file_system
-     * @param $file_usage
-     * @param \Drupal\Component\Transliteration\TransliterationInterface $transliteration
-     * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
-     * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
-     * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
-     */
+  /**
+   * strawberryFieldharvester constructor.
+   *
+   * @param array $configuration
+   * @param $plugin_id
+   * @param $plugin_definition
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   * @param \Drupal\webform\WebformSubmissionConditionsValidatorInterface $conditions_validator
+   * @param \Drupal\webform\WebformTokenManagerInterface $token_manager
+   * @param \Drupal\Core\File\FileSystemInterface $file_system
+   * @param \Drupal\file\FileUsage\FileUsageInterface $file_usage
+   * @param \Drupal\Component\Transliteration\TransliterationInterface $transliteration
+   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
+   * @param \Drupal\Core\Field\FieldTypePluginManager $fieldtype_pluginmanager
+   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entitytype_bundleinfo
+   */
     public function __construct(array $configuration, $plugin_id, $plugin_definition, LoggerChannelFactoryInterface $logger_factory, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, WebformSubmissionConditionsValidatorInterface $conditions_validator, WebformTokenManagerInterface $token_manager, FileSystemInterface $file_system, FileUsageInterface $file_usage, TransliterationInterface $transliteration, LanguageManagerInterface $language_manager, FieldTypePluginManager $fieldtype_pluginmanager, EntityTypeBundleInfoInterface $entitytype_bundleinfo) {
         parent::__construct($configuration, $plugin_id, $plugin_definition, $logger_factory, $config_factory,  $entity_type_manager,  $conditions_validator);
         $this->entityTypeManager = $entity_type_manager;
@@ -216,7 +215,12 @@ class strawberryFieldhandPicker extends WebformHandlerBase
                 $bundle_options[$bundle] = $bundle_info['label'];
             }
         }
-
+        if (empty($bundle_options)) {
+          $access = FALSE;
+        }
+        else {
+          $access = TRUE;
+        }
         $form['bundles'] = [
           '#title' => $this->t('Node types this webform can manipulate'),
           '#type' => 'checkboxes',
@@ -224,16 +228,12 @@ class strawberryFieldhandPicker extends WebformHandlerBase
           '#default_value' => $this->configuration['bundles'],
           '#required'=> true,
           '#weight' => -9,
-          '#ajax' => $ajax
+          '#ajax' => $ajax,
+          '#access' => $access
 
         ];
 
-        if (empty($bundle_options)) {
-            $access = FALSE;
-        }
-        else {
-            $access = TRUE;
-        }
+
 
         $form['container'] = [
           '#type' => 'container',

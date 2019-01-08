@@ -107,15 +107,16 @@ class ActivityStream
     /**
      * The Type of AS event this one is
      *
-     * @var AccountProxyInterface;
+     * @var String;
      */
     protected $asType;
 
-    /**
-     * ArchipelagoResourceEvent constructor.
-     * @param string $asEventType
-     * @param array $asEventBody
-     */
+  /**
+   * ArchipelagoResourceEvent constructor.
+   *
+   * @param string $asType
+   * @param array $asBody
+   */
     public function __construct(string $asType, array $asBody)
     {
 
@@ -189,7 +190,7 @@ class ActivityStream
 
         $obj = array();
         $obj['object'] = ["type" => $asType];
-        $obj['object'] + $properties;
+        $obj['object'] = $obj['object'] + $properties;
 
         $newbody = array_merge($this->getAsBody(), $obj);
         $this->setAsBody($newbody);
@@ -223,11 +224,11 @@ class ActivityStream
         return $this->asBody;
     }
 
-    /**
-     * Full AS setter.
-     *
-     * @param string $asBody
-     */
+  /**
+   * Full AS setter.
+   *
+   * @param array $asBody
+   */
     public function setAsBody(array $asBody)
     {
         $this->asBody = $asBody;
@@ -243,11 +244,11 @@ class ActivityStream
         return $this->asType;
     }
 
-    /**
-     * Full AS Type setter.
-     *
-     * @param string $asEventType
-     */
+  /**
+   * Full AS Type setter.
+   *
+   * @param string $asType
+   */
     public function setAsType(string $asType)
     {
         $this->asType = $asType;

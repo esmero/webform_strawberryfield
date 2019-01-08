@@ -4,7 +4,7 @@ namespace Drupal\webform_strawberryfield\Element;
 
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\Element\WebformCompositeBase;
-use Drupal\Core\Render\BubbleableMetadata;
+
 
 /**
  * Provides a webform element for a telephone element.
@@ -19,11 +19,7 @@ class WebformLoC extends WebformCompositeBase {
   public function getInfo() {
     //@TODO add an extra option to define auth_type.
     //@TODO expose as an select option inside \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
-    $class = get_class($this);
     $info = parent::getInfo();
-    /*$info['#process'][] =
-      [$class, 'processAutocomplete'];*/
-    //unset($info['#title_display']);
     return $info;
   }
 

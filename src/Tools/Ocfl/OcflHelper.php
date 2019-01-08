@@ -16,44 +16,44 @@ use Drupal\Core\StreamWrapper\StreamWrapperInterface;
 class OcflHelper
 {
     //@see https://ocfl.io/draft/implementation-notes/#bib-Pairtree
-    public function pairtreeEncode($identifier) {
+    public static function pairtreeEncode($identifier) {
         $encode_regex = "/[\"*+,<=>?\\\^|]|[^\x21-\x7e]/";
-        $escaped_string = preg_replace_callback($encode_regex, 'Pairtree::strtohex', $identifier);
+        $escaped_string = preg_replace_callback($encode_regex, 'self::strtohex', $identifier);
         $escaped_string = str_replace(array('/',':','.'), array('=','+',','),$escaped_string);
         return $escaped_string;
     }
 
-    public function pairtreeDecode($identifier) {
+    public static function pairtreeDecode($identifier) {
         $decode_regex = "/\\^(..)/";
         $decoded_string = str_replace(array('=','+',','), array('/',':','.'), $identifier);
-        $decoded_string = preg_replace_callback($decode_regex, 'Pairtree::hextostr', $decoded_string);
+        $decoded_string = preg_replace_callback($decode_regex, 'self::hextostr', $decoded_string);
         return $decoded_string;
     }
 
-    private function hextostr($matches) {
+    private static function hextostr($matches) {
         $s= '';
         $x = trim($matches[0],'^');
         foreach(explode("\n",trim(chunk_split($x,2))) as $h) $s.=chr(hexdec($h));
         return($s);
     }
 
-    private function strtohex($matches) {
+    private static function strtohex($matches) {
         $s= '';
         $x= $matches[0];
         foreach(str_split($x) as $c) $s.= '^'.sprintf("%02x",ord($c));
         return($s);
     }
 
-    public function pairtreeIdtoPath($identifier) {
-        $encoded_identifier = self::encode($identifier);
+    public static function pairtreeIdtoPath($identifier) {
+        $encoded_identifier = self::pairtreeEncode($identifier);
         $number = preg_match_all('/..?/',$encoded_identifier,$matches);
         $path = implode('/', $matches[0]);
         return $path;
     }
 
-    public function pairtreePathtoId($path) {
+    public static function pairtreePathtoId($path) {
         $encoded_identifier = implode('',explode('/',$path));
-        $identifier = self::decode($encoded_identifier);
+        $identifier = self::pairtreeDecode($encoded_identifier);
         return $identifier;
     }
 

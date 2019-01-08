@@ -8,14 +8,15 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\Field\FieldWidget;
 
+use Drupal\Core\Entity\EntityMalformedException;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\VarDumper\Dumper\CliDumper;
-use Symfony\Component\VarDumper\Cloner\VarCloner;
+
+
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\webform_strawberryfield\Semantic\ActivityStream;
@@ -40,20 +41,21 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
      */
     protected $currentUser;
 
-    /**
-     *  Constructs a StrawberryFieldWebFormWidget.
-     *
-     * @param string $plugin_id
-     *   The plugin_id for the widget.
-     * @param mixed $plugin_definition
-     *   The plugin implementation definition.
-     * @param \Drupal\Core\Field\FieldDefinitionInterface $field_definition
-     *   The definition of the field to which the widget is associated.
-     * @param array $settings
-     *   The widget settings.
-     * @param array $third_party_settings
-     *   Any third party settings.
-     */
+  /**
+   *  Constructs a StrawberryFieldWebFormWidget.
+   *
+   * @param string $plugin_id
+   *   The plugin_id for the widget.
+   * @param mixed $plugin_definition
+   *   The plugin implementation definition.
+   * @param \Drupal\Core\Field\FieldDefinitionInterface $field_definition
+   *   The definition of the field to which the widget is associated.
+   * @param array $settings
+   *   The widget settings.
+   * @param array $third_party_settings
+   *   Any third party settings.
+   * @param \Drupal\Core\Session\AccountProxyInterface $currentuser
+   */
     public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, array $third_party_settings, AccountProxyInterface $currentuser) {
         parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $third_party_settings);
         $this->currentUser = $currentuser;
@@ -187,7 +189,6 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         //@TODO add a choice for admins. A) Existing Webform coming from A, B) widget webform_id
 
         if (empty($my_webform_machinename)) {
-            // Happens that this is my demo default
             // @todo this for a configurable setting
             // @todo create a webform  on the fly if all fails?
             // @todo we need to ship this default webform with the module named 'webform_strawberry_default
@@ -206,9 +207,16 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
             return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
         }
         $form_state->set('webform_machine_name', $my_webform_machinename);
-        $form_state->set('webform_machine_name_url', $my_webform->toUrl()->setAbsolute()->toString());
+      try {
+        $form_state->set(
+          'webform_machine_name_url',
+          $my_webform->toUrl()->setAbsolute()->toString()
+        );
+      } catch (EntityMalformedException $e) {
+          return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
+      }
 
-        $this_field_name = $this->fieldDefinition->getName();
+      $this_field_name = $this->fieldDefinition->getName();
         // This will be our temp storage id
         // Composed of the content entity uuid and this fields aname
         // Since both are unique in this context we can't get wrong!
@@ -317,7 +325,8 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         // We have two states really:
         // If old/loaded value is not empty then
         $tempstoreId = $form_state->get('strawberryfield_webform_widget_id');
-        $tempstore = \Drupal::service('user.private_tempstore')->get('archipel');
+        /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
+        $tempstore = \Drupal::service('tempstore.private')->get('archipel');
         if ($tempstore->getMetadata($tempstoreId) == NULL) {
             return;
         }
