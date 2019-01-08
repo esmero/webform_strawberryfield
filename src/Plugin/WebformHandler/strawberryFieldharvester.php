@@ -2,12 +2,14 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\WebformHandler;
 
+use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
+use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\Plugin\WebformHandlerBase;
 use Drupal\webform\WebformInterface;
 use Drupal\webform\webformSubmissionInterface;
-use Symfony\Component\VarDumper\Dumper\CliDumper;
-use Symfony\Component\VarDumper\Cloner\VarCloner;
+
+
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
@@ -20,7 +22,7 @@ use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\file\FileUsage\FileUsageInterface;
 use Drupal\file\FileInterface;
 use Drupal\webform_strawberryfield\Tools\Ocfl\OcflHelper;
-use Drupal\Core\Asset;
+
 use Drupal\webform\Utility\WebformFormHelper;
 
 /**
@@ -86,8 +88,6 @@ class strawberryFieldharvester extends WebformHandlerBase
    * @param $file_usage
    * @param \Drupal\Component\Transliteration\TransliterationInterface $transliteration
    * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
-   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
-   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
   public function __construct(array $configuration, $plugin_id, $plugin_definition, LoggerChannelFactoryInterface $logger_factory, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, WebformSubmissionConditionsValidatorInterface $conditions_validator, WebformTokenManagerInterface $token_manager, FileSystemInterface $file_system, FileUsageInterface $file_usage, TransliterationInterface $transliteration, LanguageManagerInterface $language_manager) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $logger_factory, $config_factory,  $entity_type_manager,  $conditions_validator);
@@ -226,8 +226,8 @@ class strawberryFieldharvester extends WebformHandlerBase
     if (isset($values["strawberry_field_widget_state_id"])) {
 
       $this->setIsWidgetDriven(TRUE);
-
-      $tempstore = \Drupal::service('user.private_tempstore')->get('archipel');
+      /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
+      $tempstore = \Drupal::service('tempstore.private')->get('archipel');
 
 
       // @TODO add a full-blown values cleaner
@@ -273,24 +273,11 @@ class strawberryFieldharvester extends WebformHandlerBase
   {
 
     $values = $webform_submission->getData();
-    //$this->messenger()->addMessage($webform_submission->getState());
-
-
-    // Temporary persistance of data while we collect them for Node Entity use
-    // Binding happens through a unique value passed from the widget to this
-    // via 'data' structure that a webform submission entity uses.
-    $cleanvalues = $values;
-
 
     if (isset($values["strawberry_field_widget_state_id"])) {
 
       $this->setIsWidgetDriven(true);
     }
-
-    /*    $this->messenger()->addMessage($this->t('super persistent!'));
-        $tempstore = \Drupal::service('user.private_tempstore')->get('archipel');
-
-
         // @TODO add a full-blown values cleaner
         // @TODO add the webform name used to create this as additional KEY
         // @TODO make sure widget can read that too.
@@ -298,22 +285,6 @@ class strawberryFieldharvester extends WebformHandlerBase
         // @TODO, i need to alter node submit handler to add also the
         // Entities full URL as an @id to the top of the saved JSON.
         // FUN!
-        unset($cleanvalues ["strawberry_field_widget_state_id"]);
-        unset($cleanvalues["strawberry_field_stored_values"]);
-
-        // That way we keep track who/what created this.
-        $cleanvalues["strawberry_field_widget_id"] = $this->getWebform()->id();
-
-        $cleanvalues = json_encode($cleanvalues, JSON_PRETTY_PRINT);
-
-        $tempstore->set($values["strawberry_field_widget_state_id"] , $cleanvalues);
-
-
-    } elseif ($this->IsWidgetDriven()) {
-        $this->messenger()->addWarning($this->t('We lost TV reception in the middle of the match...'));
-    }*/
-
-
     // Get the URL to post the data to.
     // @todo esmero a.k.a as Fedora-mockingbird
     $post_url = $this->configuration['submission_url'];
@@ -345,12 +316,12 @@ class strawberryFieldharvester extends WebformHandlerBase
    * @param array $element
    *   An associative array containing the file webform element.
    * @param \Drupal\webform\webformSubmissionInterface $webform_submission
+   * @param $cleanvalues
    */
   public function processFileField(array $element, WebformSubmissionInterface $webform_submission, &$cleanvalues) {
 
     $key = $element['#webform_key'];
     $original_data = $webform_submission->getOriginalData();
-    $data = $webform_submission->getData();
 
     $value = isset($cleanvalues[$key]) ? $cleanvalues[$key] : [];
     $fids = (is_array($value)) ? $value : [$value];
@@ -359,7 +330,7 @@ class strawberryFieldharvester extends WebformHandlerBase
     $original_fids = (is_array($original_value)) ? $original_value : [$original_value];
 
     // Delete the old file uploads?
-
+    // @TODO build some cleanup logic here. Could be moved to attached field hook.
     $delete_fids = array_diff($original_fids, $fids);
 
     // @TODO what do we do with removed files?
@@ -374,7 +345,13 @@ class strawberryFieldharvester extends WebformHandlerBase
     }
 
     /** @var \Drupal\file\FileInterface[] $files */
-    $files = $this->entityTypeManager->getStorage('file')->loadMultiple($fids);
+    try {
+      $files = $this->entityTypeManager->getStorage('file')->loadMultiple(
+        $fids
+      );
+    } catch (InvalidPluginDefinitionException $e) {
+    } catch (PluginNotFoundException $e) {
+    }
     $fileinfo_many = [];
     //@TODO refactor this urgently to a NEW TECHMD class.
     foreach ($files as $file) {
@@ -411,6 +388,7 @@ class strawberryFieldharvester extends WebformHandlerBase
           $command = escapeshellcmd(
             '/usr/local/bin/fido  ' . $realpath_uri . ' -pronom_only -matchprintf '
           );
+          // @TODO handle the exit code from output
           $output = shell_exec($command . '"OK,%(info.puid)" -q');
 
         }

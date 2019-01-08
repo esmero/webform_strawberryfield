@@ -12,15 +12,14 @@ use Drupal\webform\WebformInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\OpenModalDialogCommand;
 use Drupal\Core\Ajax\CloseDialogCommand;
-use Drupal\Core\Ajax\AlertCommand;
-use Drupal\Core\Controller\ControllerBase;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Request;
-use Drupal\Core\Url;
-use Psy\Util\Json;
-use Symfony\Component\VarDumper\Dumper\CliDumper;
-use Symfony\Component\VarDumper\Cloner\VarCloner;
 
+use Drupal\Core\Controller\ControllerBase;
+
+use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Entity\ContentEntityInterface;
+
+
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * StrawberryRunnerModalController class.
@@ -52,7 +51,7 @@ class StrawberryRunnerModalController extends ControllerBase
         $source_entity_types = $request->get('source_entity_types');
 
         list($source_entity_type, $bundle) = explode(':', $source_entity_types);
-
+        //@TODO allow some type of per bundle hook?
         $state = $request->get('state');
 
 
@@ -73,7 +72,7 @@ class StrawberryRunnerModalController extends ControllerBase
         // @TODO deal with exceptions
 
         try {
-            //@var \Drupal\Core\Entity\EntityInterface[] $entities
+            //@var $entities \Drupal\Core\Entity\ContentEntityInterface[] */
             $entities = \Drupal::entityTypeManager()->getStorage($source_entity_type)->loadByProperties(['uuid' => $source_uuid]);
             // IF this does not work, either the entity is new! or it does not exist at all.
         }
@@ -85,9 +84,16 @@ class StrawberryRunnerModalController extends ControllerBase
 
             \Drupal::messenger()->addError($this->t('We could not find the referenced Entity @entity_type. Please report this to your Site Manage.',['@entity_type' => $source_entity_type]));
             // Really no need to persist after this.
-            return;
+          $response = new AjaxResponse();
+          $notfound = [
+            '#type' => 'markup',
+            '#markup' => '<p>Ups, missing Form!<p>',
+          ];
+          $this->messenger->addWarning('Seems your configured Form for does not exist anymore. Please correct or check with your Site admin.', MessengerInterface::TYPE_WARNING);
+          $response->addCommand(new OpenModalDialogCommand(t('Please follow the steps.'), $notfound, ['width' => '90%']));
+          return $response;
         }
-        //@var \Drupal\Core\Entity\EntityInterface $source_entity
+        //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
         $source_entity = null;
 
         foreach($entities as $entity) {
@@ -96,6 +102,7 @@ class StrawberryRunnerModalController extends ControllerBase
             // makes little sense because we will either get a single one or none
             // but! makes sense anyway, shorter than checking if there, and if so
             // getting the first!
+            //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
             $source_entity = $entity;
             if (!$source_entity->access('update')) {
                 throw new AccessDeniedHttpException('Sorry, seems like you can are not allowed to see this or to be here at all!');
@@ -114,6 +121,7 @@ class StrawberryRunnerModalController extends ControllerBase
         $entityid = NULL;
         // If we actually loaded the entity then lets fetch the saved field value
         // @see \Drupal\archipel\Plugin\Field\FieldType\StrawberryField::propertyDefinitions
+        //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
         if ($source_entity) {
             // In case we are editing an existing entity, this one gets the
             // Strawberryfield value

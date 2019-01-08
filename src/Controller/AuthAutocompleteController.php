@@ -7,7 +7,6 @@ use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Drupal\Component\Utility\Tags;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use Drupal\Component\Utility\UrlHelper;
@@ -20,7 +19,9 @@ use Drupal\Component\Utility\UrlHelper;
 class AuthAutocompleteController extends ControllerBase implements ContainerInjectionInterface {
 
   /**
-   * @var \GuzzleHttp\Client;
+   * The HTTP client.
+   *
+   * @var \GuzzleHttp\Client
    */
   protected $httpClient;
 
@@ -45,8 +46,15 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
       );
   }
+
   /**
    * Handler for autocomplete request.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   * @param $auth_type
+   * @param $count
+   *
+   * @return \Symfony\Component\HttpFoundation\JsonResponse
    */
   public function handleAutocomplete(Request $request, $auth_type, $count) {
     $results = [];
@@ -55,8 +63,6 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     //@TODO if so, we can query the plugins and show in the webform builder options
     // Get the typed string from the URL, if it exists.
     if ($input = $request->query->get('q')) {
-      $typed_string = Tags::explode($input);
-      $typed_string = mb_strtolower(array_pop($typed_string));
       switch($auth_type) {
         case 'loc':  $results = $this->loc($input);
         break;
@@ -106,10 +112,9 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       return  $results;
     }
     $this->messenger->addError(
-      $this->t('Looks like data fetched from @url by @pluginid is not in JSON format.<br> JSON says: @$jsonerror <br>Please check your URL!',
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @$jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
-          '@pluginid' =>  $this->label(),
           '@$jsonerror' => $json_error
         ]
       )
@@ -159,10 +164,9 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       return  $results;
     }
     $this->messenger->addError(
-      $this->t('Looks like data fetched from @url by @pluginid is not in JSON format.<br> JSON says: @$jsonerror <br>Please check your URL!',
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @$jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
-          '@pluginid' =>  $this->label(),
           '@$jsonerror' => $json_error
         ]
       )
