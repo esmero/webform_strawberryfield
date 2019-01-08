@@ -7,8 +7,6 @@
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\webform\WebformSubmissionForm;
-use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\file\Entity\File;
 
@@ -123,11 +121,11 @@ function webform_strawberryfield_go_to_page(array &$form, FormStateInterface $fo
   /** @var \Drupal\webform\WebformSubmissionForm $submission_form */
   $submission_form = $form_state->getFormObject();
 
+  /* @TODO: Use this valuable page number for something.
   $trigger = $form_state->getTriggeringElement();
-
   $current_page = $form_state->get('current_page');
-
   $wizard_page_id = $trigger['#page'];
+  */
 
   // Submit using Mr. Wizard of WebOz.
   $submission_form->gotoPage($form, $form_state);
@@ -191,7 +189,7 @@ function webform_strawberryfield_widget_reset(array &$form, FormStateInterface $
 
 
 function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
-
+  /** @var \Drupal\Core\Field\FieldItemListInterface[] */
   $field_item_lists = $entity->getFields();
   // Get the default image settings, return if not saving an image field storage
   // or image field entity.
@@ -229,7 +227,17 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
                     );
 
                     $file->setFileUri($destination_uri);
-                    $file->save();
+                    try {
+                      $file->save();
+                    } catch (\Drupal\Core\Entity\EntityStorageException $e) {
+                      \Drupal::messenger()->addError(
+                        t(
+                          'Something went wrong when saving file @filename:, please check your logs.',
+                        ['@filename'=> $file->getFilename()]
+                          )
+                      );
+
+                    }
                     if (!$entity->isNew()) {
                       _update_file_usage($file, $entity->id());
                     }
@@ -257,13 +265,13 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
               $message = $e->getMessage();
               \Drupal::messenger()->addError(
                 $this->t(
-                  'Something went wrong when saving your metadata: @msg',
+                  'Something went wrong when saving your metadata: @msg.',
                   ['@msg' => trim(sprintf('%s: %s', get_class($e), $message))]
                 )
               );
               if (!$entity->isNew()) {
                 $message = t(
-                  'We could not save provided metadata for field @fieldname at node @id, defaulting to base formatter configuration.',
+                  'We could not save provided metadata for field @fieldname at node @id.',
                   [
                     '@fieldname' => $field->getName(),
                     '@id' => $entity->id(),
@@ -276,7 +284,7 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
           else {
             \Drupal::messenger()->addError(
               t(
-                'Something went wrong when saving your metadata:, please check your logs'
+                'Something went wrong when saving your metadata:, please check your logs.'
               )
             );
           }
@@ -290,24 +298,23 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
 }
 
 function webform_strawberryfield_node_insert(ContentEntityInterface $entity) {
-  //Only applies to newly created nodes
-  if ($entity->isNew()) {
-    $field_item_lists = $entity->getFields();
-    foreach ($field_item_lists as $field) {
-      //@TODO diff with original data, if less images, remove usage
-      $type = $field->getFieldDefinition()->getType();
-      if ($type == 'strawberryfield_field') {
-        if (!$field->isEmpty) {
-          foreach ($field->getValue() as $delta => $fieldvalue) {
-            $arrayMedia = json_decode($fieldvalue['value'], TRUE);
-            if (isset($arrayMedia['as:image'])) {
-              foreach ($arrayMedia['as:image'] as $id => &$info) {
-                if (($id == $info['dr:url'])
-                  && isset($info['dr:fid'])
-                  && is_numeric($info['dr:fid'])) {
-                  $file = File::load($info['dr:fid']);
-                  _update_file_usage($file, $entity->id());
-                }
+  // Only applies to newly created nodes but ::isNew returns false here!.
+  $field_item_lists = $entity->getFields();
+  foreach ($field_item_lists as $field) {
+    //@TODO diff with original data, if less images, remove usage
+    $type = $field->getFieldDefinition()->getType();
+    if ($type == 'strawberryfield_field') {
+      if (!$field->isEmpty) {
+        foreach ($field->getValue() as $delta => $fieldvalue) {
+          $arrayMedia = json_decode($fieldvalue['value'], TRUE);
+          if (isset($arrayMedia['as:image'])) {
+            foreach ($arrayMedia['as:image'] as $id => &$info) {
+              dpm($info);
+              if (($id == $info['dr:url'])
+                && isset($info['dr:fid'])
+                && is_numeric($info['dr:fid'])) {
+                $file = File::load($info['dr:fid']);
+                _update_file_usage($file, $entity->id());
               }
             }
           }
@@ -316,6 +323,7 @@ function webform_strawberryfield_node_insert(ContentEntityInterface $entity) {
     }
   }
 }
+
 function _update_file_usage(\Drupal\File\FileInterface $file, int $nodeid) {
   if (!$file || !\Drupal::moduleHandler()->moduleExists('file')) {
     return;
@@ -325,9 +333,18 @@ function _update_file_usage(\Drupal\File\FileInterface $file, int $nodeid) {
   $file_usage = \Drupal::service('file.usage');
 
     if ($file) {
-      if ($file->status !== FILE_STATUS_PERMANENT) {
-        $file->status = FILE_STATUS_PERMANENT;
-        $file->save();
+      if (!$file->isPermanent()) {
+        $file->setPermanent();
+        try {
+          $file->save();
+        } catch (\Drupal\Core\Entity\EntityStorageException $e) {
+          \Drupal::messenger()->addError(
+            t(
+              'Something went wrong when saving file @filename:, please check your logs.',
+              ['@filename'=> $file->getFilename()]
+            )
+          );
+        }
       }
       $file_usage->add($file, 'strawberryfield', 'node', $nodeid);
   }
