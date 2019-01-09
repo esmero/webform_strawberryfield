@@ -35,6 +35,10 @@ class WebformLoC extends WebformCompositeBase {
       //'#title_display' => 'invisible',
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
       '#autocomplete_route_parameters' => array('auth_type' => 'loc', 'count' => 10),
+      '#attributes' => [
+        'data-source-strawberry-autocomplete-key' => 'label',
+        'data-target-strawberry-autocomplete-key' => 'uri'
+      ],
 
     ];
     $elements['uri'] = [
