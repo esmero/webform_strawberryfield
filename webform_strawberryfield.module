@@ -309,7 +309,6 @@ function webform_strawberryfield_node_insert(ContentEntityInterface $entity) {
           $arrayMedia = json_decode($fieldvalue['value'], TRUE);
           if (isset($arrayMedia['as:image'])) {
             foreach ($arrayMedia['as:image'] as $id => &$info) {
-              dpm($info);
               if (($id == $info['dr:url'])
                 && isset($info['dr:fid'])
                 && is_numeric($info['dr:fid'])) {
