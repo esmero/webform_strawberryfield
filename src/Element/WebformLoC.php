@@ -7,7 +7,7 @@ use Drupal\webform\Element\WebformCompositeBase;
 
 
 /**
- * Provides a webform element for a telephone element.
+ * Provides a webform element for a LoC element.
  *
  * @FormElement("webform_metadata_loc")
  */

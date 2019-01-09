@@ -7,7 +7,7 @@ use Drupal\webform\Element\WebformCompositeBase;
 
 
 /**
- * Provides a webform element for a telephone element.
+ * Provides a webform element for a wikidata element.
  *
  * @FormElement("webform_metadata_wikidata")
  */
@@ -35,6 +35,11 @@ class WebformWikiData extends WebformCompositeBase {
       //'#title_display' => 'invisible',
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
       '#autocomplete_route_parameters' => array('auth_type' => 'wikidata', 'count' => 10),
+      '#attributes' => [
+        'data-source-strawberry-autocomplete-key' => 'label',
+        'data-target-strawberry-autocomplete-key' => 'uri'
+      ],
+
 
     ];
     $elements['uri'] = [

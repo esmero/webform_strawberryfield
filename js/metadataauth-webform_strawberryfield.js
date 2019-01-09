@@ -100,10 +100,16 @@
 
                         //$(event.target).parent('.form-type-textfield').next('div.form-type-url').children('input[data-strawberry-autocomplete-value]').val(ui.item.label);
                         var targetname = $(event.target).attr('name');
-                        var stripped = targetname.substring(0, targetname.indexOf('[label]'));
+                        // Where to put the value
+                        var targetsource = $(event.target).data('source-strawberry-autocomplete-key');
+                        // This element's name last key
+                        var targetdest = $(event.target).data('target-strawberry-autocomplete-key');
 
-                        targetname = stripped + '[uri]';
 
+                        var stripped = targetname.substring(0, targetname.indexOf('['+targetsource+']'));
+
+                        targetname = stripped + '['+targetdest+']';
+                        console.log(targetname);
                         $("input[name='"+ targetname +"']").val(ui.item.label);
 
                         var ret = oldSelect.apply(this, arguments);
