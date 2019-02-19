@@ -12,9 +12,8 @@ use Drupal\webform\WebformInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\OpenModalDialogCommand;
 use Drupal\Core\Ajax\CloseDialogCommand;
-
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Controller\ControllerBase;
-
 use Symfony\Component\HttpFoundation\Request;
 use Drupal\Core\Entity\ContentEntityInterface;
 
@@ -121,7 +120,7 @@ class StrawberryRunnerModalController extends ControllerBase
         $entityid = NULL;
         // If we actually loaded the entity then lets fetch the saved field value
         // @see \Drupal\archipel\Plugin\Field\FieldType\StrawberryField::propertyDefinitions
-        //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
+        // @var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
         if ($source_entity) {
             // In case we are editing an existing entity, this one gets the
             // Strawberryfield value
@@ -131,6 +130,7 @@ class StrawberryRunnerModalController extends ControllerBase
         }
 
         $stored_value = (isset($fielddata['value']) && !empty($fielddata['value'])) ? $fielddata['value'] : "{}";
+
         $data_defaults = [
             'strawberry_field_widget_state_id' => $widgetid,
             // Can't remember why, but seems useful to pass around
@@ -161,9 +161,7 @@ class StrawberryRunnerModalController extends ControllerBase
         // Does not work right now.
         // See workaround at \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::preprocessConfirmation
         $new_settings = [
-            //'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
-            'confirmation_type' => WebformInterface::CONFIRMATION_NONE,
-            //'confirmation_url' => Url::fromRoute('<current>'),
+            'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
             'confirmation_back' => FALSE,
             'results_disabled' => TRUE,
             'autofill' => FALSE
@@ -186,8 +184,14 @@ class StrawberryRunnerModalController extends ControllerBase
         // Makes sense?
 
         // Add an AJAX command to open a modal dialog with the form as the content.
-        $response->addCommand(new OpenModalDialogCommand(t('Please follow the steps.'), $lawebforma, ['width' => '90%']));
-        return $response;
+        //@TODO Allow widget to pass the mode, either inline, Dialog or Append.
+        //$response->addCommand(new OpenModalDialogCommand(t('Please follow the steps.'), $lawebforma, ['width' => '90%']));
+
+        //$response->addCommand(new \Drupal\Core\Ajax\AppendCommand('#edit-field-descriptive-metadata-0', $lawebforma));
+        // @TODO pass the selector as an argument so we can have many inserts.
+        $response->addCommand(new \Drupal\Core\Ajax\HtmlCommand('#edit-field-descriptive-metadata-0', $lawebforma));
+
+      return $response;
 
     }
 

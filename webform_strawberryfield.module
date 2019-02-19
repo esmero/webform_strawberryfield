@@ -38,17 +38,17 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
     /** @var  \Drupal\webform\Entity\WebformSubmission $webform_submission */
     $webform_submission = $submission_form->getEntity();
 
-    $isWidget = false;
+    $isWidget = FALSE;
     // @see \Drupal\webform_strawberryfield\Controller @var $data_defaults
-    if (array_key_exists(   'strawberry_field_widget_state_id', $webform_submission->getData())) {
-      $isWidget = true;
+    if (array_key_exists('strawberry_field_widget_state_id', $webform_submission->getData())) {
+      $isWidget = TRUE;
       // Since we are just using webform to act as a widget, we tell workspace module all is safe here.
       //@TODO this is giving issues. Workspace can not serialize Webformsubmission form
       // Probably related to some dependency injection that includes and open DB reference
       //$form_state->set('workspace_safe', true);
     }
 
-    if (!$isWidget || !$is_ajax) {
+    if (!$isWidget ) {
       return;
     }
     if (isset($form['actions']['reset'])) {
@@ -60,19 +60,20 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
       'webform_strawberryfield.close_modal_webform'
     );
     // Also @see https://drupal.stackexchange.com/questions/184390/how-to-perform-action-from-form-opened-in-modal
-    $form['actions']['closemodal'] = [
-      '#type' => 'link',
-      '#title' => t('Close Window'),
-      '#url' => $webform_close_controller_url,
-      '#attributes' => [
-        'class' => [
-          'use-ajax',
-          'button',
+    if ($is_ajax) {
+      $form['actions']['closemodal'] = [
+        '#type' => 'link',
+        '#title' => t('Close Window'),
+        '#url' => $webform_close_controller_url,
+        '#attributes' => [
+          'class' => [
+            'use-ajax',
+            'button',
+          ],
         ],
-      ],
-      '#weight' => 100,
-    ];
-
+        '#weight' => 100,
+      ];
+    }
 
     if ($form_state->get('current_page') === 'webform_preview') {
       /** @var \Drupal\webform\WebformSubmissionForm $submission_form */
@@ -200,19 +201,22 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
     //@TODO diff with original data, if less images, remove usage
     $type = $field->getFieldDefinition()->getType();
     if ($type == 'strawberryfield_field') {
-      if (!$field->isEmpty) {
+      if (!$field->isEmpty()) {
         foreach ($field->getValue() as $delta => $fieldvalue) {
           $arrayMedia = json_decode($fieldvalue['value'], TRUE);
           if (isset($arrayMedia['as:image'])) {
             foreach ($arrayMedia['as:image'] as $id => &$info) {
               if (isset($info['dr:url'])) {
                 // #id and $info['dr:url'] differ when just saved from a webform
+                // #id is where we really want to store our file
+                // $info['dr:url'] should be where it is before this runs
                 if (($id != $info['dr:url'])
                   && isset($info['dr:fid'])
                   && is_numeric($info['dr:fid'])) {
                   // @NOTE benefits of this approach is avoiding https://www.drupal.org/project/drupal/issues/2821423
                   /** @var \Drupal\file\FileInterface[] $files */
                   $file = File::load($info['dr:fid']);
+
                   if ($file) {
                    $destination_folder = \Drupal::service('file_system')
                       ->dirname($id);
@@ -222,7 +226,7 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
                     );
 
                     $destination_uri = file_unmanaged_move(
-                      $info['dr:url'],
+                      $file->getFileUri(),
                       $id
                     );
 
@@ -239,6 +243,8 @@ function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
 
                     }
                     if (!$entity->isNew()) {
+                      // We can not update its usage if the entity is new here
+                      // Because we have no entity id yet
                       _update_file_usage($file, $entity->id());
                     }
                     $info['dr:url'] = $info['url'] = $id;
@@ -304,7 +310,7 @@ function webform_strawberryfield_node_insert(ContentEntityInterface $entity) {
     //@TODO diff with original data, if less images, remove usage
     $type = $field->getFieldDefinition()->getType();
     if ($type == 'strawberryfield_field') {
-      if (!$field->isEmpty) {
+      if (!$field->isEmpty()) {
         foreach ($field->getValue() as $delta => $fieldvalue) {
           $arrayMedia = json_decode($fieldvalue['value'], TRUE);
           if (isset($arrayMedia['as:image'])) {
