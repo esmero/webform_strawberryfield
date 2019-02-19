@@ -328,6 +328,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
         $tempstore = \Drupal::service('tempstore.private')->get('archipel');
         if ($tempstore->getMetadata($tempstoreId) == NULL) {
+            error_log('empty!');
             return;
         }
 
