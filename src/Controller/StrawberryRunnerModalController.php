@@ -164,7 +164,8 @@ class StrawberryRunnerModalController extends ControllerBase
             'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
             'confirmation_back' => FALSE,
             'results_disabled' => TRUE,
-            'autofill' => FALSE
+            'autofill' => FALSE,
+            'confirmation_message' => $this->t('Thanks, you are all set! Please Save the content to persist the changes.')
         ];
 
         // @todo make autofill v/s none a user setting.
