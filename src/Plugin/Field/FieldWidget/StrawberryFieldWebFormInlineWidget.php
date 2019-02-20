@@ -277,12 +277,10 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         'confirmation_back' => TRUE,
         'results_disabled' => TRUE,
         'confirmation_exclude_token' => TRUE,
-        'draft_auto_save' => TRUE,
         'wizard_progress_link' => TRUE,
         'submission_user_duplicate' => TRUE,
-        //'token_update' => FALSE,
-        'submission_log' => TRUE,
-        'confirmation_message' => $this->t('Thanks, you are all set')
+        'submission_log' => FALSE,
+        'confirmation_message' => $this->t('Thanks, you are all set! Please Save the content to persist the changes.'),
       ],
     ];
 

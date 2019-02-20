@@ -65,7 +65,7 @@ class WebformWithOverride extends Webform {
         $new_settings = $element['#override'];
         $webform->setSettingsOverride($new_settings);
         $values['strawberryfield:override'] = $new_settings;
-        //$webform->resetSettings();
+
       }
 
       // Build the webform.
