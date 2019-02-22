@@ -86,7 +86,7 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
         if ($element['#type'] == 'webform_wizard_page') {
           $form['actions']['edit_wizard_page_'.$key][] = [
             '#type' => 'submit',
-            '#value' => 'edit '.$key,
+            '#value' => 'edit '.$element['#title'],
             '#submit' => [
               'webform_strawberryfield_go_to_page',
             ],
