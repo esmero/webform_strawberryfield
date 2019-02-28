@@ -24,6 +24,7 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
 
   /** @var \Drupal\webform\WebformSubmissionForm $submission_form */
   $submission_form = $form_state->getFormObject();
+  $form['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.nodeactions.toggle';
 
   if (strpos($form_id, 'webform_submission') === 0
     && $submission_form instanceof WebformSubmissionForm) {
@@ -355,4 +356,31 @@ function _update_file_usage(\Drupal\File\FileInterface $file, int $nodeid) {
       }
       $file_usage->add($file, 'strawberryfield', 'node', $nodeid);
   }
+}
+
+
+function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface &$form_state, $form_id) {
+  //$node = $form_state->getFormObject()->getEntity();
+  // Means this form has a webform widget
+
+  if (isset($form_state->getStorage()['webform_machine_name'])){
+    $input = $form_state->getUserInput();
+
+    if ((!isset($input['_triggering_element_name'])) || (isset($input['_triggering_element_value']) && $input['_triggering_element_value']!='Save Metadata')) {
+      foreach ($form['actions'] as $key => &$buttons) {
+        if ($key == 'delete') {
+          $buttons['#access'] = FALSE;
+        }
+        if ($key == 'submit') {
+          $buttons['#attributes']['class'][] = 'hidden';
+        }
+      }
+    }
+    else {
+
+
+    }
+  }
+
+
 }
