@@ -372,7 +372,7 @@ function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface
           $buttons['#access'] = FALSE;
         }
         if ($key == 'submit') {
-          $buttons['#attributes']['class'][] = 'hidden';
+          $buttons['#attributes']['style'][] = 'display:none';
         }
       }
     }

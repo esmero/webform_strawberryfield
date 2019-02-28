@@ -20,7 +20,9 @@
             // Find all our fields with autocomplete settings
 
             if ($('.webform-confirmation',context).length) {
-                $('input[data-drupal-selector="edit-submit"]').show();
+                $('.path-node button[data-drupal-selector="edit-submit"]').show();
+            } else if ($('div.field--widget-strawberryfield-webform-inline-widget').length) {
+                $('.path-node button[data-drupal-selector="edit-submit"]').hide();
             }
 
 
