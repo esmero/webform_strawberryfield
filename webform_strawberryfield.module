@@ -24,16 +24,15 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
 
   /** @var \Drupal\webform\WebformSubmissionForm $submission_form */
   $submission_form = $form_state->getFormObject();
+  $form['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.nodeactions.toggle';
 
   if (strpos($form_id, 'webform_submission') === 0
     && $submission_form instanceof WebformSubmissionForm) {
 
-    $query = \Drupal::request()->query->all();
-
     // @TODO check if we should use instead \Drupal\webform\WebformSubmissionForm::isAjax
     // I'm not totally convinced since we could be "ajaxifying" a webform here
     // that was not set as such in it's saved settings.
-    $is_ajax = (!empty($query['ajax_form'])) ? TRUE : FALSE;
+
 
     /** @var  \Drupal\webform\Entity\WebformSubmission $webform_submission */
     $webform_submission = $submission_form->getEntity();
@@ -55,11 +54,16 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
       $form['actions']['reset']['#submit'] = ['webform_strawberryfield_widget_reset'];
     }
 
-    // add a close model button
+
+
+
+    /* @TODO make this a valid switch
+     // We should not make close object available if inline
+     // add a close model button
+    $query = \Drupal::request()->query->all();
+    $is_ajax = (!empty($query['ajax_form'])) ? TRUE : FALSE;
     $webform_close_controller_url = Url::fromRoute(
-      'webform_strawberryfield.close_modal_webform'
-    );
-    // Also @see https://drupal.stackexchange.com/questions/184390/how-to-perform-action-from-form-opened-in-modal
+    'webform_strawberryfield.close_modal_webform');
     if ($is_ajax) {
       $form['actions']['closemodal'] = [
         '#type' => 'link',
@@ -73,7 +77,7 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
         ],
         '#weight' => 100,
       ];
-    }
+    }*/
 
     if ($form_state->get('current_page') === 'webform_preview') {
       /** @var \Drupal\webform\WebformSubmissionForm $submission_form */
@@ -83,10 +87,9 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
         if ($element['#type'] == 'webform_wizard_page') {
           $form['actions']['edit_wizard_page_'.$key][] = [
             '#type' => 'submit',
-            '#value' => 'edit '.$key,
+            '#value' => 'edit '.$element['#title'],
             '#submit' => [
               'webform_strawberryfield_go_to_page',
-              //[$submission_form, 'previous']
             ],
             '#attributes' => [
               'class' => ['js-webform-novalidate'],
@@ -353,4 +356,31 @@ function _update_file_usage(\Drupal\File\FileInterface $file, int $nodeid) {
       }
       $file_usage->add($file, 'strawberryfield', 'node', $nodeid);
   }
+}
+
+
+function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface &$form_state, $form_id) {
+  //$node = $form_state->getFormObject()->getEntity();
+  // Means this form has a webform widget
+
+  if (isset($form_state->getStorage()['webform_machine_name'])){
+    $input = $form_state->getUserInput();
+
+    if ((!isset($input['_triggering_element_name'])) || (isset($input['_triggering_element_value']) && $input['_triggering_element_value']!='Save Metadata')) {
+      foreach ($form['actions'] as $key => &$buttons) {
+        if ($key == 'delete') {
+          $buttons['#access'] = FALSE;
+        }
+        if ($key == 'submit') {
+          $buttons['#attributes']['class'][] = 'hidden';
+        }
+      }
+    }
+    else {
+
+
+    }
+  }
+
+
 }
