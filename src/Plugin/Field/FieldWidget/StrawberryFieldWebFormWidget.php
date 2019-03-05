@@ -234,8 +234,15 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
           ]
         );
 
+        // We add 'data-drupal-selector' = 'strawberry_webform_widget'
+        // To allow JS to react/jquery select on this.
         $element += array(
           '#type' => 'fieldset',
+          '#attributes' => [
+            'data-strawberryfield-selector' => [
+              'strawberry-webform-widget'
+            ],
+          ],
           '#field_name' =>  $this->getSetting('placeholder')?: $items->getName(),
           '#collapsible' => FALSE,
           '#collapsed' => FALSE,
@@ -257,9 +264,6 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
             ],
           ],
         ];
-
-        // Attach the library for pop-up dialogs/modals.
-        $element['strawberry_webform_open_modal']['#attached']['library'][] = 'core/drupal.dialog.ajax';
 
         // The following elements are kinda hidden and match the field properties
         $current_value = $items[$delta]->getValue();

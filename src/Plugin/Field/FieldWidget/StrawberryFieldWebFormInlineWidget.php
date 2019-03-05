@@ -219,9 +219,15 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     ]);
     $limit_validation_errors = [array_merge($form['#parents'], ['strawberry_webform_inline'])];
 
-
+    // We add 'data-drupal-selector' = 'strawberry_webform_widget'
+    // To allow JS to react/jquery select on this.
     $element += array(
       '#type' => 'fieldset',
+      '#attributes' => [
+        'data-strawberryfield-selector' => [
+          'strawberry-webform-widget'
+        ],
+      ],
       '#title' => $this->getSetting('placeholder')?: $items->getName(),
       '#collapsible' => FALSE,
       '#collapsed' => FALSE,
@@ -267,6 +273,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // IDEA: keep a draft version around in another temp storage
     // reload if empty, clean if correctly submitted
 
+
     $element['strawberry_webform_inline']  = [
       '#type' => 'webform_inline_fieldwidget',
       '#webform' => $my_webform_machinename,
@@ -286,9 +293,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
 
       //$this->getWebform($items,$delta,$entity_id,$entity_uuid, $this_widget_id, $my_webform);
     $element['strawberry_webform_inline']['#parents'] = $parents;
-
-    // Attach the library for pop-up dialogs/modals.
-    $element['strawberry_webform_open_modal']['#attached']['library'][] = 'core/drupal.dialog.ajax';
 
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();

@@ -5,7 +5,7 @@ webform_strawberryfield.metadataauth.autocomplete:
     - core/drupal.autocomplete
 webform_strawberryfield.nodeactions.toggle:
   js:
-    js/hidenodesubmit-webform_strawberryfield.js: {}
+    js/hidenodeaction-webform_strawberryfield.js: {}
   dependencies:
     - core/jquery
     - core/drupal
