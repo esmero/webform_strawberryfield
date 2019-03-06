@@ -371,16 +371,8 @@ function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface
         if ($key == 'delete') {
           $buttons['#access'] = FALSE;
         }
-        if ($key == 'submit') {
-          $buttons['#attributes']['style'][] = 'display:none';
-        }
       }
     }
-    else {
-
-
-    }
   }
-
 
 }
