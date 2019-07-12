@@ -15,11 +15,9 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-
-
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
-use Drupal\webform_strawberryfield\Semantic\ActivityStream;
+use Drupal\strawberryfield\Semantic\ActivityStream;
 
 /**
  * Plugin implementation of the 'strawberryfield_webform_widget' widget.
@@ -182,7 +180,6 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
 
         // So which webform to load?
         // Logic says either use the one that was used originally or fall back to some default
-
         // WEIRD. So the autocomplete field actually saves the fill entity, not the id..
         $my_webform_machinename = $this->getSetting('webform_id') ? $this->getSetting('webform_id') : NULL;
         //@TODO now that we have activity stream (as), we should prioritize that webform when present.
@@ -193,11 +190,9 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
             // @todo create a webform  on the fly if all fails?
             // @todo we need to ship this default webform with the module named 'webform_strawberry_default
             $my_webform_machinename = 'webform_strawberry_default';
-
         }
 
         $my_webform = \Drupal\webform\Entity\Webform::load($my_webform_machinename);
-
 
 
         if ($my_webform == null) {
@@ -336,12 +331,12 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
             return;
         }
 
-
         $json_string = $tempstore->get($tempstoreId);
         $json = json_decode($json_string, TRUE);
         $json_error = json_last_error();
         if ($json_error == JSON_ERROR_NONE) {
             $form_state->setValueForElement($element['strawberry_webform_widget']['json'], $json_string);
+            // @TODO do we want to keep a copy on the tempstore?
             $tempstore->delete($tempstoreId);
             return;
         }
@@ -378,7 +373,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         $jsonarray["as:generator"] = $this->addActivityStream($form_state);
         $jsonvalue  =  json_encode($jsonarray, JSON_PRETTY_PRINT);
         $values2[0]['value'] = $jsonvalue;
-        // @TODO this no longer is part of wild strawberry field defintion. We already have other
+        // @TODO this no longer is part of wild strawberry field definition. We already have other
         // ways of keeping track. Remove or deprecate.
         $values2[0]['creation_method'] = $values[0]['strawberry_webform_widget']['creation_method'];
 
