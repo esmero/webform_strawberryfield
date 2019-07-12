@@ -9,7 +9,9 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\ServerException;
 use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\Url;
 
 /**
  * Defines a route controller for Authority autocomplete form elements.
@@ -17,6 +19,46 @@ use Drupal\Component\Utility\UrlHelper;
  * @see webform_strawberryfield.routing.yml:8
  */
 class AuthAutocompleteController extends ControllerBase implements ContainerInjectionInterface {
+
+
+  /**
+   * English Stop words.
+   */
+  const STOPWORDS_EN = [
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "but",
+    "by",
+    "for",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "no",
+    "not",
+    "of",
+    "on",
+    "or",
+    "such",
+    "that",
+    "the",
+    "their",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "to",
+    "was",
+    "will",
+    "with",
+  ];
 
   /**
    * The HTTP client.
@@ -68,6 +110,8 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         break;
         case 'wikidata': $results = $this->wikidata($input);
         break;
+        case 'aat': $results = $this->getty($input, 'aat');
+        break;
       }
 
 
@@ -112,10 +156,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       return  $results;
     }
     $this->messenger->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @$jsonerror <br>Please check your URL!',
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
-          '@$jsonerror' => $json_error
+          '@jsonerror' => $json_error
         ]
       )
     );
@@ -164,16 +208,138 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       return  $results;
     }
     $this->messenger->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @$jsonerror <br>Please check your URL!',
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
-          '@$jsonerror' => $json_error
+          '@jsonerror' => $json_error
         ]
       )
     );
     return [];
   }
 
+
+  /**
+   * @param $input
+   * @param string $vocab
+   *
+   * @return array
+   */
+  protected function getty($input, $vocab = 'aat') {
+    // Split in pieces
+
+    // Limit the size here: max 64 chars.
+    $input = trim($input);
+    if (strlen($input) > 64) {
+     return $results[] = [
+      'value' => NULL,
+      'label' => "Sorry query is too long! Try with less characters",
+      'desc' => NULL,
+    ];
+
+    }
+    $input_parts = explode(' ', $input);
+    $clean_input = array_diff($input_parts, $this::STOPWORDS_EN );
+    if (!empty($clean_input)) {
+      $search = strtolower(implode(' ', $clean_input));
+      // @see http://vocab.getty.edu/queries#Case-insensitive_Full_Text_Search_Query
+      // Build the SPARQL query
+      $query = <<<SPARQL
+      SELECT ?S ?T ?P ?Note {
+        ?S a skos:Concept; luc:term !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/> ;
+           gvp:prefLabelGVP [xl:literalForm ?T].
+        optional {?S gvp:parentStringAbbrev ?P}
+        optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
+        } order by asc(lcase(str(?T)))
+        LIMIT 15
+SPARQL;
+
+      $query = preg_replace('!\s+!', ' ', $query);
+      // use Drupal\Component\Render\FormattableMarkup; has no pass trough option
+      // Anymore, so use native PHP.
+      // If we have more than one word we will use extra single quote to make
+      // a closer to exact match
+      // @TODO ask if people want alwasy fuzzy?
+      if (count($clean_input) > 1) {
+        $search = '\'"' . $search . '"\'';
+      }
+      else {
+        $search = '"' . $search . '"';
+      }
+      $query =strtr(trim($query), [
+        '!searchterm' => $search,
+        '!vocab' => $vocab
+      ]);
+
+      $baseurl = 'http://vocab.getty.edu/sparql.json';
+      $options = ['query' => ['query' => $query ]];
+      $url = Url::fromUri($baseurl, $options);
+      $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
+      $options['headers'] = ['Accept' => 'application/sparql-results+json'];
+      $body = $this->getRemoteJsonData($remoteUrl, $options);
+      // This is how a result here looks like
+      /*
+     "results" : {
+     "bindings" : [ {
+      "S" : {
+        "type" : "uri",
+        "value" : "http://vocab.getty.edu/aat/300185403"
+      },
+      "T" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "<conditions and effects for architecture>"
+      },
+      "P" : {
+        "type" : "literal",
+        "value" : "<conditions and effects by specific type>, Conditions and Effects (hierarchy name), Physical Attributes Facet"
+      },
+      "Note" : {
+        "xml:lang" : "en",
+        "type" : "literal",
+        "value" : "For additional terminology, see the more general \"status of property.\""
+      }
+    }
+       */
+
+
+      $results = [];
+      $jsondata = json_decode($body, TRUE);
+      $json_error = json_last_error();
+      if ($json_error == JSON_ERROR_NONE) {
+        if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
+            foreach ($jsondata['results']['bindings'] as $key => $item) {
+              $term = isset($item['T']['value']) ? $item['T']['value'] : '';
+              $parent = isset($item['P']['value']) ? ' | Parent of: '. $item['P']['value'] : '';
+              $note = isset($item['Note']['value']) ?  ' | ('. $item['Note']['value'] .')': '';
+              $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
+              $results[] = [
+                'value' => $uri,
+                'label' => $term . $parent . $note,
+                'desc' => $parent . $note,
+              ];
+            }
+          }
+        else {
+          $results[] = [
+            'value' => NULL,
+            'label' => 'Sorry no Match from Getty '. $vocab. ' Vocabulary',
+            'desc' => NULL,
+          ];
+        }
+        return  $results;
+      }
+      $this->messenger->addError(
+        $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+          [
+            '@url' => $remoteUrl,
+            '@jsonerror' => $json_error
+          ]
+        )
+      );
+      return [];
+    }
+  }
 
   /**
    * @param $remoteUrl
@@ -212,9 +378,18 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       );
       return [];
     }
+    catch (ServerException $exception) {
+      $responseMessage = $exception->getMessage();
+      $this->loggerFactory->get('webform_strawberryfield')->error('We tried to contact @url but we could not. <br> The Remote erver says: @response. <br> Check your query',
+          [
+            '@url' => $remoteUrl,
+            '@response' => $responseMessage
+          ]
+      );
+      return [];
+    }
     $body = $request->getBody()->getContents();
     return $body;
   }
-
 
 }
