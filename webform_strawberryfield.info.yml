@@ -6,7 +6,8 @@ core: 8.x
 php: 7.1
 dependencies:
   - 'drupal:field'
-  - 'drupal:system (>= 8.6)'
+  - 'drupal:file'
+  - 'drupal:system (>= 8.7)'
   - 'drupal:user'
   - 'strawberryfield'
   - 'webform'
