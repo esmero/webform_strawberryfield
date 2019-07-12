@@ -251,7 +251,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         optional {?S gvp:parentStringAbbrev ?P}
         optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
         } order by asc(lcase(str(?T)))
-        LIMIT 15
+        LIMIT 10
 SPARQL;
 
       $query = preg_replace('!\s+!', ' ', $query);
@@ -259,7 +259,7 @@ SPARQL;
       // Anymore, so use native PHP.
       // If we have more than one word we will use extra single quote to make
       // a closer to exact match
-      // @TODO ask if people want alwasy fuzzy?
+      // @TODO ask if people want always fuzzy?
       if (count($clean_input) > 1) {
         $search = '\'"' . $search . '"\'';
       }
