@@ -219,15 +219,27 @@ class strawberryFieldharvester extends WebformHandlerBase
     $values = $webform_submission->getData();
     $cleanvalues = $values;
     $processedcleanvalues = [];
-
+    // Helper structure to keep elements that map to entities around
+    $entity_mapping_structure = isset($cleanvalues['ap:entitymapping']) ? $cleanvalues['ap:entitymapping'] : [];
     // Check which elements carry files around
     $allelements = $webform_submission->getWebform()->getElementsManagedFiles();
     foreach ($allelements as $element) {
           $originalelement = $webform_submission->getWebform()->getElement($element);
+          // Track what fields map to file entities.
+          $entity_mapping_structure['entity:file'][] = $originalelement['#webform_key'];
           $processedcleanvaluesforfield = $this->processFileField($originalelement, $webform_submission, $cleanvalues);
           $processedcleanvalues = array_merge_recursive($processedcleanvalues, $processedcleanvaluesforfield);
-
       }
+    // Check also which elements carry entity references around
+    // @see https://www.drupal.org/project/webform/issues/3067958
+    if (isset($entity_mapping_structure['entity:node'])) {
+      //@TODO change this stub. Get every element that extends Drupal\webform\Plugin\WebformElementEntityReferenceInterface()
+      $entity_mapping_structure['entity:node'] = array_unique($entity_mapping_structure['entity:node'],SORT_STRING);
+    }
+
+    if (isset($entity_mapping_structure['entity:file'])) {
+      $entity_mapping_structure['entity:file'] = array_unique($entity_mapping_structure['entity:file'],SORT_STRING);
+    }
     // Distribute all processed AS values for each field into its final JSON
     // Structure, e.g as:image, as:application, as:documents, etc.
     foreach ($processedcleanvalues as $askey => $info) {
@@ -236,6 +248,7 @@ class strawberryFieldharvester extends WebformHandlerBase
       // Advanced user.
       $cleanvalues[$askey] = $info;
     }
+    $cleanvalues['ap:entitymapping'] = $entity_mapping_structure;
 
     if (isset($values["strawberry_field_widget_state_id"])) {
 
@@ -243,13 +256,6 @@ class strawberryFieldharvester extends WebformHandlerBase
       /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
       $tempstore = \Drupal::service('tempstore.private')->get('archipel');
 
-      // @TODO add a full-blown values cleaner
-      // @TODO add the webform name used to create this as additional KEY
-      // @TODO make sure widget can read that too.
-      // @If Widget != setup form, ask for User feedback
-      // @TODO, i need to alter node submit handler to add also the
-      // Entities full URL as an @id to the top of the saved JSON.
-      // FUN!
       unset($cleanvalues["strawberry_field_widget_state_id"]);
       unset($cleanvalues["strawberry_field_stored_values"]);
 
@@ -326,6 +332,7 @@ class strawberryFieldharvester extends WebformHandlerBase
 
     $key = $element['#webform_key'];
     $type = $element['#type'];
+    // Equivalent of getting original data from an node entity
     $original_data = $webform_submission->getOriginalData();
     $processedAsValues = [];
 
