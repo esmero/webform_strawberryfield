@@ -255,10 +255,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 SPARQL;
 
       $query = preg_replace('!\s+!', ' ', $query);
-      // use Drupal\Component\Render\FormattableMarkup; has no pass trough option
+      // use Drupal\Component\Render\FormattableMarkup; has no pass through option
       // Anymore, so use native PHP.
       // If we have more than one word we will use extra single quote to make
-      // a closer to exact match
+      // a closer to exact match.
       // @TODO ask if people want always fuzzy?
       if (count($clean_input) > 1) {
         $search = '\'"' . $search . '"\'';
