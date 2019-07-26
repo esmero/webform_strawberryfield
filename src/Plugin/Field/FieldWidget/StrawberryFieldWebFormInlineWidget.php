@@ -18,7 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\webform\WebformInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
-use Drupal\webform_strawberryfield\Semantic\ActivityStream;
+use Drupal\strawberryfield\Semantic\ActivityStream;
 
 /**
  * Plugin implementation of the 'strawberryfield_webform_inline_widget' widget.
@@ -357,11 +357,13 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Validate
     // We have two states really:
     // If old/loaded value is not empty then
+    error_log('validating inline webform');
     $tempstoreId = $form_state->get('strawberryfield_webform_widget_id');
     /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
 
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
     if ($tempstore->getMetadata($tempstoreId) == NULL) {
+        error_log('empty tempstore for '.$tempstoreId);
         return;
     }
 

@@ -92,6 +92,7 @@
                         // Invert value/label. Put label inside autocomplete, value in the next uri input
                         // This piece helps users disambiguate if the handler gives us a description too.
                         if ((ui.item.desc) && (ui.item.desc.length)) {
+                            console.log('Additional Description is :' + ui.item.desc);
                             ui.item.label = ui.item.label.substring(0, ui.item.label.indexOf(ui.item.desc));
                         }
                         var tempvalue = ui.item.value;
