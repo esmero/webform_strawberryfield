@@ -380,7 +380,7 @@ SPARQL;
     }
     catch (ServerException $exception) {
       $responseMessage = $exception->getMessage();
-      $this->loggerFactory->get('webform_strawberryfield')->error('We tried to contact @url but we could not. <br> The Remote erver says: @response. <br> Check your query',
+      $this->loggerFactory->get('webform_strawberryfield')->error('We tried to contact @url but we could not. <br> The Remote server says: @response. <br> Check your query',
           [
             '@url' => $remoteUrl,
             '@response' => $responseMessage

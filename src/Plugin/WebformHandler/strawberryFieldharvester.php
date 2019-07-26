@@ -227,7 +227,9 @@ class strawberryFieldharvester extends WebformHandlerBase
           $originalelement = $webform_submission->getWebform()->getElement($element);
           // Track what fields map to file entities.
           $entity_mapping_structure['entity:file'][] = $originalelement['#webform_key'];
+          // Process each managed files field.
           $processedcleanvaluesforfield = $this->processFileField($originalelement, $webform_submission, $cleanvalues);
+          // Merge since different fields can contribute to same as:filetype structure.
           $processedcleanvalues = array_merge_recursive($processedcleanvalues, $processedcleanvaluesforfield);
       }
     // Check also which elements carry entity references around
@@ -405,7 +407,7 @@ class strawberryFieldharvester extends WebformHandlerBase
   /**
    * {@inheritdoc}
    */
-  public function preCreate(array $values) {
+  public function preCreate(array &$values) {
     if (isset($values['strawberryfield:override']) && !empty($values['strawberryfield:override']) && empty($this->customWebformSettings)) {
       $this->customWebformSettings = $values['strawberryfield:override'];
     }
