@@ -84,7 +84,7 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
       $submission_form = $form_state->getFormObject();
 
       foreach ($form['elements'] as $key => &$element) {
-        if ($element['#type'] == 'webform_wizard_page') {
+        if (isset($element['#type']) && ($element['#type'] == 'webform_wizard_page')) {
           $form['actions']['edit_wizard_page_'.$key][] = [
             '#type' => 'submit',
             '#value' => 'edit '.$element['#title'],
