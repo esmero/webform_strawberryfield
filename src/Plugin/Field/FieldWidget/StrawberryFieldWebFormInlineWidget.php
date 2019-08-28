@@ -176,10 +176,20 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       [$delta],
       [$entity_uuid]
     );
+
     $this_widget_id = sha1(implode('-', $unique_widget_state_seed));
     $this_widget_id_saved = $form_state->get('strawberryfield_webform_widget_id');
-    $form_state->set('strawberryfield_webform_widget_id', $this_widget_id);
-    
+
+
+    if ($this_widget_id_saved) {
+      $this_widget_id = $this_widget_id_saved;
+      // If we already have a widgetid, keep using the same
+      $form_state->set('strawberryfield_webform_widget_id', $this_widget_id_saved);
+    }
+    else {
+      $form_state->set('strawberryfield_webform_widget_id', $this_widget_id);
+    }
+
     // So which webform to load?
     // Logic says either use the one that was used originally or fall back to some default
 
@@ -211,13 +221,13 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Composed of the content entity uuid and this fields name
     // Since both are unique in this context we can't get wrong!
 
-    //@todo add limit validation errors to the full form.
+    //@todo add better limit validation errors to the full form.
     $parents = array_merge($element['#field_parents'], [
       $items->getName(),
       $delta,
       'strawberry_webform_inline'
     ]);
-    $limit_validation_errors = [array_merge($form['#parents'], ['strawberry_webform_inline'])];
+    $limit_validation_errors = $parents;
 
     // We add 'data-drupal-selector' = 'strawberry_webform_widget'
     // To allow JS to react/jquery select on this.
@@ -234,7 +244,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       '#element_validate' => array(
         array($this, 'validateWebform'),
       ),
-     // '#limit_validation_errors' => $limit_validation_errors,
+      '#limit_validation_errors' => $limit_validation_errors,
     );
 
     $savedvalue = $items[$delta]->getValue();
@@ -291,7 +301,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       ],
     ];
 
-      //$this->getWebform($items,$delta,$entity_id,$entity_uuid, $this_widget_id, $my_webform);
     $element['strawberry_webform_inline']['#parents'] = $parents;
 
     // The following elements are kinda hidden and match the field properties
@@ -357,13 +366,14 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Validate
     // We have two states really:
     // If old/loaded value is not empty then
-    error_log('validating inline webform');
     $tempstoreId = $form_state->get('strawberryfield_webform_widget_id');
     /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
 
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
     if ($tempstore->getMetadata($tempstoreId) == NULL) {
-        error_log('empty tempstore for '.$tempstoreId);
+        // Means its empty. This can be Ok if something else than "save"
+        // Is triggering the Ajax Submit action like the "Display Switch"
+        // @TODO investigate some #limit_validation_error options to avoid that
         return;
     }
 
@@ -373,7 +383,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $json_error = json_last_error();
     if ($json_error == JSON_ERROR_NONE) {
       $form_state->setValueForElement($element['strawberry_webform_widget']['json'], $json_string);
-      $tempstore->delete($tempstoreId);
+      // Let tempstore entry expire, don't remove manually.
       return;
     }
     else {
@@ -389,7 +399,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
   public function extractFormValues(FieldItemListInterface $items, array $form, FormStateInterface $form_state)
   {
     parent::extractFormValues($items, $form, $form_state);
-
   }
 
   /**
