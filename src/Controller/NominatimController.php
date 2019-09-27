@@ -103,10 +103,8 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
   protected function search($input, int $count = 5, string $lang = 'en'){
     // The request we are going to do is something like
     // "https://nominatim.openstreetmap.org/search?q=West+87th+Street,NY&limit=5&format=geojson&addressdetails=1";
-    error_log($input);
-    error_log('running nominatim search for $input');
-    $remoteUrl = 'https://nominatim.openstreetmap.org/search';
 
+    $remoteUrl = 'https://nominatim.openstreetmap.org/search';
 
     $options['headers']=['Accept' => 'application/json', 'Accept-Language' => $lang];
     $options['query'] = [
