@@ -160,7 +160,7 @@ class WebformNominatim extends WebformLocationBase {
           'display_name' => t('Display Name'),
           'category' => t('Category'),
         ];
-
+        $table_options = [];
         foreach($nominatim_features as $key => $feature) {
 
           $table_options[$key+1] = [
