@@ -106,12 +106,12 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
       if ($form_state->getValue(['panorama_tour', 'hotspots_temp', 'ado'])) {
 
-        $nodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput($nodeid);
+        $othernodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput($nodeid);
         // We have to do the same when saving the actual Hotspot.
 
         $element['hotspots_temp']['entities'] = [
           '#type' => 'value',
-          '#default_value' => $nodeid,
+          '#default_value' => $othernodeid,
           ];
       }
       $vb = \Drupal::entityTypeManager()->getViewBuilder(
@@ -186,7 +186,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
                  'view' => [
                    'view_name' => 'ado_selection_by_type',
                    'display_name' => 'entity_reference_solr_2',
-                   'arguments' => ['Image']
+                   'arguments' => ['Image'],
                  ],
                ],
                '#attributes' => [
@@ -217,7 +217,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         // Since all this subelements are really not triggering that
         // Lets check if hotspots had errors
 
-        if (!empty($form_state->get('hotspot_custom_errors'))) {
+        /*if (!empty($form_state->get('hotspot_custom_errors'))) {
           $hotspot_errors = $form_state->get('hotspot_custom_errors');
 
           foreach ($element['hotspots_temp'] as $key => &$field)
@@ -227,7 +227,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
               $field['#attributes']['class'] = ['form-item--error-message', 'alert', 'alert-danger', 'alert-sm'];
               $field['#prefix'] = $hotspot_errors[$key];
             }
-        }
+        }*/
 
         $element['hotspots_temp']['node'] = $nodeview;
         $element['hotspots_temp']['node']['#weight'] = 10;
