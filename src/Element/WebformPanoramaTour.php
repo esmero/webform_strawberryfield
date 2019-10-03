@@ -112,7 +112,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $element['hotspots_temp']['entities'] = [
           '#type' => 'value',
           '#default_value' => $othernodeid,
-          ];
+        ];
       }
       $vb = \Drupal::entityTypeManager()->getViewBuilder(
         'node'
@@ -127,73 +127,76 @@ class WebformPanoramaTour extends WebformCompositeBase {
       if ($node) {
         $nodeview = $vb->view($node, $viewmode);
         $element['hotspots_temp']['yaw'] = [
-            '#title' => t('Hotspot Yaw'),
-            '#type' => 'textfield',
-            '#size' => '6',
-            '#attributes' => [
-              'data-drupal-loaded-node' => $nodeid,
-              'data-drupal-hotspot-property' => 'yaw',
-            ],
-          ];
+          '#title' => t('Hotspot Yaw'),
+          '#type' => 'textfield',
+          '#size' => '6',
+          '#attributes' => [
+            'data-drupal-loaded-node' => $nodeid,
+            'data-drupal-hotspot-property' => 'yaw',
+          ],
+        ];
         $element['hotspots_temp']['pitch'] = [
-            '#title' => t('Hotspot Pitch'),
-            '#type' => 'textfield',
-            '#size' => '6',
-            '#attributes' => [
-              'data-drupal-loaded-node' => $nodeid,
-              'data-drupal-hotspot-property' => 'pitch',
-            ],
-          ];
+          '#title' => t('Hotspot Pitch'),
+          '#type' => 'textfield',
+          '#size' => '6',
+          '#attributes' => [
+            'data-drupal-loaded-node' => $nodeid,
+            'data-drupal-hotspot-property' => 'pitch',
+          ],
+        ];
 
         $element['hotspots_temp']['type'] = [
-            '#title' => t('Hotspot Type'),
-            '#type' => 'select',
-            '#options' => [
-              'text' => 'Text',
-              'url' => 'An External URL',
-              'ado' => 'Another Digital Object',
-              'scene' => 'Another Panorama Scene',
+          '#title' => t('Hotspot Type'),
+          '#type' => 'select',
+          '#options' => [
+            'text' => 'Text',
+            'url' => 'An External URL',
+            'ado' => 'Another Digital Object',
+            //'scene' => 'Another Panorama Scene', LOGIC STILL MISSING!
+          ],
+          '#attributes' => [
+            'data-drupal-loaded-node' => $nodeid,
+            'data-drupal-hotspot-property' => 'type',
+          ],
+        ];
+        $element['hotspots_temp']['label'] = [
+          '#title' => t('Label'),
+          '#type' => 'textfield',
+          '#size' => '12',
+          '#attributes' => [
+            'data-drupal-loaded-node' => $nodeid,
+            'data-drupal-hotspot-property' => 'label',
+          ],
+        ];
+        $element['hotspots_temp']['url'] = [
+          '#title' => t('url'),
+          '#description' => t('Only applies to Hotspots of type "An External URL"'),
+          '#type' => 'url',
+          '#size' => '12',
+          '#attributes' => [
+            'data-drupal-loaded-node' => $nodeid,
+            'data-drupal-hotspot-property' => 'url',
+          ],
+        ];
+
+        $element['hotspots_temp']['ado'] = [
+          '#type' => 'entity_autocomplete',
+          '#title' => t('Select a Digital Object'),
+          '#description' => t('Only applies to Hotspots of type "Another Digital Object"'),
+          '#target_type' => 'node',
+          '#selection_handler' => 'solr_views',
+          '#selection_settings' => [
+            'view' => [
+              'view_name' => 'ado_selection_by_type',
+              'display_name' => 'entity_reference_solr_2',
+              'arguments' => ['Image'],
             ],
-            '#attributes' => [
-              'data-drupal-loaded-node' => $nodeid,
-              'data-drupal-hotspot-property' => 'type',
-            ],
-          ];
-           $element['hotspots_temp']['label'] = [
-            '#title' => t('Label'),
-            '#type' => 'textfield',
-            '#size' => '12',
-            '#attributes' => [
-              'data-drupal-loaded-node' => $nodeid,
-              'data-drupal-hotspot-property' => 'label',
-            ],
-          ];
-           $element['hotspots_temp']['content'] = [
-            '#title' => t('Content'),
-            '#type' => 'textarea',
-            '#size' => '6',
-            '#attributes' => [
-              'data-drupal-loaded-node' => $nodeid,
-              'data-drupal-hotspot-property' => 'content',
-            ],
-             ];
-           $element['hotspots_temp']['ado'] = [
-               '#type' => 'entity_autocomplete',
-               '#title' => t('Select a Digital Object'),
-               '#target_type' => 'node',
-               '#selection_handler' => 'solr_views',
-               '#selection_settings' => [
-                 'view' => [
-                   'view_name' => 'ado_selection_by_type',
-                   'display_name' => 'entity_reference_solr_2',
-                   'arguments' => ['Image'],
-                 ],
-               ],
-               '#attributes' => [
-                 'data-drupal-loaded-node' => $nodeid,
-                 'data-drupal-hotspot-property' => 'content',
-               ],
-             ];
+          ],
+          '#attributes' => [
+            'data-drupal-loaded-node' => $nodeid,
+            'data-drupal-hotspot-property' => 'ado',
+          ],
+        ];
 
 
         // To make sure menu variables are passed
@@ -349,7 +352,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     if (isset($input['_triggering_element_name']) &&
       $input['_triggering_element_name'] == 'panorama_tour_addhotspot_button'
-    && empty($form_state->get('hotspot_custom_errors'))
+      && empty($form_state->get('hotspot_custom_errors'))
     ) {
       static::addHotspotSubmit(
         $form,
@@ -402,7 +405,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     $hotspot->id = $top_element['#name'] . '_' . (count($existing_objects) + 1);
     if ($hotspot->type == 'url') {
-      $hotspot->URL = $hotspot->text;
+      $hotspot->URL = $hotspot->url;
       $hotspot->type = 'info';
     }
     if ($hotspot->type == 'ado') {
@@ -587,7 +590,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $element['#value'] = NULL;
       $form_state->setValueForElement($element, NULL);
     }
-
   }
 
   public static function validateHotSpotItems(
@@ -611,6 +613,5 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
     }
   }
-
 
 }
