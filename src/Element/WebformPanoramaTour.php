@@ -186,7 +186,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
                  'view' => [
                    'view_name' => 'ado_selection_by_type',
                    'display_name' => 'entity_reference_solr_2',
-                   'arguments' => ['Photograph']
+                   'arguments' => ['Image']
                  ],
                ],
                '#attributes' => [
