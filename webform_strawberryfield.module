@@ -58,25 +58,25 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
     }
 
     /* @TODO make this a valid switch
-     // We should not make close object available if inline
-     // add a close model button
+    // We should not make close object available if inline
+    // add a close model button
     $query = \Drupal::request()->query->all();
     $is_ajax = (!empty($query['ajax_form'])) ? TRUE : FALSE;
     $webform_close_controller_url = Url::fromRoute(
     'webform_strawberryfield.close_modal_webform');
     if ($is_ajax) {
-      $form['actions']['closemodal'] = [
-        '#type' => 'link',
-        '#title' => t('Close Window'),
-        '#url' => $webform_close_controller_url,
-        '#attributes' => [
-          'class' => [
-            'use-ajax',
-            'button',
-          ],
-        ],
-        '#weight' => 100,
-      ];
+    $form['actions']['closemodal'] = [
+    '#type' => 'link',
+    '#title' => t('Close Window'),
+    '#url' => $webform_close_controller_url,
+    '#attributes' => [
+    'class' => [
+    'use-ajax',
+    'button',
+    ],
+    ],
+    '#weight' => 100,
+    ];
     }*/
 
     if ($form_state->get('current_page') === 'webform_preview') {
@@ -113,7 +113,6 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
   }
 }
 
-
 /**
  * Custom Jump-to-a-webform-page wizard callback.
  *
@@ -129,7 +128,7 @@ function webform_strawberryfield_go_to_page(array &$form, FormStateInterface $fo
   $trigger = $form_state->getTriggeringElement();
   $current_page = $form_state->get('current_page');
   $wizard_page_id = $trigger['#page'];
-  */
+   */
 
   // Submit using Mr. Wizard of WebOz.
   $submission_form->gotoPage($form, $form_state);
@@ -209,5 +208,37 @@ function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface
       }
     }
   }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function webform_strawberryfield_theme() {
+  $info = [
+  'webform_metadata_nominatim' => [
+    'render element' => 'element',
+  ]
+    ];
+  return $info;
+}
+
+/**
+ * Prepares variables for location composite element templates.
+ *
+ * Default template: webform-metadata-nominatim.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - element: An associative array containing the properties of the element.
+ */
+function template_preprocess_webform_metadata_nominatim(array &$variables) {
+  $variables['content'] = $variables['element'];
+  unset($variables['content']['value']);
+  unset($variables['content']['nominatim']);
+  unset($variables['content']['feature']);
+  $variables['fetchbox'] = $variables['element']['value'];
+  $variables['fetchbox_button'] = $variables['element']['nominatim'];
+  $variables['fetchbox_table'] = $variables['element']['feature'];
+
 
 }

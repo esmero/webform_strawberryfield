@@ -1,0 +1,17 @@
+{#
+/**
+ * @file
+ * Default theme implementation of a Nominatim metadata composite webform element.
+ *
+ * Available variables:
+ * - content: The Nominatim webform element to be output.
+ *
+ * @see template_preprocess_webform_metadata_nominatim()
+ *
+ * @ingroup themeable
+ */
+#}
+
+<div>{{ fetchbox }}</div><div>{{ fetchbox_button }}</div>
+<div>{{ fetchbox_table }}</div>
+{{ content }}
