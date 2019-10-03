@@ -12,7 +12,7 @@ use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
 
 /**
- * Provides an 'LoC Subject Heading' element.
+ * Provides an 'Panorama Builder' element.
  *
  * @WebformElement(
  *   id = "webform_metadata_panoramatour",
