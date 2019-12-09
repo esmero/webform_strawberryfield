@@ -47,25 +47,25 @@
                     var element_id = $(this).attr("id");
                     console.log('Checking for loaded Panoramatour builder Hotspots');
                     console.log(drupalSettings.webform_strawberryfield.WebformPanoramaTour);
+                    // Feed with existing Hotspots comming from the Webform Element data.
                     for (var parentselector in drupalSettings.webform_strawberryfield.WebformPanoramaTour) {
                         if (Object.prototype.hasOwnProperty.call(drupalSettings.webform_strawberryfield.WebformPanoramaTour, parentselector)) {
-
-
-                            $targetScene = $("[data-webform_strawberryfield-selector='" + parentselector + "']").find('.strawberry-panorama-item').attr("id");
+                          $targetScene = $("[data-webform_strawberryfield-selector='" + parentselector + "']").find('.strawberry-panorama-item').attr("id");
                             console.log(parentselector);
                             console.log($targetScene);
                             $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
                             if ((typeof $scene !== 'undefined')) {
-                                drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector].forEach(function(hotspot, key)
+                                drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector].forEach(function(hotspotdata, key)
                                 {
-                                    console.log(hotspot);
-                                    console.log($scene);
-                                    $scene.panorama.addHotSpot(hotspot);
+                                    if (hotspotdata.hasOwnProperty('URL')) {
+                                        hotspot.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
+                                        hotspot.clickHandlerArgs = hotspotdata.URL;
+                                    }
+                                    $scene.panorama.addHotSpot(hotspotdata);
                                 });
                             }
                         }
                     }
-
 
                     // Check if we got some data passed via Drupal settings.
                     if (typeof(drupalSettings.format_strawberryfield.pannellum[element_id]) != 'undefined') {
@@ -77,10 +77,6 @@
                             var $newmarker = $( "<div class='hotspot_marker_wrapper'><div class='hotspot_editor_marker' id='" + element_id_marker +"'></div></div>");
 
                             $("#" +element_id+ " .pnlm-ui").append( $newmarker );
-                            // Feed with existing Hotspots first
-
-
-
 
                             item.panorama.on('mousedown', function clicker(e) {
 
