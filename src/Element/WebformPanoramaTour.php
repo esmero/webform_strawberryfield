@@ -88,9 +88,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     }
 
 
-
-
-    dpm($form_state);
     // We need this button to validate. important
     // NEVER add '#limit_validation_errors' => [],
     $element['select_button'] = [
@@ -340,7 +337,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
     }
     $element['#element_validate'][] = [static::class, 'validateHotSpotItems'];
-    dpm($element);
+
     return $element;
   }
 
@@ -461,14 +458,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $nodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput($nodeid);
       $url = \Drupal\Core\Url::fromRoute('entity.node.canonical', ['node' => $nodeid],[]);
       $url = $url->toString();
-      $attributes = new \stdClass;
-      $attributes->{'data-dialog-type'} = 'modal';
-      $attributes->class = 'use-ajax';
-      $attributes->{'data-dialog-options'} = '{"width":800}';
       $hotspot->type = 'info';
 
-      $hotspot->URL = $url;
-      $hotspot->attributes = $attributes;
+      $hotspot->URL = $url;;
     }
     if ($hotspot->type == 'text') {
       $hotspot->text = $hotspot->text;
