@@ -34,6 +34,13 @@
         $targetScene = $(response.selector).find('.strawberry-panorama-item').attr("id");
         console.log($targetScene);
         $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
+        // add click handlers for new Hotspots if they have an URL.
+        // Empty URLs are handled by Drupal.FormatStrawberryfieldhotspotPopUp()
+        if (response.hotspot.hasOwnProperty('URL')) {
+            response.hotspot.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
+            response.hotspot.clickHandlerArgs = response.hotspot.URL;
+        }
+
         $scene.panorama.addHotSpot(response.hotspot);
     };
 
