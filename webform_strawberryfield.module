@@ -239,6 +239,6 @@ function template_preprocess_webform_metadata_nominatim(array &$variables) {
   $variables['fetchbox'] = $variables['element']['value'];
   $variables['fetchbox_button'] = $variables['element']['nominatim'];
   $variables['fetchbox_table'] = $variables['element']['feature'];
-
-
 }
+
+

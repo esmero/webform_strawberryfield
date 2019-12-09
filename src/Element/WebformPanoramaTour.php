@@ -71,7 +71,26 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $complete_form
     );
     $element_name = $element['#name'];
+    // Fetch saved/existing hotspots and transform them into StdClass Objects
 
+    $hotspot_list = $form_state->getValue(['panorama_tour','hotspots']);
+    if (!empty($hotspot_list) && empty($form_state->get(
+        $element_name . '-hotspots'
+      ))) {
+      $hotspot_list = array_map(function ($item)  {
+        return (object) $item;
+      }, $hotspot_list);
+      // Now set our internal temp storage for hotspots
+      $form_state->set($element_name . '-hotspots', $hotspot_list);
+      // We really don't know nor should assume what HTML id the loaded scene has
+      // But we do know who is the parent
+      // @TODO next iteration, we need this per Scene ID!
+    }
+
+
+
+
+    dpm($form_state);
     // We need this button to validate. important
     // NEVER add '#limit_validation_errors' => [],
     $element['select_button'] = [
@@ -91,14 +110,29 @@ class WebformPanoramaTour extends WebformCompositeBase {
       '#title' => 'Hotspots for this Scene',
       '#attributes' => [
         'data-drupal-selector' => $element['#name'] . '-hotspots',
+        'data-webform_strawberryfield-selector' => $element['#name'] . '-hotspots',
       ],
       '#attached' => [
         'library' => [
+          'format_strawberryfield/pannellum',
           'webform_strawberryfield/scenebuilder_pannellum_strawberry',
           'core/drupal.dialog.ajax',
         ],
+        'drupalSettings' => [
+          'webform_strawberryfield' => [
+            'WebformPanoramaTour' => [
+              $element['#name'] . '-hotspots' =>
+                $hotspot_list
+            ],
+          ]
+        ]
       ]
     ];
+
+    // Note. The $element['hotspots_temp'] 'data-drupal-selector' gets
+    // Modified during rendering to 'edit-' . $element['#name'] . '-hotspots-temp'
+
+
     // @TODO Modal will need to be enabled on the formatter too.
 
     if ($form_state->getValue(['panorama_tour', 'scene'])) {
@@ -117,6 +151,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $vb = \Drupal::entityTypeManager()->getViewBuilder(
         'node'
       ); // Drupal\node\NodeViewBuilder
+      //@TODO we need to viewmode this to be configurable!
+      //@TODO We could also generate a view mode on the fly.
+
       $viewmode = 'digital_object_with_pannellum_panorama_';
       $node = \Drupal::entityTypeManager()->getStorage('node')->load(
         $nodeid
@@ -152,7 +189,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
             'text' => 'Text',
             'url' => 'An External URL',
             'ado' => 'Another Digital Object',
-            //'scene' => 'Another Panorama Scene', LOGIC STILL MISSING!
+            'scene' => 'Another Panorama Scene', // Still missing
           ],
           '#attributes' => [
             'data-drupal-loaded-node' => $nodeid,
@@ -233,6 +270,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         }*/
 
         $element['hotspots_temp']['node'] = $nodeview;
+
         $element['hotspots_temp']['node']['#weight'] = 10;
         $element['hotspots_temp']['added_hotspots'] = [
           '#type' => 'details',
@@ -250,6 +288,10 @@ class WebformPanoramaTour extends WebformCompositeBase {
           )) {
           // Json will be UTF-8 correctly encoded/decoded!
           $hotspot_list = $form_state->get($element_name . '-hotspots');
+        }
+
+
+        if (!empty($hotspot_list)) {
 
           $table_header = [
             'coordinates' => t('Hotspot Coordinates'),
@@ -259,11 +301,14 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ];
 
           foreach ($hotspot_list as $key => $hotspot) {
+            if (is_array($hotspot)) {
+              $hotspot = (object) $hotspot;
+            }
             // Key will be in element['#name'].'_'.count($hotspot_list)+1;
             $table_options[$key] = [
               'coordinates' => $hotspot->yaw . "," . $hotspot->pitch,
               'type' => $hotspot->type,
-              'label' =>  isset($hotspot->label) ? $hotspot->label : t('no name'),
+              'label' =>  isset($hotspot->text) ? $hotspot->text : t('no name'),
               'operations' => [
                 'data' => [
                   '#type' => 'submit',
@@ -291,11 +336,11 @@ class WebformPanoramaTour extends WebformCompositeBase {
               'data-drupal-loaded-node-hotspot-table' => $nodeid
             ],
           ];
-
         }
       }
     }
     $element['#element_validate'][] = [static::class, 'validateHotSpotItems'];
+    dpm($element);
     return $element;
   }
 
@@ -328,7 +373,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
   }
 
   /**
-   * Submit Hanlder for the Nominatim reconciliation call.
+   * Submit Hanlder for the Select Scene Submit call.
    *
    * @param array $form
    * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -345,7 +390,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     //error_log(var_export($form_state->getValue(['panorama_tour','scene']),true));
     $main_element_parents = array_slice($button['#array_parents'], 0, -1);
 
-    // Fetch main element so we can use that webform_id key to store the full output of nominatim
     $top_element = NestedArray::getValue($form, $main_element_parents);
     $my_hotspots = $top_element['#name'] . '-hotspots';
 
@@ -379,7 +423,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $button = $form_state->getTriggeringElement();
     $main_element_parents = array_slice($button['#array_parents'], 0, -1);
 
-    // Fetch main element so we can use that webform_id key to store the full output of nominatim
     $top_element = NestedArray::getValue($form, $main_element_parents);
 
     $my_hotspots_key = $top_element['#name'] . '-hotspots';
@@ -535,10 +578,12 @@ class WebformPanoramaTour extends WebformCompositeBase {
     }
 
     $to_return = (is_array($input)) ? $input + $default_value : $default_value;
+    error_log('return of valueCallback');
+    error_log(print_r($to_return,true));
+    // Remove the hotspots_temp structure from our final value.
 
     return $to_return;
 
-    // TODO: Change the autogenerated stub
   }
 
   public static function validateWebformComposite(
@@ -583,7 +628,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
         }
       }
     }
-
+    error_log('validateWebformComposite');
+    error_log(print_r($value,true));
     // Clear empty composites value.
     if (empty(array_filter($value))) {
       error_log('is empty');
@@ -599,6 +645,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
   ) {
 
     $input = $form_state->getUserInput();
+    error_log('validateHotSpotItems');
     // Hack. No explanation.
     if (isset($input['_triggering_element_name']) && $input['_triggering_element_name'] == 'panorama_tour_addhotspot_button') {
       if (!is_numeric($form_state->getValue(
@@ -606,7 +653,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         // This is needed because we are validating internal subelements during
         // Hotspot adding, but there is really no real form submit.
         // We want the form to keep on rebuild.
-        $form_state->set('hotspot_custom_errors', ['yaw'=>t('Yaw needs to  be numeric and not empty')]);
+        $form_state->set('hotspot_custom_errors', ['yaw'=>t('Yaw needs to be numeric and not empty')]);
       }
       else {
         $form_state->set('hotspot_custom_errors', NULL);

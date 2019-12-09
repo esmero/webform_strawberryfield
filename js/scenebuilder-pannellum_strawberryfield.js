@@ -12,6 +12,11 @@
         $marker.fadeOut('slow');
     }
 
+    function loadExistingHotSpots($selector,$hotspots) {
+        return null;
+    }
+
+
 
     function mousePosition(event,$container) {
         var bounds = $container.getBoundingClientRect();
@@ -25,7 +30,9 @@
     Drupal.AjaxCommands.prototype.webform_strawberryfield_pannellum_editor_addHotSpot = function(ajax, response, status) {
         console.log('adding hotspot');
         // we need to find the first  '.strawberry-panorama-item' id that is child of data-drupal-selector="edit-panorama-tour-hotspots"
-        $targetScene= $(response.selector).find('.strawberry-panorama-item').attr("id");
+        console.log(response.selector);
+        $targetScene = $(response.selector).find('.strawberry-panorama-item').attr("id");
+        console.log($targetScene);
         $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
         $scene.panorama.addHotSpot(response.hotspot);
     };
@@ -38,9 +45,31 @@
                     var hotspots = [];
                     // Get the node uuid for this element
                     var element_id = $(this).attr("id");
+                    console.log('Checking for loaded Panoramatour builder Hotspots');
+                    console.log(drupalSettings.webform_strawberryfield.WebformPanoramaTour);
+                    for (var parentselector in drupalSettings.webform_strawberryfield.WebformPanoramaTour) {
+                        if (Object.prototype.hasOwnProperty.call(drupalSettings.webform_strawberryfield.WebformPanoramaTour, parentselector)) {
+
+
+                            $targetScene = $("[data-webform_strawberryfield-selector='" + parentselector + "']").find('.strawberry-panorama-item').attr("id");
+                            console.log(parentselector);
+                            console.log($targetScene);
+                            $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
+                            if ((typeof $scene !== 'undefined')) {
+                                drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector].forEach(function(hotspot, key)
+                                {
+                                    console.log(hotspot);
+                                    console.log($scene);
+                                    $scene.panorama.addHotSpot(hotspot);
+                                });
+                            }
+                        }
+                    }
+
+
                     // Check if we got some data passed via Drupal settings.
                     if (typeof(drupalSettings.format_strawberryfield.pannellum[element_id]) != 'undefined') {
-                        console.log('initializing Panellum ')
+                        console.log('initializing Panellum Panorama Builder')
                         console.log(Drupal.FormatStrawberryfieldPanoramas.panoramas);
                         Drupal.FormatStrawberryfieldPanoramas.panoramas.forEach(function(item, key) {
 
@@ -48,6 +77,10 @@
                             var $newmarker = $( "<div class='hotspot_marker_wrapper'><div class='hotspot_editor_marker' id='" + element_id_marker +"'></div></div>");
 
                             $("#" +element_id+ " .pnlm-ui").append( $newmarker );
+                            // Feed with existing Hotspots first
+
+
+
 
                             item.panorama.on('mousedown', function clicker(e) {
 
