@@ -62,14 +62,15 @@
                             console.log($targetScene);
                             $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
                             if ((typeof $scene !== 'undefined')) {
-                                drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector].forEach(function(hotspotdata, key)
-                                {
-                                    if (hotspotdata.hasOwnProperty('URL')) {
-                                        hotspot.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
-                                        hotspot.clickHandlerArgs = hotspotdata.URL;
-                                    }
-                                    $scene.panorama.addHotSpot(hotspotdata);
-                                });
+                                if (drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector]!== null) {
+                                    drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector].forEach(function (hotspotdata, key) {
+                                        if (hotspotdata.hasOwnProperty('URL')) {
+                                            hotspot.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
+                                            hotspot.clickHandlerArgs = hotspotdata.URL;
+                                        }
+                                        $scene.panorama.addHotSpot(hotspotdata);
+                                    });
+                                }
                             }
                         }
                     }
