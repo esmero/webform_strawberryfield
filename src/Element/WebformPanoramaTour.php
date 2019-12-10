@@ -72,7 +72,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     );
     $element_name = $element['#name'];
     // Fetch saved/existing hotspots and transform them into StdClass Objects
-
+    $hotspot_list = [];
     $hotspot_list = $form_state->getValue(['panorama_tour','hotspots']);
     if (!empty($hotspot_list) && empty($form_state->get(
         $element_name . '-hotspots'
@@ -86,7 +86,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       // But we do know who is the parent
       // @TODO next iteration, we need this per Scene ID!
     }
-
 
     // We need this button to validate. important
     // NEVER add '#limit_validation_errors' => [],
@@ -211,6 +210,11 @@ class WebformPanoramaTour extends WebformCompositeBase {
             'data-drupal-loaded-node' => $nodeid,
             'data-drupal-hotspot-property' => 'url',
           ],
+         /* '#states' => [
+          'visible' => [
+            ':input[name="hotspots_temp[type]"]' => array('value' => 'url'),
+            ],
+          ] */
         ];
 
         $element['hotspots_temp']['ado'] = [
@@ -309,7 +313,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
               'operations' => [
                 'data' => [
                   '#type' => 'submit',
-                  '#value' => t('Edit'),
+                  '#value' => t('Delete'),
                 ],
               ]
             ];
@@ -320,15 +324,13 @@ class WebformPanoramaTour extends WebformCompositeBase {
             '#prefix'=> '<div>',
             '#suffix'=> '</div>',
             '#title' => t('Hotspots in this scene'),
-            '#type' => 'tableselect',
-            '#default_value' => $form_state->get('current-hotspots'),
+            '#type' => 'table',
+            //'#default_value' => [],
             '#name' => $element['#name'] . '_added_hotspots',
             '#header' => $table_header,
-            '#options' => $table_options,
+            '#rows' => $table_options,
             '#empty' => t('No Hotspots yet for this Scene'),
-            '#js_select' => TRUE,
             '#weight' => 11,
-            '#multiple' => TRUE,
             '#attributes' => [
               'data-drupal-loaded-node-hotspot-table' => $nodeid
             ],
@@ -370,7 +372,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
   }
 
   /**
-   * Submit Hanlder for the Select Scene Submit call.
+   * Submit Handler for the Select Scene Submit call.
    *
    * @param array $form
    * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -400,7 +402,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $form_state
       );
     }
-
 
     // Rebuild the form.
     $form_state->setRebuild(TRUE);
@@ -460,7 +461,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $url = $url->toString();
       $hotspot->type = 'info';
 
-      $hotspot->URL = $url;;
+      $hotspot->URL = $url;
     }
     if ($hotspot->type == 'text') {
       $hotspot->text = $hotspot->text;

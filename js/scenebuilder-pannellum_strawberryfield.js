@@ -12,11 +12,6 @@
         $marker.fadeOut('slow');
     }
 
-    function loadExistingHotSpots($selector,$hotspots) {
-        return null;
-    }
-
-
 
     function mousePosition(event,$container) {
         var bounds = $container.getBoundingClientRect();
@@ -33,15 +28,18 @@
         console.log(response.selector);
         $targetScene = $(response.selector).find('.strawberry-panorama-item').attr("id");
         console.log($targetScene);
-        $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
-        // add click handlers for new Hotspots if they have an URL.
-        // Empty URLs are handled by Drupal.FormatStrawberryfieldhotspotPopUp()
-        if (response.hotspot.hasOwnProperty('URL')) {
-            response.hotspot.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
-            response.hotspot.clickHandlerArgs = response.hotspot.URL;
-        }
+        if (response.hasOwnProperty('hotspot')) {
+            $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
+            // add click handlers for new Hotspots if they have an URL.
+            // Empty URLs are handled by Drupal.FormatStrawberryfieldhotspotPopUp()
+            console.log(response);
+            if (response.hotspot.hasOwnProperty('URL')) {
+                response.hotspot.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
+                response.hotspot.clickHandlerArgs = response.hotspot.URL;
+            }
 
-        $scene.panorama.addHotSpot(response.hotspot);
+            $scene.panorama.addHotSpot(response.hotspot);
+        }
     };
 
 
@@ -64,13 +62,14 @@
                             if ((typeof $scene !== 'undefined')) {
                                 if (drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector]!== null) {
                                     drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector].forEach(function (hotspotdata, key) {
+                                        console.log(hotspotdata);
                                         if (hotspotdata.hasOwnProperty('URL')) {
-                                            hotspot.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
-                                            hotspot.clickHandlerArgs = hotspotdata.URL;
+                                            hotspotdata.clickHandlerFunc = Drupal.FormatStrawberryfieldhotspotPopUp;
+                                            hotspotdata.clickHandlerArgs = hotspotdata.URL;
                                         }
                                         $scene.panorama.addHotSpot(hotspotdata);
                                     });
-                                }
+                               }
                             }
                         }
                     }
