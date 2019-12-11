@@ -65,15 +65,25 @@ class WebformPanoramaTour extends WebformCompositeBase {
     &$complete_form
   ) {
 
+    // Just in case someone wants to trick us
+    // This is already disabled on the Config Form for the Element
+    unset($element['#multiple']);
+
     $element = parent::processWebformComposite(
       $element,
       $form_state,
       $complete_form
     );
+
+
+
     $element_name = $element['#name'];
     // Fetch saved/existing hotspots and transform them into StdClass Objects
-    $hotspot_list = [];
-    $hotspot_list = $form_state->getValue(['panorama_tour','hotspots']);
+    $hotspot_list = $form_state->getValue([$element['#name'],'hotspots']);
+    $all_scenes_key = $element['#name'] . '-allscenes';
+    $all_scenes = $form_state->get($all_scenes_key);
+
+
     if (!empty($hotspot_list) && empty($form_state->get(
         $element_name . '-hotspots'
       ))) {
@@ -130,11 +140,16 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
 
     // @TODO Modal will need to be enabled on the formatter too.
+    // Some changes here. If we have multiple values we need a new flag
+    // For the current selected index in the Scene list.
 
-    if ($form_state->getValue(['panorama_tour', 'scene'])) {
-      $nodeid = $form_state->getValue(['panorama_tour', 'scene']);
 
-      if ($form_state->getValue(['panorama_tour', 'hotspots_temp', 'ado'])) {
+    if ($form_state->getValue([$element['#name'], 'scene'])) {
+      $nodeid = $form_state->getValue([$element['#name'], 'scene']);
+
+
+
+      if ($form_state->getValue([$element['#name'], 'hotspots_temp', 'ado'])) {
 
         $othernodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput($nodeid);
         // We have to do the same when saving the actual Hotspot.
@@ -147,7 +162,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $vb = \Drupal::entityTypeManager()->getViewBuilder(
         'node'
       ); // Drupal\node\NodeViewBuilder
-      //@TODO we need to viewmode this to be configurable!
+      //@TODO we need viewmode to be configurable!
       //@TODO We could also generate a view mode on the fly.
 
       $viewmode = 'digital_object_with_pannellum_panorama_';
@@ -158,6 +173,24 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
 
       if ($node) {
+        // If we have multiple Scenes,deal with it.
+        if (!empty($all_scenes) && is_array($all_scenes)) {
+          dpm($all_scenes);
+          foreach($all_scenes as $scene) {
+            $all_scenes_nodeids[] = $scene['scene'];
+          }
+          $all_scene_nodes = \Drupal::entityTypeManager()->getStorage('node')->loadMultiple($all_scenes_nodeids);
+          foreach ($all_scene_nodes as $entity) {
+            $options[$entity->id()] = $entity->label();
+          }
+
+        $element['hotspots_temp']['editing_scene'] =  [
+          '#title' => t('Select Scene'),
+          '#type' => 'select',
+          '#options' => $options,
+          '#default_value' => $node->id()
+          ];
+        }
         $nodeview = $vb->view($node, $viewmode);
         $element['hotspots_temp']['yaw'] = [
           '#title' => t('Hotspot Yaw'),
@@ -385,8 +418,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     error_log('selectSceneSubmit');
     $input = $form_state->getUserInput();
     // Hack. No explanation.
-
-    //error_log(var_export($form_state->getValue(['panorama_tour','scene']),true));
     $main_element_parents = array_slice($button['#array_parents'], 0, -1);
 
     $top_element = NestedArray::getValue($form, $main_element_parents);
@@ -394,7 +425,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
 
     if (isset($input['_triggering_element_name']) &&
-      $input['_triggering_element_name'] == 'panorama_tour_addhotspot_button'
+      $input['_triggering_element_name'] == $top_element['#name'].'_addhotspot_button'
       && empty($form_state->get('hotspot_custom_errors'))
     ) {
       static::addHotspotSubmit(
@@ -451,7 +482,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     }
     if ($hotspot->type == 'ado') {
       $nodeid =  $form_state->getValue(
-        ['panorama_tour', 'hotspots_temp', 'ado']
+        [$top_element['#name'], 'hotspots_temp', 'ado']
       );
       // Now the fun part. Since this autocomplete is not part of the process
       // chain we never get the value transformed into id.
@@ -470,7 +501,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     error_log(var_export($hotspot,true));
 
     $existing_objects[$hotspot->id] = $hotspot;
-    error_log($my_hotspots_key);
+
     // @TODO make sure people don't add twice the same coordinates!
     $form_state->set($my_hotspots_key, $existing_objects);
 
@@ -537,7 +568,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $composite_elements = WebformElementHelper::getFlattened(
       $composite_elements
     );
-
     // Get default value for inputs.
     $default_value = [];
     foreach ($composite_elements as $composite_key => $composite_element) {
@@ -545,7 +575,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $composite_element
       );
 
-      error_log($composite_key);
       if ($element_plugin->isInput($composite_element)) {
         $default_value[$composite_key] = '';
       }
@@ -553,6 +582,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
     // We need to move our internal hotspot form state var into
     // the value field and back.
     $my_hotspots_key = $element['#name'] . '-hotspots';
+    // Used for multiscenes
+    $all_scenes_key = $element['#name'] . '-allscenes';
+
     $existing_objects = $form_state->get($my_hotspots_key) ? (array) $form_state->get(
       $my_hotspots_key
     ) : [];
@@ -560,20 +592,37 @@ class WebformPanoramaTour extends WebformCompositeBase {
     foreach ($list_of_hotspots as $hotspot) {
       $default_value['hotspots'][] = (array) $hotspot;
     }
-
+    error_log('valueCallback triggering element is');
+    error_log(print_r($form_state->getTriggeringElement()['#name'], true));
     if ($input === FALSE) {
+      // OK, first load or webform auto processing, no input.
+
+      error_log('valueCallback input empty');
       if (empty($element['#default_value']) || !is_array(
           $element['#default_value']
         )) {
         $element['#default_value'] = [];
+      } else {
+      // Check if Default value is an array of scenes or just a single scene
+        if (isset($element['#default_value']['scene'])) {
+          error_log('single scene');
+          // Means single scene.
+        } elseif (isset($element['#default_value'][0]['scene'])) {
+          error_log('multi scene');
+          $form_state->set($all_scenes_key, $element['#default_value']);
+          $element['#default_value'] = $element['#default_value'][0];
+
+          // Multi scene!
+        }
+
       }
+
       return $element['#default_value'] + $default_value;
     }
 
     $to_return = (is_array($input)) ? $input + $default_value : $default_value;
     error_log('return of valueCallback');
     error_log(print_r($to_return,true));
-    // Remove the hotspots_temp structure from our final value.
 
     return $to_return;
 
@@ -622,7 +671,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
     }
     error_log('validateWebformComposite');
-    error_log(print_r($value,true));
+
     // Clear empty composites value.
     if (empty(array_filter($value))) {
       error_log('is empty');
@@ -640,7 +689,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $input = $form_state->getUserInput();
     error_log('validateHotSpotItems');
     // Hack. No explanation.
-    if (isset($input['_triggering_element_name']) && $input['_triggering_element_name'] == 'panorama_tour_addhotspot_button') {
+    if (isset($input['_triggering_element_name']) && $input['_triggering_element_name'] == $element['#name'].'_addhotspot_button') {
       if (!is_numeric($form_state->getValue(
         [$element['#name'], 'hotspots_temp', 'yaw']))) {
         // This is needed because we are validating internal subelements during
@@ -651,6 +700,11 @@ class WebformPanoramaTour extends WebformCompositeBase {
       else {
         $form_state->set('hotspot_custom_errors', NULL);
       }
+    } else {
+      // means running without pressing the buttom
+      // We remove hotspots_temp from the final submission
+      error_log('unsetting hotspots_temp');
+      $form_state->unsetValue([$element['#name'], 'hotspots_temp']);
     }
   }
 

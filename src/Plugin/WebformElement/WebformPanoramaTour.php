@@ -8,6 +8,7 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\WebformElement;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
 
@@ -22,6 +23,7 @@ use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
  *   multiline = TRUE,
  *   composite = TRUE,
  *   states_wrapper = TRUE,
+ *   default_key = "panorama_tour",
  * )
  */
 class WebformPanoramaTour extends WebformCompositeBase {
@@ -57,5 +59,25 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     return $lines;
   }
+
+  public function supportsMultipleValues() {
+    // Make sure people can not change this value.
+    return FALSE;
+  }
+
+  public function getDefaultProperties() {
+    $defaults = parent::getDefaultProperties();
+    unset($defaults['multiple']);
+    return $defaults;
+  }
+
+  public function form(array $form, FormStateInterface $form_state) {
+    $form = parent::form($form, $form_state);
+    $form['element']['multiple']['#disabled'] = TRUE;
+    $form['element']['multiple']['#description'] = '<em>' . $this->t('You can only build one Tour with this Webform Element.But it supports multiple Scenes') . '</em>';
+    // Disable Multiple Elements option
+    return $form;
+  }
+
 
 }
