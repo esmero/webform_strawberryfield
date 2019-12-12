@@ -65,7 +65,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $element_name = $element['#name'];
 
     $all_scenes_key = $element['#name'] . '-allscenes';
-    $all_scenes = $form_state->get($all_scenes_key);
+    $all_scenes = $form_state->get($all_scenes_key) ? $form_state->get($all_scenes_key) : [];
 
     // If no initial 'scene' value, use first key of the allmighty
     // Full array.
