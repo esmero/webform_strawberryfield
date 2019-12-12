@@ -215,10 +215,13 @@ function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface
  */
 function webform_strawberryfield_theme() {
   $info = [
-  'webform_metadata_nominatim' => [
-    'render element' => 'element',
-  ]
-    ];
+    'webform_metadata_nominatim' => [
+      'render element' => 'element',
+    ],
+    'webform_metadata_panoramatour' => [
+      'render element' => 'element',
+    ]
+  ];
   return $info;
 }
 
@@ -239,6 +242,20 @@ function template_preprocess_webform_metadata_nominatim(array &$variables) {
   $variables['fetchbox'] = $variables['element']['value'];
   $variables['fetchbox_button'] = $variables['element']['nominatim'];
   $variables['fetchbox_table'] = $variables['element']['feature'];
+}
+
+/**
+ * Prepares variables for location composite element templates.
+ *
+ * Default template: webform-metadata-panoramatour.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - element: An associative array containing the properties of the element.
+ */
+function template_preprocess_webform_metadata_panoramatour(array &$variables) {
+  $variables['content'] = $variables['element'];
+
 }
 
 
