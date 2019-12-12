@@ -60,7 +60,9 @@
                             console.log($targetScene);
                             $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
                             if ((typeof $scene !== 'undefined')) {
-                                if (drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector]!== null) {
+                                if (drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector]!== null
+                                && typeof drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector][Symbol.iterator] === 'function'
+                                ) {
                                     drupalSettings.webform_strawberryfield.WebformPanoramaTour[parentselector].forEach(function (hotspotdata, key) {
                                         console.log(hotspotdata);
                                         if (hotspotdata.hasOwnProperty('URL')) {
@@ -88,12 +90,14 @@
                             item.panorama.on('mousedown', function clicker(e) {
 
                                 $hotspot_cors = item.panorama.mouseEventToCoords(e);
+                                console.log(item.panorama.getHfov());
                                 var $jquerycontainer = $(item.panorama.getContainer());
 
                                 $button_container = $jquerycontainer.closest("[data-drupal-selector='edit-panorama-tour-hotspots-temp']");
 
                                 $button_container.find("[  data-drupal-hotspot-property='yaw']").val($hotspot_cors[1]);
                                 $button_container.find("[  data-drupal-hotspot-property='pitch']").val($hotspot_cors[0]);
+                                $button_container.find("[  data-drupal-hotspot-property='hfov']").val(item.panorama.getHfov());
 
                                 marker(e,$newmarker,item.panorama.getContainer());
 
