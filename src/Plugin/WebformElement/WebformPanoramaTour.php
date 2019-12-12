@@ -49,13 +49,13 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $value = $this->getValue($element, $webform_submission, $options);
 
     $lines = [];
-    if (!empty($value['scene'])) {
+    /*if (!empty($value['scene'])) {
       $lines[] = $value['scene'];
     }
     if (!empty($value['hotspots'])) {
       $lines[] = $value['hotspots'];
     }
-
+   */
 
     return $lines;
   }
