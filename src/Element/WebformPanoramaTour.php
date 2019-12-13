@@ -145,7 +145,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
             ],
           ]
         ]
-      ]
+      ],
     ];
 
     // Note. The $element['hotspots_temp'] 'data-drupal-selector' gets
@@ -219,11 +219,14 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $nodeview = $vb->view($node, $viewmode);
         $element['hotspots_temp']['node'] = $nodeview;
 
-        $element['hotspots_temp']['node']['#weight'] = 10;
+        $element['hotspots_temp']['node']['#weight'] = -10;
+        $element['hotspots_temp']['node']['#prefix'] = '<div class="row">';
+        $element['hotspots_temp']['node']['#attributes']['class'] = ['col-8'];
         $element['hotspots_temp']['added_hotspots'] = [
           '#type' => 'details',
           '#attributes' => [
-            'data-drupal-loaded-node-hotspot-table' => $nodeid
+            'data-drupal-loaded-node-hotspot-table' => $nodeid,
+            'class' => ['row'],
           ],
           '#weight' => 11,
         ];
@@ -232,6 +235,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
 
         $element['hotspots_temp']['label'] = [
+          '#prefix' => '<div class="col-4">',
           '#title' => t('The label to display on mouse over'),
           '#type' => 'textfield',
           '#size' => '12',
@@ -327,6 +331,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $limit = array_merge($element['#parents'], ['hotspots_temp']);
 
         $element['hotspots_temp']['add_hotspot'] = [
+          '#prefix' => '<div class="btn-group-vertical" role="group" aria-label="Tour Builder actions">',
           '#type' => 'submit',
           '#value' => t('Add Hotspot'),
           '#name' => $element['#name'] . '_addhotspot_button',
@@ -350,7 +355,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ],
           '#button_type' => 'default',
           '#visible' => 'true',
-          '#limit_validation_errors' => FALSE
+          '#limit_validation_errors' => FALSE,
         ];
 
         $element['hotspots_temp']['delete_scene'] = [
@@ -363,13 +368,11 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ],
           '#button_type' => 'default',
           '#visible' => 'true',
-          '#limit_validation_errors' => FALSE
+          '#limit_validation_errors' => FALSE,
+          '#suffix' => '</div></div></div>' // Closes the btn group, row and the col
         ];
 
 
-        $element['hotspots_temp']['node'] = $nodeview;
-
-        $element['hotspots_temp']['node']['#weight'] = 10;
         $element['hotspots_temp']['added_hotspots'] = [
           '#type' => 'details',
           '#attributes' => [
@@ -411,7 +414,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
             '#suffix'=> '</div>',
             '#title' => t('Hotspots in this scene'),
             '#type' => 'table',
-            //'#default_value' => [],
             '#name' => $element['#name'] . '_added_hotspots',
             '#header' => $table_header,
             '#rows' => $table_options,
@@ -447,7 +449,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     $response = new AjaxResponse();
     $data_selector = $element['hotspots_temp']['#attributes']['data-drupal-selector'];
-    $element['hotspots_temp']['#title'] = 'Hotspots processed via ajax for this Scene';
     $response->addCommand(
       new ReplaceCommand(
         '[data-drupal-selector="' . $data_selector . '"]',
