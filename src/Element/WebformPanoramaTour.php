@@ -88,7 +88,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     foreach ($all_scenes as $scene) {
       // Fetching from full array
       error_log('fetching from full array');
-      if ($scene['scene'] == $sceneid) {
+      if (isset($scene['scene']) && $scene['scene'] == $sceneid) {
         $hotspot_list = $scene['hotspots'];
       }
     }
@@ -185,13 +185,15 @@ class WebformPanoramaTour extends WebformCompositeBase {
       );
       $errors = [];
 
-
+      $all_scenes_nodeids = [];
       if ($node) {
         // If we have multiple Scenes,deal with it.
         if (!empty($all_scenes) && is_array($all_scenes)) {
           //dpm($all_scenes);
           foreach($all_scenes as $key => $scene) {
-            $all_scenes_nodeids[$key] = $scene['scene'];
+            if (isset($scene['scene'])) {
+              $all_scenes_nodeids[$key] = $scene['scene'];
+            }
           }
           $all_scene_nodes = \Drupal::entityTypeManager()->getStorage('node')->loadMultiple($all_scenes_nodeids);
           foreach ($all_scene_nodes as $entity) {
@@ -312,7 +314,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $optionscenes = $options;
         // Remove from linkable scenes the current loaded one
         unset($optionscenes[$nodeid]);
-        if (!empty($optionscenes)) {
+
         $element['hotspots_temp']['adoscene'] = [
           '#title' => t('Linkable Scenes'),
           '#type' => 'select',
@@ -327,15 +329,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
             'data-drupal-hotspot-property' => 'type',
           ],
         ];
-        } else {
-          $element['hotspots_temp']['adoscene']['#type'] = 'markup';
-          $element['hotspots_temp']['adoscene']['#markup'] = t('You need to add another scene to make an multi scene Hotspot!');
-          $element['hotspots_temp']['adoscene']['#states'] = [
-            'visible' => [
-              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => array('value' => 'scene'),
-            ],
-          ];
-        }
+
         //@TODO expose arguments to the Webform element config UI.
         $element['hotspots_temp']['ado'] = [
           '#type' => 'entity_autocomplete',
@@ -523,7 +517,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $all_scenes_key = $top_element['#name'] . '-allscenes';
         $all_scenes = $form_state->get($all_scenes_key);
         foreach ($all_scenes as $scene) {
-          if ($scene['scene'] == $current_scene) {
+          if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
             $alreadythere = TRUE;
             break;
           }
@@ -620,7 +614,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $current_scene = $form_state->getValue([$element_name, 'scene']);
       $existing_objects = [];
       foreach ($allscenes as $key => &$scene) {
-        if ($scene['scene'] == $current_scene) {
+        if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
           $existing_objects = $scene['hotspots'];
           break;
         }
@@ -684,7 +678,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $existing_objects = [];
       error_log(print_r($form_state->getValues(), TRUE));
       foreach ($allscenes as $key => &$scene) {
-        if ($scene['scene'] == $form_state->getValue(
+        if (isset($scene['scene']) && $scene['scene'] == $form_state->getValue(
             [$element_name, 'scene']
           )) {
           $scene_key = $key;
@@ -1213,6 +1207,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $form_state->unsetValue([$element['#name'], 'newscene']);
         $form_state->unsetValue([$element['#name'], 'hotspots']);
         $form_state->unsetValue([$element['#name'], 'hotspots_temp']);
+        $form_state->unsetValue([$element['#name'], 'newselect_button']);
       }
     }
   }
