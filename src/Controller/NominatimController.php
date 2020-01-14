@@ -122,6 +122,8 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
   }
 
   /**
+   * Takes lat/long and returns a single address from Nominatim API.
+   * 
    * @param $lat
    * @param $lon
    * @param string $lang
@@ -185,7 +187,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
       }
       return  $results;
     }
-    \Drupal::messenger()->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url with query options: @options is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
@@ -210,7 +212,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
       return [];
     }
     if (!UrlHelper::isValid($remoteUrl, $absolute = TRUE)) {
-      \Drupal::messenger()->addError(
+      $this->messenger()->addError(
         $this->t('We can not fetch Data from @remoteUrl with query @options, check your URL',
           [
             '@remoteUrl' =>  $remoteUrl,
@@ -227,7 +229,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
     }
     catch(ClientException $exception) {
       $responseMessage = $exception->getMessage();
-      \Drupal::messenger()->addError(
+      $this->messenger()->addError(
         $this->t('We tried to contact @url with query @options but we could not. <br> The WEB says: @response. <br> Check that URL!',
           [
             '@url' => $remoteUrl,
