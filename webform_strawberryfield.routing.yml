@@ -19,10 +19,12 @@ webform_strawberryfield.auth_autocomplete:
   requirements:
     _access: 'TRUE'
 webform_strawberryfield.nominatim:
-  path: '/webform_strawberry/nominatim/{api_type}/{count<\d+>?5}/{lang}'
+  path: '/webform_strawberry/nominatim/{api_type}/{lang}/{count}'
   defaults:
     _controller: '\Drupal\webform_strawberryfield\Controller\NominatimController::handleRequest'
     _format: json
+    count: 1
   requirements:
     _permission: 'access content'
     _csrf_token: 'TRUE'
+    count: '\d+'
