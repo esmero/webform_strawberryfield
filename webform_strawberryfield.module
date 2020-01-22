@@ -330,4 +330,87 @@ function template_preprocess_webform_metadata_panoramatour(array &$variables) {
     */
 }
 
+/**
+ * Impleements hook_preprocess_HOOK()
+ *
+ * @see template_preprocess_webform_element_image_file()
+ *
+ * @param array $variables
+ *   An associative array containing the following key:
+ *   - element: The webform element.
+ *   - value: The content for the element.
+ *   - options Associative array of options for element.
+ *   - file: The element's File object.
+ *   - style_name: An image style name.
+ *   - format: Image formatting (link or modal)
+ */
+function webform_strawberryfield_preprocess_webform_element_image_file(array &$variables) {
+  if (!empty($variables['file'])) {
+    /** @var \Drupal\file\FileInterface $file */
+    $file = $variables['file'];
+
+    $style_name = $variables['style_name'];
+    $format = $variables['format'];
+
+    $uri = $file->getFileUri();
+    $url = Url::fromUri(file_create_url($uri));
+    dpm($url);
+
+    $extension = pathinfo($uri, PATHINFO_EXTENSION);
+    $is_image = in_array($extension, ['gif', 'png', 'jpg', 'jpeg', 'jp2', 'tiff']);
+
+    // Build image.
+    if ($is_image && \Drupal::moduleHandler()->moduleExists('image') && $style_name && ImageStyle::load($style_name)) {
+      $variables['image'] = [
+        '#theme' => 'image_style',
+        '#style_name' => $variables['style_name'],
+      ];
+    }
+    else {
+      // Note: The 'image' template uses root-relative paths.
+      // The 'image' is preprocessed to use absolute URLs.
+      // @see webform_preprocess_image().
+      $variables['image'] = [
+        '#theme' => 'image',
+      ];
+    }
+    $variables['image'] += [
+      '#uri' => $uri,
+      '#attributes' => [
+        'class' => ['webform-image-file'],
+        'alt' => $file->getFilename(),
+        'title' => $file->getFilename(),
+      ],
+    ];
+
+    // For the Results table always display the file name as a tooltip.
+    if (strpos(\Drupal::routeMatch()->getRouteName(), 'webform.results_submissions') !== FALSE) {
+      $variables['attached']['library'][] = 'webform/webform.tooltip';
+      $variables['image']['#attributes']['class'][] = 'js-webform-tooltip-link';
+    }
+
+    // Wrap 'image' in a link/modal.
+    if ($format && $format != 'image') {
+      $variables['image'] = [
+        '#type' => 'link',
+        '#title' => $variables['image'],
+        '#url' => $url,
+      ];
+      switch ($format) {
+        case 'modal':
+          $variables['image'] += [
+            '#attributes' => ['class' => ['js-webform-image-file-modal', 'webform-image-file-modal']],
+            '#attached' => ['library' => ['webform/webform.element.image_file.modal']],
+          ];
+          break;
+
+        case 'link':
+          $variables['image'] += ['#attributes' => ['class' => ['webform-image-file-link']]];
+          break;
+      }
+    }
+
+  }
+}
+
 
