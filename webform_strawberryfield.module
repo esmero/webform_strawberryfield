@@ -331,7 +331,7 @@ function template_preprocess_webform_metadata_panoramatour(array &$variables) {
 }
 
 /**
- * Impleements hook_preprocess_HOOK()
+ * Implements hook_preprocess_HOOK()
  *
  * @see template_preprocess_webform_element_image_file()
  *
@@ -345,7 +345,13 @@ function template_preprocess_webform_metadata_panoramatour(array &$variables) {
  *   - format: Image formatting (link or modal)
  */
 function webform_strawberryfield_preprocess_webform_element_image_file(array &$variables) {
+
   if (!empty($variables['file'])) {
+    // TODO do we need a setting for this?
+    $max_width = 320;
+
+    //@TODO this is quite a copy of what Format_strawberry does. We should
+    // Move all that logic to helper methods into \Drupal\format_strawberryfield\Tools\IiifHelper
     /** @var \Drupal\file\FileInterface $file */
     $file = $variables['file'];
 
@@ -354,7 +360,60 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
 
     $uri = $file->getFileUri();
     $url = Url::fromUri(file_create_url($uri));
-    dpm($url);
+    if (!$file->isTemporary()) {
+
+      $iiifserversettings = \Drupal::config(
+        'format_strawberryfield.iiif_settings'
+      );
+      $iiifhelper = new IiifHelper(
+        $iiifserversettings->get('pub_server_url'),
+        $iiifserversettings->get('int_server_url')
+      );
+
+      $iiifidentifier = urlencode(
+        \Drupal::service('stream_wrapper_manager')->getTarget(
+          $file->getFileUri()
+        )
+      );
+
+      if ($iiifidentifier == NULL || empty($iiifidentifier)) {
+        // Nothing to do, lets leave this untouched.
+        return;
+
+      }
+
+      $iiifpublicinfojson = $iiifhelper->getPublicInfoJson($iiifidentifier);
+      $iiifsizes = $iiifhelper->getImageSizes($iiifidentifier);
+
+      if (!$iiifsizes) {
+        $message = t(
+          'We could not fetch Image sizes from IIIF @url',
+          [
+            '@url' => $iiifpublicinfojson,
+          ]
+        );
+        \Drupal::logger('webform_strawberryfield')->warning($message);
+        // Nothing to do, lets leave this untouched.
+        return;
+      }
+      else {
+        //@see \template_preprocess_image for further theme_image() attributes.
+        // Look. This one uses the public accesible base URL. That is how world works.
+        $iiifserverthumb = "{$iiifserversettings->get('pub_server_url')}/{$iiifidentifier}" . "/full/{$max_width},/0/default.jpg";
+        $url = $iiifserverthumb;
+      }
+    }
+    else {
+      // Its a temporary file, just uploaded, IIIF can not see it yet
+
+      $route_parameters = [
+        'uuid' => $file->uuid(),
+        'format' => 'default.'. pathinfo($file->getFilename(), PATHINFO_EXTENSION)
+      ];
+      $publicurl = Url::fromRoute('format_strawberryfield.tempiiifbinary', $route_parameters);
+      $url = $publicurl->toString();
+
+    }
 
     $extension = pathinfo($uri, PATHINFO_EXTENSION);
     $is_image = in_array($extension, ['gif', 'png', 'jpg', 'jpeg', 'jp2', 'tiff']);
@@ -374,12 +433,17 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
         '#theme' => 'image',
       ];
     }
+    // Change the class from webform-image-file to webform-strawberryfield-image-file
+    // to avoid webform_preprocess_image() messing up our IIIF link
+    // by appending the current global.
+    // @TODO Style element here feels like a hack. We can do better
     $variables['image'] += [
-      '#uri' => $uri,
+      '#uri' => $url,
       '#attributes' => [
-        'class' => ['webform-image-file'],
+        'class' => ['webform-strawberryfield-image-file'],
         'alt' => $file->getFilename(),
         'title' => $file->getFilename(),
+        'style' => "max-width:{$max_width}px;height:auto",
       ],
     ];
 
