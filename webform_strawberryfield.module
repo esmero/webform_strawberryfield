@@ -223,7 +223,7 @@ function webform_strawberryfield_theme() {
     ],
     'webform_inline_fieldwidget_form' => [
       'render element' => 'element',
-      'template' => 'webform--inlinefieldwidget',
+      'template' => 'webform_strawberryfield-inlinefieldwidget',
     ],
   ];
   return $info;
@@ -274,8 +274,7 @@ function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, 
   $element = $variables['element'];
   // This is in particular for 'webform_inline_fieldwidget' element
   if (isset($element['#attributes']['data-webform-inline-fieldwidget'])) {
-    $suggestions[] = 'webform_inline_fieldwidget_form';
-    $suggestions[] = 'webform_inline_fieldwidget_form__' . $element['#webform_id'];
+    $suggestions = ['webform_inline_fieldwidget_form', 'webform_inline_fieldwidget_form__' . $element['#webform_id']];
   }
 }
 
