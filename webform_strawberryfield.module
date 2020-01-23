@@ -222,8 +222,9 @@ function webform_strawberryfield_theme() {
       'render element' => 'element',
     ],
     'webform_inline_fieldwidget_form' => [
-      'render element' => 'element',
+      'variables' => [],
       'template' => 'webform_strawberryfield-inlinefieldwidget',
+      'base hook' => 'webform'
     ],
   ];
   return $info;
