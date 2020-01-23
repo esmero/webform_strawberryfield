@@ -308,6 +308,10 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
     $file = $variables['file'];
 
     $variables['image']['#type'] = 'container';
+    unset($variables['image']['#theme']);
+    $variables['image']['singleimage']['#attributes'] = $variables['image']['#attributes'];
+    unset($variables['image']['#uri']);
+    unset($variables['image']['#attributes']);
 
     $style_name = $variables['style_name'];
     $format = $variables['format'];
@@ -390,12 +394,28 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
             ->addMessage(t('Ups. We could not get EXIF from your file. Sorry.'));
         }
         else {
+          $more_str = implode('',$output);
+
+          $json = json_decode($more_str, TRUE);
+          $json_error = json_last_error();
+          if ($json_error == JSON_ERROR_NONE) {
+            $more = [
+              '#type' => 'table',
+              '#caption' => $this->t('EXIF Data'),
+              '#header' => [$this->t('Property'), $this->t('Value')],
+              '#rows' => $json
+            ];
+
+          } else {
+            $more = 'Sorry, we could not fetch EXIF data for this file';
+          }
+
+
           $variables['image']['exif'] = [
-            '#type' => 'markup',
-            '#markup' => $output
+            '#theme' => 'webform_element_more',
+            '#more' =>  $more,
+            '#more_title' => t('Exif'),
           ];
-
-
         }
       }
 
