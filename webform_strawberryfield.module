@@ -221,6 +221,10 @@ function webform_strawberryfield_theme() {
     'webform_metadata_panoramatour' => [
       'render element' => 'element',
     ],
+    'webform_inline_fieldwidget_form' => [
+      'render element' => 'element',
+      'template' => 'webform__inlinefieldwidget',
+    ],
   ];
   return $info;
 }
@@ -270,8 +274,8 @@ function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, 
   $element = $variables['element'];
   // This is in particular for 'webform_inline_fieldwidget' element
   if (isset($element['#attributes']['data-webform-inline-fieldwidget'])) {
-    $suggestions[] = 'webform__inlinefieldwidget';
-    $suggestions[] = 'webform__inlinefieldwidget__' . $element['#webform_id'];
+    $suggestions[] = 'webform_inline_fieldwidget_form';
+    $suggestions[] = 'webform_inline_fieldwidget_form__' . $element['#webform_id'];
   }
 }
 
