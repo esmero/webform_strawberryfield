@@ -65,11 +65,16 @@ class WebformWithOverride extends Webform {
         $new_settings = $element['#override'];
         $webform->setSettingsOverride($new_settings);
         $values['strawberryfield:override'] = $new_settings;
-
       }
 
       // Build the webform.
       $element['webform_build'] = $webform->getSubmissionForm($values);
+      // Adds this marker so we can suggest another template.
+      // Where we can get rid of the internal 'form' rendering
+      // Allowing DOM to set the so needed classes for the wrapper
+      // So states and other WEbform AJAX libraries can work correctly.
+      // We don't want a full blown preprocess (yet).
+      $element['webform_build']['#attributes']['data-webform-inline-fieldwidget'] = 'true';
 
       // Set custom form action.
       if (!empty($element['#action'])) {

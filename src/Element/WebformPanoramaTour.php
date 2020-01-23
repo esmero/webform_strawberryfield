@@ -76,7 +76,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $sceneid = $scene['scene'];
 
     } else {
-
       $sceneid = $form_state->getValue([$element['#name'], 'scene']);
       $form_state->setValue([$element_name, 'scene'],$sceneid);
     }

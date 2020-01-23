@@ -220,7 +220,7 @@ function webform_strawberryfield_theme() {
     ],
     'webform_metadata_panoramatour' => [
       'render element' => 'element',
-    ]
+    ],
   ];
   return $info;
 }
@@ -255,79 +255,24 @@ function template_preprocess_webform_metadata_nominatim(array &$variables) {
  *   - element: An associative array containing the properties of the element.
  */
 function template_preprocess_webform_metadata_panoramatour(array &$variables) {
-
   $variables['content'] = $variables['element'];
-  /*unset($variables['element']);
-  /*
-  "scene" => array:31 [▶]
-  "hotspots" => array:19 [▶]
-  "select_button" => array:32 [▶]
-  "hotspots_temp" => array:33 [▼
-    "#type" => "fieldset"
-    "#title" => "Hotspots for this Scene"
-    "#attributes" => array:2 [▶]
-    "#attached" => array:2 [▶]
-    "label" => array:28 [▶]
-    "yaw" => array:28 [▶]
-    "hfov" => array:28 [▶]
-    "pitch" => array:28 [▶]
-    "type" => array:26 [▶]
-    "url" => array:29 [▶]
-    "ado" => & array:40 [▶]
-    "add_hotspot" => array:31 [▶]
-    "set_sceneorientation" => array:31 [▶]
-    "delete_scene" => array:31 [▶]
-    "node" => array:17 [▶]
-    "added_hotspots" => array:34 [▶]
-    "#process" => array:3 [▶]
-    "#pre_render" => array:1 [▶]
-    "#value" => null
-    "#theme_wrappers" => array:1 [▶]
-    "#defaults_loaded" => true
-    "#tree" => true
-    "#parents" => array:2 [▶]
-    "#array_parents" => array:4 [▶]
-    "#weight" => 0.003
-    "#processed" => true
-    "#required" => false
-    "#title_display" => "before"
-    "#description_display" => "after"
-    "#errors" => null
-    "#id" => "edit-panorama-tour-hotspots-temp--WgAHmLMT7gw"
-    "#groups" => &2 array:10 [▶]
-    "#ajax_processed" => false
-  ]
+}
 
-    $variables['sceneselect'] = $variables['content']['scene'];
-    $variables['scenebutton'] = $variables['content']['select_button'];
-    $variables['hotspotui'] = [
-      'label' => $variables['content']['hotspots_temp']['label'],
-      'url' => $variables['content']['hotspots_temp']['ado'],
-      'ado' => $variables['content']['hotspots_temp']['ado'],
-      'type' => $variables['content']['hotspots_temp']['type'],
-      'yaw' => $variables['content']['hotspots_temp']['yaw'],
-      'pitch' => $variables['content']['hotspots_temp']['pitch'],
-      'hfov' => $variables['content']['hotspots_temp']['hfov'],
-    ];
-    $variables['hotspotbuttons'] = [
-      'add_hotspot' => $variables['content']['hotspots_temp']['add_hotspot'],
-      'set_sceneorientation' => $variables['content']['hotspots_temp']['set_sceneorientation'],
-      'delete_scene' => $variables['content']['hotspots_temp']['delete_scene'],
-    ];
-    $variables['node'] = $variables['content']['hotspots_temp']['node'];
-    unset($variables['content']['scene']);
-    unset($variables['content']['select_button']);
-    unset($variables['content']['hotspots_temp']['pitch']);
-    unset($variables['content']['hotspots_temp']['label']);
-    unset($variables['content']['hotspots_temp']['yaw']);
-    unset($variables['content']['hotspots_temp']['url']);
-    unset($variables['content']['hotspots_temp']['ado']);
-    unset($variables['content']['hotspots_temp']['type']);
-    unset($variables['content']['hotspots_temp']['add_hotspot']);
-    unset($variables['content']['hotspots_temp']['set_sceneorientation']);
-    unset($variables['content']['hotspots_temp']['delete_scene']);
-    unset($variables['content']['hotspots_temp']['node']);
-    */
+/**
+ * Implements hook_theme_suggestions_HOOK_alter() for webforms.
+ *
+ * @param $suggestions
+ * @param array $variables
+ */
+function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, array $variables) {
+  // Add our own webform suggestion based on a given data attribute set by
+  // \Drupal\webform_strawberryfield\Element\WebformWithOverride::preRenderWebformElement
+  $element = $variables['element'];
+  // This is in particular for 'webform_inline_fieldwidget' element
+  if (isset($element['#attributes']['data-webform-inline-fieldwidget'])) {
+    $suggestions[] = $element['#type'];
+    $suggestions[] = $element['#type']. '__' . $element['#webform_id'];
+  }
 }
 
 /**

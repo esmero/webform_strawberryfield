@@ -1,0 +1,28 @@
+{#
+/**
+ * @file
+ * Theme implementation for a 'webform' element overriden by our module
+ *
+ * This is an copy of the webform.html.twig theme_wrapper but changeas
+ * form element for a div, so it can live in HTML DOM inside an Entity Form
+ * as a Widget
+ * 'title_prefix' and 'title_suffix' variables needed for
+ *
+ * Available variables
+ * - attributes: A list of HTML attributes for the wrapper element.
+ * - children: The child elements of the webform.
+ * - title_prefix: Additional output populated by modules, intended to be
+ *   displayed in front of the main title tag that appears in the template.
+ * - title_suffix: Additional output populated by modules, intended to be
+ *   displayed after the main title tag that appears in the template.
+ *
+ * @see template_preprocess_webform()
+ *
+ * @ingroup themeable
+ */
+#}
+<div{{ attributes }}>
+    {{ title_prefix }}
+    {{ children }}
+    {{ title_suffix }}
+</div>
