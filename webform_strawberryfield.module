@@ -319,12 +319,16 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
         $iiifserversettings->get('pub_server_url'),
         $iiifserversettings->get('int_server_url')
       );
-
-      $iiifidentifier = urlencode(
-        \Drupal::service('stream_wrapper_manager')->getTarget(
-          $file->getFileUri()
-        )
-      );
+      // Deal with Drupal 8.8.x v/s 8.7
+      if (method_exists(\Drupal::service('stream_wrapper_manager'),'getTarget')) {
+        $iiifidentifier = urlencode(
+          \Drupal::service('stream_wrapper_manager')->getTarget(
+            $file->getFileUri()
+          ));
+      }
+      else {
+        $iiifidentifier = urlencode(file_uri_target($file->getFileUri()));
+      }
 
       if ($iiifidentifier == NULL || empty($iiifidentifier)) {
         // Nothing to do, lets leave this untouched.
