@@ -400,7 +400,7 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
         $templocation = \Drupal::service('file_system')->copy(
           $uri,
           'temporary://sbr_' . $cache_key . '_' . basename($uri),
-          FileSystemInterface::FILE_EXISTS_REPLACE
+          FileSystemInterface::EXISTS_REPLACE
         );
       }
       else {
