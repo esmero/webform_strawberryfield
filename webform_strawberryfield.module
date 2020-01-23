@@ -223,7 +223,7 @@ function webform_strawberryfield_theme() {
     ],
     'webform_inline_fieldwidget_form' => [
       'render element' => 'element',
-      'template' => 'webform__inlinefieldwidget',
+      'template' => 'webform--inlinefieldwidget',
     ],
   ];
   return $info;
