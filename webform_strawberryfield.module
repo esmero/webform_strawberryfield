@@ -397,6 +397,7 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
           $more_str = implode('',$output);
 
           $json = json_decode($more_str, TRUE);
+          dpm($json);
           $json_error = json_last_error();
           if ($json_error == JSON_ERROR_NONE) {
             $more = [
