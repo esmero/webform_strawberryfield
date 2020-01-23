@@ -366,6 +366,33 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
       ];
       $publicurl = Url::fromRoute('format_strawberryfield.tempiiifbinary', $route_parameters);
       $url = $publicurl->toString();
+      // Extract EXIF and show it to the user!
+      /** @var \Drupal\Core\File\FileSystem $file_system */
+      $scheme =  \Drupal::service('file_system')->uriScheme($uri);
+      $templocation = NULL;
+      // If the file isn't stored locally make a temporary copy.
+      if (!isset(\Drupal::service('stream_wrapper_manager')
+          ->getWrappers(StreamWrapperInterface::LOCAL)[$scheme])) {
+        // Local stream.
+        $cache_key = md5($uri);
+        $templocation = \Drupal::service('file_system')->copy($uri, 'temporary://sbr_' . $cache_key . '_' . basename($uri), FileSystemInterface::FILE_EXISTS_REPLACE);
+      } else {
+        $templocation = \Drupal::service('file_system')->realpath($file->getFileUri());
+      }
+      if ($templocation) {
+      $result = exec('exiftool -json -q '.escapeshellcmd($templocation), $output, $status);
+        if ($status != 0) {
+          dpm('Ups. We could not get EXIF from your file!');
+        }  else {
+          dpm('exiftool -json -q '.escapeshellcmd($templocation));
+          dpm($output);
+
+        }
+      dpm($result);
+      }
+
+
+
 
     }
 
