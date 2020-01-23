@@ -10,6 +10,8 @@ use Drupal\webform\WebformSubmissionForm;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\file\Entity\File;
 use Drupal\format_strawberryfield\Tools\IiifHelper;
+use Drupal\Core\StreamWrapper\StreamWrapperInterface;
+use Drupal\Core\File\FileSystemInterface;
 
 /**
  * Alters a webform to help with embbeding in a node crud context.
