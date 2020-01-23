@@ -307,6 +307,8 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
     /** @var \Drupal\file\FileInterface $file */
     $file = $variables['file'];
 
+    $variables['image']['#type'] = 'container';
+
     $style_name = $variables['style_name'];
     $format = $variables['format'];
 
@@ -382,21 +384,19 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
         $templocation = \Drupal::service('file_system')->realpath($file->getFileUri());
       }
       if ($templocation) {
-      $result = exec('exiftool -json -q '.escapeshellcmd($templocation), $output, $status);
+        $result = exec('exiftool -json -q '.escapeshellcmd($templocation), $output, $status);
         if ($status != 0) {
-          dpm('Ups. We could not get EXIF from your file!');
-        }  else {
-          dpm('exiftool -json -q '.escapeshellcmd($templocation));
-          dpm($output);
-          $variables['exif'] = [
+          \Drupal::service('messenger')
+            ->addMessage(t('Ups. We could not get EXIF from your file. Sorry.'));
+        }
+        else {
+          $variables['image']['exif'] = [
             '#type' => 'markup',
             '#markup' => $output
-            ];
+          ];
 
-          $output;
 
         }
-      dpm($result);
       }
 
 
@@ -409,7 +409,7 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
 
     // Build image.
     if ($is_image && \Drupal::moduleHandler()->moduleExists('image') && $style_name && ImageStyle::load($style_name)) {
-      $variables['image'] = [
+      $variables['image']['singleimage'] = [
         '#theme' => 'image_style',
         '#style_name' => $variables['style_name'],
       ];
@@ -418,15 +418,15 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
       // Note: The 'image' template uses root-relative paths.
       // The 'image' is preprocessed to use absolute URLs.
       // @see webform_preprocess_image().
-      $variables['image'] = [
-        '#theme' => 'image',
+      $variables['image']['singleimage'] = [
+          '#theme' => 'image'
       ];
     }
     // Change the class from webform-image-file to webform-strawberryfield-image-file
     // to avoid webform_preprocess_image() messing up our IIIF link
     // by appending the current global.
     // @TODO Style element here feels like a hack. We can do better
-    $variables['image'] += [
+    $variables['image']['singleimage'] += [
       '#uri' => $url,
       '#attributes' => [
         'class' => ['webform-strawberryfield-image-file'],
@@ -439,26 +439,26 @@ function webform_strawberryfield_preprocess_webform_element_image_file(array &$v
     // For the Results table always display the file name as a tooltip.
     if (strpos(\Drupal::routeMatch()->getRouteName(), 'webform.results_submissions') !== FALSE) {
       $variables['attached']['library'][] = 'webform/webform.tooltip';
-      $variables['image']['#attributes']['class'][] = 'js-webform-tooltip-link';
+      $variables['image']['singleimage']['#attributes']['class'][] = 'js-webform-tooltip-link';
     }
 
     // Wrap 'image' in a link/modal.
     if ($format && $format != 'image') {
-      $variables['image'] = [
+      $variables['image']['singleimage'] = [
         '#type' => 'link',
         '#title' => $variables['image'],
         '#url' => $url,
       ];
       switch ($format) {
         case 'modal':
-          $variables['image'] += [
+          $variables['image']['singleimage'] += [
             '#attributes' => ['class' => ['js-webform-image-file-modal', 'webform-image-file-modal']],
             '#attached' => ['library' => ['webform/webform.element.image_file.modal']],
           ];
           break;
 
         case 'link':
-          $variables['image'] += ['#attributes' => ['class' => ['webform-image-file-link']]];
+          $variables['image']['singleimage'] += ['#attributes' => ['class' => ['webform-image-file-link']]];
           break;
       }
     }
