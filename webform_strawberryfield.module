@@ -12,6 +12,7 @@ use Drupal\file\Entity\File;
 use Drupal\format_strawberryfield\Tools\IiifHelper;
 use Drupal\Core\StreamWrapper\StreamWrapperInterface;
 use Drupal\Core\File\FileSystemInterface;
+use Drupal\image\Entity\ImageStyle;
 
 /**
  * Alters a webform to help with embbeding in a node crud context.
