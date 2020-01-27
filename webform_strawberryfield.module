@@ -403,6 +403,9 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
           'temporary://sbr_' . $cache_key . '_' . basename($uri),
           FileSystemInterface::EXISTS_REPLACE
         );
+        $templocation = \Drupal::service('file_system')->realpath(
+          $templocation
+        );
       }
       else {
         $templocation = \Drupal::service('file_system')->realpath(
