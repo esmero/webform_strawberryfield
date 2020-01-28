@@ -203,13 +203,13 @@ class WebformPanoramaTour extends WebformCompositeBase {
           }
           // If we have loaded values, create a copy of select but just to add
           //new ones
-          $element['newscene'] = $element['scene'];
+          /* $element['newscene'] = $element['scene'];
           $element['newscene']['#weight'] = 2;
           $element['newselect_button'] = $element['select_button'];
           $element['newselect_button']['#weight'] = 3;
           $element['newselect_button']['#value'] = t('Add another Scene');
           // If we have loaded values, replace autocomplete with this
-          $element['scene'] =  [
+          /* $element['scene'] =  [
           '#title' => t('Editing Scene'),
           '#type' => 'select',
           '#options' => $options,
@@ -225,6 +225,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           $element['select_button'] = [
            '#attributes' => ['class' => ['js-hide']]
           ];
+          */
 
         }
 
