@@ -195,6 +195,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
             }
           }
           $all_scene_nodes = \Drupal::entityTypeManager()->getStorage('node')->loadMultiple($all_scenes_nodeids);
+          $options = [];
           foreach ($all_scene_nodes as $entity) {
             $options[$entity->id()] = $entity->label();
           }
@@ -317,6 +318,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $element['hotspots_temp']['adoscene'] = [
           '#title' => t('Linkable Scenes'),
           '#type' => 'select',
+          "#empty_option" => t('- Select a loaded Scene -'),
           '#options' => $optionscenes,
           '#states' => [
             'visible' => [
@@ -515,10 +517,12 @@ class WebformPanoramaTour extends WebformCompositeBase {
       if ($current_scene) {
         $all_scenes_key = $top_element['#name'] . '-allscenes';
         $all_scenes = $form_state->get($all_scenes_key);
-        foreach ($all_scenes as $scene) {
-          if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
-            $alreadythere = TRUE;
-            break;
+        if (is_array($all_scenes)) {
+          foreach ($all_scenes as $scene) {
+            if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
+              $alreadythere = TRUE;
+              break;
+            }
           }
         }
         if (!$alreadythere) {
@@ -1128,7 +1132,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     $to_return = (is_array($input)) ? $input + $default_value : $default_value;
     error_log('what is in the element default_value before valuecallback return');
-    error_log(print_r(array_keys($element['#default_value']),true));
     error_log('return of valueCallback');
     error_log(print_r($to_return,true));
 
