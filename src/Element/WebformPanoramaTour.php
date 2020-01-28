@@ -186,6 +186,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
       $all_scenes_nodeids = [];
       if ($node) {
+        // Will contain all currently loaded scenes as an Select option array.
+        $options = [];
         // If we have multiple Scenes,deal with it.
         if (!empty($all_scenes) && is_array($all_scenes)) {
           //dpm($all_scenes);
@@ -195,7 +197,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
             }
           }
           $all_scene_nodes = \Drupal::entityTypeManager()->getStorage('node')->loadMultiple($all_scenes_nodeids);
-          $options = [];
+
           foreach ($all_scene_nodes as $entity) {
             $options[$entity->id()] = $entity->label();
           }
@@ -311,7 +313,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
             ],
           ]
         ];
-        $optionscenes = $options;
+        $optionscenes = is_array($options) ? $options : [];
         // Remove from linkable scenes the current loaded one
         unset($optionscenes[$nodeid]);
 
