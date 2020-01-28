@@ -790,7 +790,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $element_name = $element['#name'];
     $response = new AjaxResponse();
     $data_selector = $element['hotspots_temp']['added_hotspots']['#attributes']['data-drupal-loaded-node-hotspot-table'];
-    $existing_object = [];
+    $existing_objects = [];
     if ($form_state->getValue([$element_name, 'scene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
