@@ -106,28 +106,29 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     // Get the typed string from the URL, if it exists.
     if ($input = $request->query->get('q')) {
       switch($auth_type) {
-        case 'loc':  $results = $this->loc($input);
+        case 'loc':  $results = $this->loc($input, $auth_type);
         break;
         case 'wikidata': $results = $this->wikidata($input);
         break;
         case 'aat': $results = $this->getty($input, 'aat');
         break;
       }
-
-
     }
 
     return new JsonResponse($results);
   }
 
   /**
-   * @param $input
+   * @param string $input
+   *    A query string for the suggest URL
+   * @param string $vocab
+   *    A LoC Vocab. E.g subjects, names, etc.
    *
    * @return array
    */
-  protected function loc($input){
+  protected function loc($input, $vocab = 'subjects'){
     $input = urlencode($input);
-    $urlindex =  '/authorities/subjects/suggest/?q=' . $input;
+    $urlindex =  "/authorities/{$vocab}/suggest/?q=" . $input;
     $baseurl = 'https://id.loc.gov';
     $remoteUrl = $baseurl.$urlindex;
     $options['headers']=['Accept' => 'application/json'];
@@ -150,7 +151,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       else {
           $results[] = [
             'value' => NULL,
-            'label' => 'Sorry no Match from LoC Subject Headings'
+            'label' => "Sorry no Match from LoC {$vocab} Headings"
           ];
         }
       return  $results;
