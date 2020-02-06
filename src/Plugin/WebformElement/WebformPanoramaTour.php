@@ -10,6 +10,7 @@ namespace Drupal\webform_strawberryfield\Plugin\WebformElement;
 
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\WebformSubmissionInterface;
+use Drupal\webform\Plugin\WebformElement\WebformElement;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
 
 /**
@@ -47,16 +48,10 @@ class WebformPanoramaTour extends WebformCompositeBase {
    */
   protected function formatTextItemValue(array $element, WebformSubmissionInterface $webform_submission, array $options = []) {
     $value = $this->getValue($element, $webform_submission, $options);
-
+    // No preview for now
+    // Just too complex
+    // @TODO next iteration can force a Formatter to be used.
     $lines = [];
-    /*if (!empty($value['scene'])) {
-      $lines[] = $value['scene'];
-    }
-    if (!empty($value['hotspots'])) {
-      $lines[] = $value['hotspots'];
-    }
-   */
-
     return $lines;
   }
 
@@ -74,7 +69,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
   public function form(array $form, FormStateInterface $form_state) {
     $form = parent::form($form, $form_state);
     $form['element']['multiple']['#disabled'] = TRUE;
-    $form['element']['multiple']['#description'] = '<em>' . $this->t('You can only build one Tour with this Webform Element.But it supports multiple Scenes') . '</em>';
+    $form['element']['multiple']['#description'] = '<em>' . $this->t('You can only build one Tour with this Webform Element. But it supports multiple Scenes') . '</em>';
     // Disable Multiple Elements option
     return $form;
   }
