@@ -11,3 +11,16 @@ webform_strawberryfield.nodeactions.toggle:
     - core/drupal
     - core/drupalSettings
     - core/drupal.form
+scenebuilder_pannellum_strawberry:
+  version: 1.0
+  js:
+    js/scenebuilder-pannellum_strawberryfield.js: {minified: false}
+  css:
+    component:
+      css/scenebuilder_format_strawberryfield.css: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - format_strawberryfield/pannellum
+    - format_strawberryfield/iiif_pannellum_strawberry

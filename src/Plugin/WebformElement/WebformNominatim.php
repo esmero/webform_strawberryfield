@@ -56,8 +56,7 @@ class WebformNominatim extends WebformLocationBase {
     if ($format == 'map') {
 
    $location = $value['location'];
-      dpm($location);
-      $center = urlencode($value['location']);
+   $center = urlencode($value['location']);
       // To build an OpenStreetmap link we need, e.g
       // "osm_type": "way",
       // "osm_id": 270859746,
