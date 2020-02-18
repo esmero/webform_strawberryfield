@@ -15,7 +15,7 @@ use Drupal\strawberryfield\Tools\StrawberryKeyNameProvider;
  * Class StrawberryDataByWebformKeyProvider
  * @package Drupal\webform_strawberryfield\Plugin\DataType
  *
- * This class will provide Prooperty names to a strawberryfield.
+ * This class will provide Property names to a strawberryfield.
  *
  * The actual values will come from existing Webforms.
  */

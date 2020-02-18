@@ -9,8 +9,16 @@ use Drupal\Core\Url;
 use Drupal\webform\WebformSubmissionForm;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\file\Entity\File;
+use Drupal\format_strawberryfield\Tools\IiifHelper;
+use Drupal\Core\StreamWrapper\StreamWrapperInterface;
+use Drupal\Core\File\FileSystemInterface;
+use Drupal\image\Entity\ImageStyle;
 
 /**
+ * Alters a webform to help with embbeding in a node crud context.
+ *
+ * Implements hook_form_alter()
+ *
  * @param $form
  * @param \Drupal\Core\Form\FormStateInterface $form_state
  * @param $form_id
@@ -33,7 +41,6 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
     // I'm not totally convinced since we could be "ajaxifying" a webform here
     // that was not set as such in it's saved settings.
 
-
     /** @var  \Drupal\webform\Entity\WebformSubmission $webform_submission */
     $webform_submission = $submission_form->getEntity();
 
@@ -54,29 +61,26 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
       $form['actions']['reset']['#submit'] = ['webform_strawberryfield_widget_reset'];
     }
 
-
-
-
     /* @TODO make this a valid switch
-     // We should not make close object available if inline
-     // add a close model button
+    // We should not make close object available if inline
+    // add a close model button
     $query = \Drupal::request()->query->all();
     $is_ajax = (!empty($query['ajax_form'])) ? TRUE : FALSE;
     $webform_close_controller_url = Url::fromRoute(
     'webform_strawberryfield.close_modal_webform');
     if ($is_ajax) {
-      $form['actions']['closemodal'] = [
-        '#type' => 'link',
-        '#title' => t('Close Window'),
-        '#url' => $webform_close_controller_url,
-        '#attributes' => [
-          'class' => [
-            'use-ajax',
-            'button',
-          ],
-        ],
-        '#weight' => 100,
-      ];
+    $form['actions']['closemodal'] = [
+    '#type' => 'link',
+    '#title' => t('Close Window'),
+    '#url' => $webform_close_controller_url,
+    '#attributes' => [
+    'class' => [
+    'use-ajax',
+    'button',
+    ],
+    ],
+    '#weight' => 100,
+    ];
     }*/
 
     if ($form_state->get('current_page') === 'webform_preview') {
@@ -84,7 +88,7 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
       $submission_form = $form_state->getFormObject();
 
       foreach ($form['elements'] as $key => &$element) {
-        if ($element['#type'] == 'webform_wizard_page') {
+        if (isset($element['#type']) && ($element['#type'] == 'webform_wizard_page')) {
           $form['actions']['edit_wizard_page_'.$key][] = [
             '#type' => 'submit',
             '#value' => 'edit '.$element['#title'],
@@ -113,7 +117,6 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
   }
 }
 
-
 /**
  * Custom Jump-to-a-webform-page wizard callback.
  *
@@ -129,7 +132,7 @@ function webform_strawberryfield_go_to_page(array &$form, FormStateInterface $fo
   $trigger = $form_state->getTriggeringElement();
   $current_page = $form_state->get('current_page');
   $wizard_page_id = $trigger['#page'];
-  */
+   */
 
   // Submit using Mr. Wizard of WebOz.
   $submission_form->gotoPage($form, $form_state);
@@ -178,12 +181,6 @@ function webform_strawberryfield_widget_reset(array &$form, FormStateInterface $
     $restored_data = $keeparound + $keeparound['strawberry_field_stored_values'];
   }
 
-  // @TODO set in draft if reset?
-  // $in_draft = $form_state->get('in_draft');
-  // if ($in_draft !== NULL) {
-  //    $webform_submission->set('in_draft', $in_draft);
-  //}
-
   // Call the original reset
   $submission_form->reset($form, $form_state);
 
@@ -191,174 +188,15 @@ function webform_strawberryfield_widget_reset(array &$form, FormStateInterface $
   $form_state->getFormObject()->getEntity()->setData($restored_data);
 }
 
-
-function webform_strawberryfield_node_presave(ContentEntityInterface $entity) {
-  /** @var \Drupal\Core\Field\FieldItemListInterface[] */
-  $field_item_lists = $entity->getFields();
-  // Get the default image settings, return if not saving an image field storage
-  // or image field entity.
-  //@TODO refactor this into OcfHelper. That class will deal with Media and Storage
-  //@TODO even better, refactor this as part of the AS/event driven architecture
-  // And make all this efforts JSON based plugins.
-  foreach ($field_item_lists as $field) {
-    //@TODO diff with original data, if less images, remove usage
-    $type = $field->getFieldDefinition()->getType();
-    if ($type == 'strawberryfield_field') {
-      if (!$field->isEmpty()) {
-        foreach ($field->getValue() as $delta => $fieldvalue) {
-          $arrayMedia = json_decode($fieldvalue['value'], TRUE);
-          if (isset($arrayMedia['as:image'])) {
-            foreach ($arrayMedia['as:image'] as $id => &$info) {
-              if (isset($info['dr:url'])) {
-                // #id and $info['dr:url'] differ when just saved from a webform
-                // #id is where we really want to store our file
-                // $info['dr:url'] should be where it is before this runs
-                if (($id != $info['dr:url'])
-                  && isset($info['dr:fid'])
-                  && is_numeric($info['dr:fid'])) {
-                  // @NOTE benefits of this approach is avoiding https://www.drupal.org/project/drupal/issues/2821423
-                  /** @var \Drupal\file\FileInterface[] $files */
-                  $file = File::load($info['dr:fid']);
-
-                  if ($file) {
-                   $destination_folder = \Drupal::service('file_system')
-                      ->dirname($id);
-                    file_prepare_directory(
-                      $destination_folder,
-                      FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS
-                    );
-
-                    $destination_uri = file_unmanaged_move(
-                      $file->getFileUri(),
-                      $id
-                    );
-
-                    $file->setFileUri($destination_uri);
-                    try {
-                      $file->save();
-                    } catch (\Drupal\Core\Entity\EntityStorageException $e) {
-                      \Drupal::messenger()->addError(
-                        t(
-                          'Something went wrong when saving file @filename:, please check your logs.',
-                        ['@filename'=> $file->getFilename()]
-                          )
-                      );
-
-                    }
-                    if (!$entity->isNew()) {
-                      // We can not update its usage if the entity is new here
-                      // Because we have no entity id yet
-                      _update_file_usage($file, $entity->id());
-                    }
-                    $info['dr:url'] = $info['url'] = $id;
-                  }
-                }
-              }
-            }
-          }
-          $freshvalues = json_encode(
-            $arrayMedia,
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-          );
-          $json_error = json_last_error();
-          if ($json_error == JSON_ERROR_NONE) {
-            // Never ever destroy y peoples meta data!
-            try {
-              $field->setValue($freshvalues);
-            } /* @throws \InvalidArgumentException
-             * If the value input is inappropriate.
-             *
-             * @throws \Drupal\Core\TypedData\Exception\ReadOnlyException
-             *   If the data is read-only. */
-            catch (\Exception $e) {
-              $message = $e->getMessage();
-              \Drupal::messenger()->addError(
-                $this->t(
-                  'Something went wrong when saving your metadata: @msg.',
-                  ['@msg' => trim(sprintf('%s: %s', get_class($e), $message))]
-                )
-              );
-              if (!$entity->isNew()) {
-                $message = t(
-                  'We could not save provided metadata for field @fieldname at node @id.',
-                  [
-                    '@fieldname' => $field->getName(),
-                    '@id' => $entity->id(),
-                  ]
-                );
-                \Drupal::logger('strawberryfield')->warning($message);
-              }
-            }
-          }
-          else {
-            \Drupal::messenger()->addError(
-              t(
-                'Something went wrong when saving your metadata:, please check your logs.'
-              )
-            );
-          }
-        }
-        \Drupal::messenger()->addStatus(
-          t('All your files were correctly and permanently stored')
-        );
-      }
-    }
-  }
-}
-
-function webform_strawberryfield_node_insert(ContentEntityInterface $entity) {
-  // Only applies to newly created nodes but ::isNew returns false here!.
-  $field_item_lists = $entity->getFields();
-  foreach ($field_item_lists as $field) {
-    //@TODO diff with original data, if less images, remove usage
-    $type = $field->getFieldDefinition()->getType();
-    if ($type == 'strawberryfield_field') {
-      if (!$field->isEmpty()) {
-        foreach ($field->getValue() as $delta => $fieldvalue) {
-          $arrayMedia = json_decode($fieldvalue['value'], TRUE);
-          if (isset($arrayMedia['as:image'])) {
-            foreach ($arrayMedia['as:image'] as $id => &$info) {
-              if (($id == $info['dr:url'])
-                && isset($info['dr:fid'])
-                && is_numeric($info['dr:fid'])) {
-                $file = File::load($info['dr:fid']);
-                _update_file_usage($file, $entity->id());
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-function _update_file_usage(\Drupal\File\FileInterface $file, int $nodeid) {
-  if (!$file || !\Drupal::moduleHandler()->moduleExists('file')) {
-    return;
-  }
-
-  /** @var \Drupal\file\FileUsage\FileUsageInterface $file_usage */
-  $file_usage = \Drupal::service('file.usage');
-
-    if ($file) {
-      if (!$file->isPermanent()) {
-        $file->setPermanent();
-        try {
-          $file->save();
-        } catch (\Drupal\Core\Entity\EntityStorageException $e) {
-          \Drupal::messenger()->addError(
-            t(
-              'Something went wrong when saving file @filename:, please check your logs.',
-              ['@filename'=> $file->getFilename()]
-            )
-          );
-        }
-      }
-      $file_usage->add($file, 'strawberryfield', 'node', $nodeid);
-  }
-}
-
-
+/**
+ * Totally cosmetic hide/display main entity save button when in webform mode.
+ *
+ * Implements hook_FORM_ID_form_alter()
+ *
+ * @param $form
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ * @param $form_id
+ */
 function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface &$form_state, $form_id) {
   //$node = $form_state->getFormObject()->getEntity();
   // Means this form has a webform widget
@@ -374,5 +212,323 @@ function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface
       }
     }
   }
-
 }
+
+/**
+ * Implements hook_theme().
+ */
+function webform_strawberryfield_theme() {
+  $info = [
+    'webform_metadata_nominatim' => [
+      'render element' => 'element',
+    ],
+    'webform_metadata_panoramatour' => [
+      'render element' => 'element',
+    ],
+    'webform_inline_fieldwidget_form' => [
+      'variables' => [],
+      'template' => 'webform_strawberryfield-inlinefieldwidget',
+      'base hook' => 'webform'
+    ],
+  ];
+  return $info;
+}
+
+/**
+ * Prepares variables for location composite element templates.
+ *
+ * Default template: webform-metadata-nominatim.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - element: An associative array containing the properties of the element.
+ */
+function template_preprocess_webform_metadata_nominatim(array &$variables) {
+  $variables['content'] = $variables['element'];
+
+  unset($variables['content']['value']);
+  unset($variables['content']['nominatim']);
+  unset($variables['content']['feature']);
+  $variables['fetchbox'] = $variables['element']['value'];
+  $variables['fetchbox_button'] = $variables['element']['nominatim'];
+  $variables['fetchbox_table'] = $variables['element']['feature'];
+}
+
+/**
+ * Prepares variables for location composite element templates.
+ *
+ * Default template: webform-metadata-panoramatour.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - element: An associative array containing the properties of the element.
+ */
+function template_preprocess_webform_metadata_panoramatour(array &$variables) {
+  $variables['content'] = $variables['element'];
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter() for webforms.
+ *
+ * @param $suggestions
+ * @param array $variables
+ */
+function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, array $variables) {
+  // Add our own webform suggestion based on a given data attribute set by
+  // \Drupal\webform_strawberryfield\Element\WebformWithOverride::preRenderWebformElement
+  $element = $variables['element'];
+  // This is in particular for 'webform_inline_fieldwidget' element
+  if (isset($element['#attributes']['data-webform-inline-fieldwidget'])) {
+    $suggestions = ['webform_inline_fieldwidget_form', 'webform_inline_fieldwidget_form__' . $element['#webform_id']];
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK()
+ *
+ * @see template_preprocess_webform_element_image_file()
+ *
+ * @param array $variables
+ *   An associative array containing the following key:
+ *   - element: The webform element.
+ *   - value: The content for the element.
+ *   - options Associative array of options for element.
+ *   - file: The element's File object.
+ *   - style_name: An image style name.
+ *   - format: Image formatting (link or modal)
+ */
+function webform_strawberryfield_preprocess_webform_element_image_file(
+  array &$variables
+) {
+
+  if (!empty($variables['file'])) {
+    // TODO do we need a setting for this?
+    $max_width = 320;
+
+    //@TODO this is quite a copy of what Format_strawberry does. We should
+    // Move all that logic to helper methods into \Drupal\format_strawberryfield\Tools\IiifHelper
+    /** @var \Drupal\file\FileInterface $file */
+    $file = $variables['file'];
+
+    $variables['image']['#type'] = 'container';
+    unset($variables['image']['#theme']);
+    $variables['image']['singleimage']['#attributes'] = $variables['image']['#attributes'];
+    unset($variables['image']['#uri']);
+    unset($variables['image']['#attributes']);
+
+    $style_name = $variables['style_name'];
+    $format = $variables['format'];
+
+    $uri = $file->getFileUri();
+    $url = Url::fromUri(file_create_url($uri));
+    if (!$file->isTemporary()) {
+
+      $iiifserversettings = \Drupal::config(
+        'format_strawberryfield.iiif_settings'
+      );
+      $iiifhelper = new IiifHelper(
+        $iiifserversettings->get('pub_server_url'),
+        $iiifserversettings->get('int_server_url')
+      );
+      // Deal with Drupal 8.8.x v/s 8.7
+      if (method_exists(
+        \Drupal::service('stream_wrapper_manager'),
+        'getTarget'
+      )) {
+        $iiifidentifier = urlencode(
+          \Drupal::service('stream_wrapper_manager')->getTarget(
+            $file->getFileUri()
+          )
+        );
+      }
+      else {
+        $iiifidentifier = urlencode(file_uri_target($file->getFileUri()));
+      }
+
+      if ($iiifidentifier == NULL || empty($iiifidentifier)) {
+        // Nothing to do, lets leave this untouched.
+        return;
+
+      }
+
+      $iiifpublicinfojson = $iiifhelper->getPublicInfoJson($iiifidentifier);
+      $iiifsizes = $iiifhelper->getImageSizes($iiifidentifier);
+
+      if (!$iiifsizes) {
+        $message = t(
+          'We could not fetch Image sizes from IIIF @url',
+          [
+            '@url' => $iiifpublicinfojson,
+          ]
+        );
+        \Drupal::logger('webform_strawberryfield')->warning($message);
+        // Nothing to do, lets leave this untouched.
+        return;
+      }
+      else {
+        //@see \template_preprocess_image for further theme_image() attributes.
+        // Look. This one uses the public accesible base URL. That is how world works.
+        $iiifserverthumb = "{$iiifserversettings->get('pub_server_url')}/{$iiifidentifier}" . "/full/{$max_width},/0/default.jpg";
+        $url = $iiifserverthumb;
+      }
+    }
+    else {
+      // Its a temporary file, just uploaded, IIIF can not see it yet
+
+      $route_parameters = [
+        'uuid' => $file->uuid(),
+        'format' => 'default.' . pathinfo(
+            $file->getFilename(),
+            PATHINFO_EXTENSION
+          ),
+      ];
+      $publicurl = Url::fromRoute(
+        'format_strawberryfield.tempiiifbinary',
+        $route_parameters
+      );
+      $url = $publicurl->toString();
+      // Extract EXIF and show it to the user!
+      /** @var \Drupal\Core\File\FileSystem $file_system */
+      $scheme = \Drupal::service('file_system')->uriScheme($uri);
+      $templocation = NULL;
+      // If the file isn't stored locally make a temporary copy.
+      if (!isset(
+        \Drupal::service('stream_wrapper_manager')
+          ->getWrappers(StreamWrapperInterface::LOCAL)[$scheme]
+      )) {
+        // Local stream.
+        $cache_key = md5($uri);
+        $templocation = \Drupal::service('file_system')->copy(
+          $uri,
+          'temporary://sbr_' . $cache_key . '_' . basename($uri),
+          FileSystemInterface::EXISTS_REPLACE
+        );
+        $templocation = \Drupal::service('file_system')->realpath(
+          $templocation
+        );
+      }
+      else {
+        $templocation = \Drupal::service('file_system')->realpath(
+          $file->getFileUri()
+        );
+      }
+      if ($templocation) {
+        $result = exec(
+          'exiftool -json -q ' . escapeshellcmd($templocation),
+          $output,
+          $status
+        );
+        if ($status != 0) {
+          \Drupal::service('messenger')
+            ->addMessage(
+              t('Ups. We could not get EXIF from your file. Sorry.')
+            );
+        }
+        else {
+          $more_str = implode('', $output);
+          $json = json_decode($more_str, TRUE);
+          $json_error = json_last_error();
+          //This will end with all data in an [0] index.
+          if ($json_error == JSON_ERROR_NONE && count($json)) {
+            $rows = [];
+            foreach ($json[0] as $key => $value) {
+              if (!in_array($key, ['Directory', 'SourceFile'])) {
+                $rows[] = [$key, $value];
+              }
+            }
+            $more = [
+              '#type' => 'table',
+              '#caption' => t('EXIF Data'),
+              '#header' => [t('Property'), t('Value')],
+              '#rows' => $rows,
+            ];
+          }
+          else {
+            $more = 'Sorry, we could not fetch EXIF data for this file';
+          }
+
+          $variables['image']['exif'] = [
+            '#theme' => 'webform_element_more',
+            '#more' => $more,
+            '#more_title' => t('Exif'),
+          ];
+        }
+      }
+    }
+
+    $extension = pathinfo($uri, PATHINFO_EXTENSION);
+    $is_image = in_array(
+      $extension,
+      ['gif', 'png', 'jpg', 'jpeg', 'jp2', 'tiff']
+    );
+
+    // Build image.
+    if ($is_image && \Drupal::moduleHandler()->moduleExists(
+        'image'
+      ) && $style_name && ImageStyle::load($style_name)) {
+      $variables['image']['singleimage'] = [
+        '#theme' => 'image_style',
+        '#style_name' => $variables['style_name'],
+      ];
+    }
+    else {
+      // Note: The 'image' template uses root-relative paths.
+      // The 'image' is preprocessed to use absolute URLs.
+      // @see webform_preprocess_image().
+      $variables['image']['singleimage'] = [
+        '#theme' => 'image',
+      ];
+    }
+    // Change the class from webform-image-file to webform-strawberryfield-image-file
+    // to avoid webform_preprocess_image() messing up our IIIF link
+    // by appending the current global.
+    // @TODO Style element here feels like a hack. We can do better
+    $variables['image']['singleimage'] += [
+      '#uri' => $url,
+      '#attributes' => [
+        'class' => ['webform-strawberryfield-image-file'],
+        'alt' => $file->getFilename(),
+        'title' => $file->getFilename(),
+        'style' => "max-width:{$max_width}px;height:auto",
+      ],
+    ];
+
+    // For the Results table always display the file name as a tooltip.
+    if (strpos(
+        \Drupal::routeMatch()->getRouteName(),
+        'webform.results_submissions'
+      ) !== FALSE) {
+      $variables['attached']['library'][] = 'webform/webform.tooltip';
+      $variables['image']['singleimage']['#attributes']['class'][] = 'js-webform-tooltip-link';
+    }
+
+    // Wrap 'image' in a link/modal.
+    if ($format && $format != 'image') {
+      $variables['image']['singleimage'] = [
+        '#type' => 'link',
+        '#title' => $variables['image'],
+        '#url' => $url,
+      ];
+      switch ($format) {
+        case 'modal':
+          $variables['image']['singleimage'] += [
+            '#attributes' => [
+              'class' => [
+                'js-webform-image-file-modal',
+                'webform-image-file-modal',
+              ],
+            ],
+            '#attached' => ['library' => ['webform/webform.element.image_file.modal']],
+          ];
+          break;
+
+        case 'link':
+          $variables['image']['singleimage'] += ['#attributes' => ['class' => ['webform-image-file-link']]];
+          break;
+      }
+    }
+
+  }
+}
+
+

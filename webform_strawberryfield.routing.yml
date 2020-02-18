@@ -18,3 +18,13 @@ webform_strawberryfield.auth_autocomplete:
     _format: json
   requirements:
     _access: 'TRUE'
+webform_strawberryfield.nominatim:
+  path: '/webform_strawberry/nominatim/{api_type}/{lang}/{count}'
+  defaults:
+    _controller: '\Drupal\webform_strawberryfield\Controller\NominatimController::handleRequest'
+    _format: json
+    count: 1
+  requirements:
+    _permission: 'access content'
+    _csrf_token: 'TRUE'
+    count: '\d+'
