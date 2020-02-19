@@ -24,12 +24,13 @@ field.widget.settings.strawberryfield_webform_widget:
     rows:
       type: integer
       label: 'Rows'
-# see field.widget.settings.webform_entity_reference_autocomplete
-# match_limit should already exist in schema but getting missing schema error.
-#field.widget.settings.webform_entity_reference_autocomplete:
-#  type: mapping
-#  label: 'Webform Entity Reference Autocomplete Schema'
-#  mapping:
-#    match_limit:
-#      type: integer
-#      label: 'Match Limit'
+field.widget.settings.webform_entity_reference_autocomplete:
+  type: field.widget.settings.entity_reference_autocomplete
+  label: 'Webform Entity Reference Autocomplete Schema'
+  mapping:
+    match_limit:
+      type: integer
+      label: 'Match Limit'
+    default_data:
+      type: boolean
+      label: 'Default Data'
