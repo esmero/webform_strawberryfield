@@ -11,6 +11,7 @@ namespace Drupal\webform_strawberryfield\Plugin\EntityReferenceSelection;
 use Drupal\Core\DependencyInjection\DeprecatedServicePropertyTrait;
 use Drupal\Core\Entity\EntityReferenceSelection\SelectionPluginBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -19,6 +20,9 @@ use Drupal\Core\Url;
 use Drupal\views\Views;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Language\LanguageInterface;
+use Drupal\Core\Render\RendererInterface;
+use Drupal\Component\Utility\Xss;
+use Drupal\views\Render\ViewsRenderPipelineMarkup;
 
 /**
  * Plugin implementation of the 'selection' entity_reference.
@@ -69,6 +73,13 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
   protected $currentUser;
 
   /**
+   * The renderer.
+   *
+   * @var \Drupal\Core\Render\RendererInterface
+   */
+  protected $renderer;
+
+  /**
    * Constructs a new ViewsSelection object.
    *
    * @param array $configuration
@@ -90,13 +101,22 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     $plugin_definition,
     EntityTypeManagerInterface $entity_type_manager,
     ModuleHandlerInterface $module_handler,
-    AccountInterface $current_user
+    AccountInterface $current_user,
+    RendererInterface $renderer = NULL
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
     $this->entityTypeManager = $entity_type_manager;
     $this->moduleHandler = $module_handler;
     $this->currentUser = $current_user;
+    if (!$renderer) {
+      @trigger_error(
+        'Calling ViewsSelection::__construct() with the $renderer argument is supported in drupal:8.7.0 and will be required before drupal:9.0.0.',
+        E_USER_DEPRECATED
+      );
+      $renderer = \Drupal::service('renderer');
+    }
+    $this->renderer = $renderer;
   }
 
   /**
@@ -114,7 +134,8 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
       $plugin_definition,
       $container->get('entity_type.manager'),
       $container->get('module_handler'),
-      $container->get('current_user')
+      $container->get('current_user'),
+      $container->get('renderer')
     );
   }
 
@@ -298,24 +319,95 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     $match_operator = 'CONTAINS',
     $limit = 0
   ) {
+    $entities = [];
+    if ($display_execution_results = $this->getDisplayExecutionResults(
+      $match,
+      $match_operator,
+      $limit
+    )) {
+      $entities = $this->stripAdminAndAnchorTagsFromResults(
+        $display_execution_results
+      );
+    }
+
+    return $entities;
+  }
+
+  /**
+   * Fetches the results of executing the display.
+   *
+   * @param string|null $match
+   *   (Optional) Text to match the label against. Defaults to NULL.
+   * @param string $match_operator
+   *   (Optional) The operation the matching should be done with. Defaults
+   *   to "CONTAINS".
+   * @param int $limit
+   *   Limit the query to a given number of items. Defaults to 0, which
+   *   indicates no limiting.
+   * @param array|null $ids
+   *   Array of entity IDs. Defaults to NULL.
+   *
+   * @return array
+   *   The results.
+   */
+  protected function getDisplayExecutionResults(
+    string $match = NULL,
+    string $match_operator = 'CONTAINS',
+    int $limit = 0,
+    array $ids = NULL
+  ): array {
     $display_name = $this->getConfiguration()['view']['display_name'];
     $arguments = $this->getConfiguration()['view']['arguments'];
-    $result = [];
+    $results = [];
 
     if ($this->initializeView($match, $match_operator, $limit)) {
-      $result = $this->view->executeDisplay($display_name, $arguments);
+      $results = $this->view->executeDisplay($display_name, $arguments);
+    }
+    return $results ?? [];
+  }
+
+  /**
+   * Strips all admin and anchor tags from a result list.
+   *
+   * These results are usually displayed in an autocomplete field, which is
+   * surrounded by anchor tags. Most tags are allowed inside anchor tags, except
+   * for other anchor tags.
+   *
+   * @param array $results
+   *   The result list.
+   *
+   * @return array
+   *   The provided result list with anchor tags removed.
+   */
+  protected function stripAdminAndAnchorTagsFromResults(array $results): array {
+    $allowed_tags = Xss::getAdminTagList();
+    if (($key = array_search('a', $allowed_tags)) !== FALSE) {
+      unset($allowed_tags[$key]);
     }
 
-    $return = [];
-    if ($result) {
-      foreach ($this->view->result as $row) {
-        /* @var $entityadapter \Drupal\Core\Entity\Plugin\DataType\EntityAdapter */
-        $entityadapter = $row->_object;
+    $stripped_results = [];
+
+    foreach ($results as $id => $row) {
+      /* @var $entityadapter EntityAdapter */
+      if (isset($row['#row'])) {
+        // Means field render or default
+        $entityadapter = $row['#row']->_object;
         $entity = $entityadapter->getValue();
-        $return[$entity->bundle()][$entity->id()] = $entity->label();
       }
+      elseif (isset($row['#node'])) {
+        $entity = $row['#node'];
+      }
+      else {
+        // We don't know what we got, but its no content entity.
+        break;
+      }
+
+      $stripped_results[$entity->bundle()][$entity->id(
+      )] = ViewsRenderPipelineMarkup::create(
+        Xss::filter($this->renderer->renderPlain($row), $allowed_tags)
+      );
     }
-    return $return;
+    return $stripped_results;
   }
 
   /**
@@ -333,6 +425,8 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
    * {@inheritdoc}
    */
   public function validateReferenceableEntities(array $ids) {
+    // This class differs from the SQL implemententation
+    // Because we need to transform Solr entity:node/9:en into 9
     $display_name = $this->getConfiguration()['view']['display_name'];
     $arguments = $this->getConfiguration()['view']['arguments'];
     $result = [];

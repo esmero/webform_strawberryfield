@@ -30,7 +30,6 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
    */
   protected $httpClient;
 
-
   /**
    * NominatimController constructor.
    *
@@ -43,7 +42,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
   /**
    * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
    *
-   * @return \Drupal\Core\Controller\ControllerBase|\Drupal\webform_strawberryfield\Controller\AuthAutocompleteController
+   * @return \Drupal\Core\Controller\ControllerBase|\Drupal\webform_strawberryfield\Controller\NominatimController
    */
   public static function create(ContainerInterface $container) {
     return new static(
@@ -57,27 +56,32 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
    * @param \Symfony\Component\HttpFoundation\Request $request
    * @param $api_type
    * @param $count
+   * @param string $lang
    *
    * @return \Symfony\Component\HttpFoundation\JsonResponse
    */
   public function handleRequest(Request $request, $api_type = 'search', $count = 5, string $lang = '') {
-    $results = [];
     //@TODO pass count to the actual fetchers
     //@TODO maybe refactor into plugins so others can write any other reconciliators
     //@TODO if so, we can query the plugins and show in the webform builder options
     // Get the typed string from the URL, if it exists.
     $lang = !empty($lang) ? trim($lang) : $this->languageManager()->getCurrentLanguage()->getId();
     $results = [];
-    if ($input = $request->query->get('q')) {
-      switch($api_type) {
-        case 'search':  $results = $this->search($input,$count, $lang);
-        break;
-        case 'reverse': $results =  $this->reverse($input,$count, $lang);
-        break;
-      }
 
-
-    }
+    // Switch on api_type, because queries will have different keys. But still check keys.
+    switch($api_type) {
+        case 'search':
+          if ($input = $request->query->get('q')) {
+            $results = $this->search($input, $count, $lang);
+          }
+          break;
+        case 'reverse':
+          if (($lat = $request->query->get('lat')) && ($lon = $request->query->get('lon'))) {
+            $results = $this->reverse($lat, $lon, $lang);
+          }
+          break;
+     }
+      
     // Add Cache settings for Max-age and URL context.
     // You can use any of Drupal's contexts, tags, and time.
    /* $results['#cache'] = [
@@ -103,7 +107,6 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
   protected function search($input, int $count = 5, string $lang = 'en'){
     // The request we are going to do is something like
     // "https://nominatim.openstreetmap.org/search?q=West+87th+Street,NY&limit=5&format=geojson&addressdetails=1";
-
     $remoteUrl = 'https://nominatim.openstreetmap.org/search';
 
     $options['headers']=['Accept' => 'application/json', 'Accept-Language' => $lang];
@@ -113,6 +116,44 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
       'format' => 'geojson',
       'addressdetails' => 1
     ];
+    
+    return $this->processRequest($remoteUrl, $options);
+  }
+
+  /**
+   * Takes lat/long and returns a single address from Nominatim API.
+   * 
+   * @param $lat
+   * @param $lon
+   * @param string $lang
+   *
+   * @return array
+   */
+  public function reverse($lat, $lon, string $lang = 'en'){
+    // The request we are going to do is something like
+    // "https://nominatim.openstreetmap.org/reverse?format=geojson&lat=44.50155&lon=11.33989";
+    $remoteUrl = 'https://nominatim.openstreetmap.org/reverse';
+
+    $options['headers']=['Accept' => 'application/json', 'Accept-Language' => $lang];
+    $options['query'] = [
+      'lat' => $lat,
+      'lon' => $lon,
+      'format' => 'geojson',
+      'addressdetails' => 1
+    ];
+    
+    return $this->processRequest($remoteUrl, $options);
+  }
+
+  /**
+   * Sends given request with options, returns results, and adds errors to messenger service.
+   * 
+   * @param $remoteUrl
+   * @param $options
+   *
+   * @return array|
+   */
+  protected function processRequest($remoteUrl, $options) {
     // Add an artificial delay of 1 second to aid in
     // https://operations.osmfoundation.org/policies/nominatim/
     sleep(1);
@@ -138,14 +179,14 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
       }
       else {
         // Means our call was correct, but nominatim failed. Could be temporary?
-          $results[] = [
-            'value' => NULL,
-            'label' => 'Sorry https://nominatim.openstreetmap.org responsed with an error. Please Try again'
-          ];
-        }
+        $results[] = [
+          'value' => NULL,
+          'label' => 'Sorry https://nominatim.openstreetmap.org responsed with an error. Please Try again'
+        ];
+      }
       return  $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url with query options: @options is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
@@ -156,8 +197,6 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
     );
     return [];
   }
-
-
 
   /**
    * @param $remoteUrl
@@ -172,7 +211,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
       return [];
     }
     if (!UrlHelper::isValid($remoteUrl, $absolute = TRUE)) {
-      $this->messenger->addError(
+      $this->messenger()->addError(
         $this->t('We can not fetch Data from @remoteUrl with query @options, check your URL',
           [
             '@remoteUrl' =>  $remoteUrl,
@@ -189,7 +228,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
     }
     catch(ClientException $exception) {
       $responseMessage = $exception->getMessage();
-      $this->messenger->addError(
+      $this->messenger()->addError(
         $this->t('We tried to contact @url with query @options but we could not. <br> The WEB says: @response. <br> Check that URL!',
           [
             '@url' => $remoteUrl,

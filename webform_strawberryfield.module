@@ -9,6 +9,10 @@ use Drupal\Core\Url;
 use Drupal\webform\WebformSubmissionForm;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\file\Entity\File;
+use Drupal\format_strawberryfield\Tools\IiifHelper;
+use Drupal\Core\StreamWrapper\StreamWrapperInterface;
+use Drupal\Core\File\FileSystemInterface;
+use Drupal\image\Entity\ImageStyle;
 
 /**
  * Alters a webform to help with embbeding in a node crud context.
@@ -215,10 +219,18 @@ function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface
  */
 function webform_strawberryfield_theme() {
   $info = [
-  'webform_metadata_nominatim' => [
-    'render element' => 'element',
-  ]
-    ];
+    'webform_metadata_nominatim' => [
+      'render element' => 'element',
+    ],
+    'webform_metadata_panoramatour' => [
+      'render element' => 'element',
+    ],
+    'webform_inline_fieldwidget_form' => [
+      'variables' => [],
+      'template' => 'webform_strawberryfield-inlinefieldwidget',
+      'base hook' => 'webform'
+    ],
+  ];
   return $info;
 }
 
@@ -233,12 +245,290 @@ function webform_strawberryfield_theme() {
  */
 function template_preprocess_webform_metadata_nominatim(array &$variables) {
   $variables['content'] = $variables['element'];
+
   unset($variables['content']['value']);
   unset($variables['content']['nominatim']);
   unset($variables['content']['feature']);
   $variables['fetchbox'] = $variables['element']['value'];
   $variables['fetchbox_button'] = $variables['element']['nominatim'];
   $variables['fetchbox_table'] = $variables['element']['feature'];
-
-
 }
+
+/**
+ * Prepares variables for location composite element templates.
+ *
+ * Default template: webform-metadata-panoramatour.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - element: An associative array containing the properties of the element.
+ */
+function template_preprocess_webform_metadata_panoramatour(array &$variables) {
+  $variables['content'] = $variables['element'];
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK_alter() for webforms.
+ *
+ * @param $suggestions
+ * @param array $variables
+ */
+function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, array $variables) {
+  // Add our own webform suggestion based on a given data attribute set by
+  // \Drupal\webform_strawberryfield\Element\WebformWithOverride::preRenderWebformElement
+  $element = $variables['element'];
+  // This is in particular for 'webform_inline_fieldwidget' element
+  if (isset($element['#attributes']['data-webform-inline-fieldwidget'])) {
+    $suggestions = ['webform_inline_fieldwidget_form', 'webform_inline_fieldwidget_form__' . $element['#webform_id']];
+  }
+}
+
+/**
+ * Implements hook_preprocess_HOOK()
+ *
+ * @see template_preprocess_webform_element_image_file()
+ *
+ * @param array $variables
+ *   An associative array containing the following key:
+ *   - element: The webform element.
+ *   - value: The content for the element.
+ *   - options Associative array of options for element.
+ *   - file: The element's File object.
+ *   - style_name: An image style name.
+ *   - format: Image formatting (link or modal)
+ */
+function webform_strawberryfield_preprocess_webform_element_image_file(
+  array &$variables
+) {
+
+  if (!empty($variables['file'])) {
+    // TODO do we need a setting for this?
+    $max_width = 320;
+
+    //@TODO this is quite a copy of what Format_strawberry does. We should
+    // Move all that logic to helper methods into \Drupal\format_strawberryfield\Tools\IiifHelper
+    /** @var \Drupal\file\FileInterface $file */
+    $file = $variables['file'];
+
+    $variables['image']['#type'] = 'container';
+    unset($variables['image']['#theme']);
+    $variables['image']['singleimage']['#attributes'] = $variables['image']['#attributes'];
+    unset($variables['image']['#uri']);
+    unset($variables['image']['#attributes']);
+
+    $style_name = $variables['style_name'];
+    $format = $variables['format'];
+
+    $uri = $file->getFileUri();
+    $url = Url::fromUri(file_create_url($uri));
+    if (!$file->isTemporary()) {
+
+      $iiifserversettings = \Drupal::config(
+        'format_strawberryfield.iiif_settings'
+      );
+      $iiifhelper = new IiifHelper(
+        $iiifserversettings->get('pub_server_url'),
+        $iiifserversettings->get('int_server_url')
+      );
+      // Deal with Drupal 8.8.x v/s 8.7
+      if (method_exists(
+        \Drupal::service('stream_wrapper_manager'),
+        'getTarget'
+      )) {
+        $iiifidentifier = urlencode(
+          \Drupal::service('stream_wrapper_manager')->getTarget(
+            $file->getFileUri()
+          )
+        );
+      }
+      else {
+        $iiifidentifier = urlencode(file_uri_target($file->getFileUri()));
+      }
+
+      if ($iiifidentifier == NULL || empty($iiifidentifier)) {
+        // Nothing to do, lets leave this untouched.
+        return;
+
+      }
+
+      $iiifpublicinfojson = $iiifhelper->getPublicInfoJson($iiifidentifier);
+      $iiifsizes = $iiifhelper->getImageSizes($iiifidentifier);
+
+      if (!$iiifsizes) {
+        $message = t(
+          'We could not fetch Image sizes from IIIF @url',
+          [
+            '@url' => $iiifpublicinfojson,
+          ]
+        );
+        \Drupal::logger('webform_strawberryfield')->warning($message);
+        // Nothing to do, lets leave this untouched.
+        return;
+      }
+      else {
+        //@see \template_preprocess_image for further theme_image() attributes.
+        // Look. This one uses the public accesible base URL. That is how world works.
+        $iiifserverthumb = "{$iiifserversettings->get('pub_server_url')}/{$iiifidentifier}" . "/full/{$max_width},/0/default.jpg";
+        $url = $iiifserverthumb;
+      }
+    }
+    else {
+      // Its a temporary file, just uploaded, IIIF can not see it yet
+
+      $route_parameters = [
+        'uuid' => $file->uuid(),
+        'format' => 'default.' . pathinfo(
+            $file->getFilename(),
+            PATHINFO_EXTENSION
+          ),
+      ];
+      $publicurl = Url::fromRoute(
+        'format_strawberryfield.tempiiifbinary',
+        $route_parameters
+      );
+      $url = $publicurl->toString();
+      // Extract EXIF and show it to the user!
+      /** @var \Drupal\Core\File\FileSystem $file_system */
+      $scheme = \Drupal::service('file_system')->uriScheme($uri);
+      $templocation = NULL;
+      // If the file isn't stored locally make a temporary copy.
+      if (!isset(
+        \Drupal::service('stream_wrapper_manager')
+          ->getWrappers(StreamWrapperInterface::LOCAL)[$scheme]
+      )) {
+        // Local stream.
+        $cache_key = md5($uri);
+        $templocation = \Drupal::service('file_system')->copy(
+          $uri,
+          'temporary://sbr_' . $cache_key . '_' . basename($uri),
+          FileSystemInterface::EXISTS_REPLACE
+        );
+        $templocation = \Drupal::service('file_system')->realpath(
+          $templocation
+        );
+      }
+      else {
+        $templocation = \Drupal::service('file_system')->realpath(
+          $file->getFileUri()
+        );
+      }
+      if ($templocation) {
+        $result = exec(
+          'exiftool -json -q ' . escapeshellcmd($templocation),
+          $output,
+          $status
+        );
+        if ($status != 0) {
+          \Drupal::service('messenger')
+            ->addMessage(
+              t('Ups. We could not get EXIF from your file. Sorry.')
+            );
+        }
+        else {
+          $more_str = implode('', $output);
+          $json = json_decode($more_str, TRUE);
+          $json_error = json_last_error();
+          //This will end with all data in an [0] index.
+          if ($json_error == JSON_ERROR_NONE && count($json)) {
+            $rows = [];
+            foreach ($json[0] as $key => $value) {
+              if (!in_array($key, ['Directory', 'SourceFile'])) {
+                $rows[] = [$key, $value];
+              }
+            }
+            $more = [
+              '#type' => 'table',
+              '#caption' => t('EXIF Data'),
+              '#header' => [t('Property'), t('Value')],
+              '#rows' => $rows,
+            ];
+          }
+          else {
+            $more = 'Sorry, we could not fetch EXIF data for this file';
+          }
+
+          $variables['image']['exif'] = [
+            '#theme' => 'webform_element_more',
+            '#more' => $more,
+            '#more_title' => t('Exif'),
+          ];
+        }
+      }
+    }
+
+    $extension = pathinfo($uri, PATHINFO_EXTENSION);
+    $is_image = in_array(
+      $extension,
+      ['gif', 'png', 'jpg', 'jpeg', 'jp2', 'tiff']
+    );
+
+    // Build image.
+    if ($is_image && \Drupal::moduleHandler()->moduleExists(
+        'image'
+      ) && $style_name && ImageStyle::load($style_name)) {
+      $variables['image']['singleimage'] = [
+        '#theme' => 'image_style',
+        '#style_name' => $variables['style_name'],
+      ];
+    }
+    else {
+      // Note: The 'image' template uses root-relative paths.
+      // The 'image' is preprocessed to use absolute URLs.
+      // @see webform_preprocess_image().
+      $variables['image']['singleimage'] = [
+        '#theme' => 'image',
+      ];
+    }
+    // Change the class from webform-image-file to webform-strawberryfield-image-file
+    // to avoid webform_preprocess_image() messing up our IIIF link
+    // by appending the current global.
+    // @TODO Style element here feels like a hack. We can do better
+    $variables['image']['singleimage'] += [
+      '#uri' => $url,
+      '#attributes' => [
+        'class' => ['webform-strawberryfield-image-file'],
+        'alt' => $file->getFilename(),
+        'title' => $file->getFilename(),
+        'style' => "max-width:{$max_width}px;height:auto",
+      ],
+    ];
+
+    // For the Results table always display the file name as a tooltip.
+    if (strpos(
+        \Drupal::routeMatch()->getRouteName(),
+        'webform.results_submissions'
+      ) !== FALSE) {
+      $variables['attached']['library'][] = 'webform/webform.tooltip';
+      $variables['image']['singleimage']['#attributes']['class'][] = 'js-webform-tooltip-link';
+    }
+
+    // Wrap 'image' in a link/modal.
+    if ($format && $format != 'image') {
+      $variables['image']['singleimage'] = [
+        '#type' => 'link',
+        '#title' => $variables['image'],
+        '#url' => $url,
+      ];
+      switch ($format) {
+        case 'modal':
+          $variables['image']['singleimage'] += [
+            '#attributes' => [
+              'class' => [
+                'js-webform-image-file-modal',
+                'webform-image-file-modal',
+              ],
+            ],
+            '#attached' => ['library' => ['webform/webform.element.image_file.modal']],
+          ];
+          break;
+
+        case 'link':
+          $variables['image']['singleimage'] += ['#attributes' => ['class' => ['webform-image-file-link']]];
+          break;
+      }
+    }
+
+  }
+}
+
+

@@ -160,7 +160,7 @@ class WebformNominatim extends WebformLocationBase {
           'display_name' => t('Display Name'),
           'category' => t('Category'),
         ];
-
+        $table_options = [];
         foreach($nominatim_features as $key => $feature) {
 
           $table_options[$key+1] = [
@@ -411,8 +411,8 @@ class WebformNominatim extends WebformLocationBase {
         // Lat and Long are in http://en.wikipedia.org/wiki/en:WGS-84
         $values = [
           'value' => $nominatim_features[$selected_option]->label,
-          'lat' => $nominatim_features[$selected_option]->value->geometry->coordinates[0],
-          'lng' => $nominatim_features[$selected_option]->value->geometry->coordinates[1],
+          'lat' => $nominatim_features[$selected_option]->value->geometry->coordinates[1],
+          'lng' => $nominatim_features[$selected_option]->value->geometry->coordinates[0],
           'category' => $nominatim_features[$selected_option]->value->properties->category,
           'display_name' => $nominatim_features[$selected_option]->label,
           'osm_id' => $nominatim_features[$selected_option]->value->properties->osm_id,
