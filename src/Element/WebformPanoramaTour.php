@@ -249,13 +249,14 @@ class WebformPanoramaTour extends WebformCompositeBase {
           foreach ($all_scene_nodes as $entity) {
             $options[$entity->id()] = $entity->label();
           }
-
+          error_log('current node id');
+          error_log(print_r($node->id(), true));
           $element['currentscene']['#weight'] = 2;
           $element['currentscene'] =  [
           '#title' => t('Editing Scene'),
           '#type' => 'select',
           '#options' => $options,
-          '#default_value' => $node->id(),
+          '#default_value' => (string) $node->id(),
           '#ajax' => [
             'callback' => [get_called_class(), 'changeSceneCallBack'],
             'event' => 'change',
@@ -267,8 +268,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
           $element['select_button'] = [
            '#attributes' => ['class' => ['js-hide']]
           ];*/
-
-
         }
 
         $nodeview = $vb->view($node);
@@ -355,11 +354,11 @@ class WebformPanoramaTour extends WebformCompositeBase {
         ];
         $optionscenes = is_array($options) ? $options : [];
         // Remove from linkable scenes the current loaded one
-        unset($optionscenes[$nodeid]);
+        // unset($optionscenes[$nodeid]);
 
         $element['hotspots_temp']['adoscene'] = [
           '#title' => t('Linkable Scenes'),
-          '#type' => 'select',
+          '#type' => 'radios',
           "#empty_option" => t('- Select a loaded Scene -'),
           '#options' => $optionscenes,
           '#states' => [
@@ -372,6 +371,11 @@ class WebformPanoramaTour extends WebformCompositeBase {
             'data-drupal-hotspot-property' => 'type',
           ],
         ];
+        // Instead of // unset($optionscenes[$nodeid]); because  \Drupal\Core\Form\FormValidator::performRequiredValidation
+        // Will throw a an error if we remove an option that was just submitted for a select
+        // And we really need in this form that all is validated so values are passed around.
+
+        $element['hotspots_temp']['adoscene'][$nodeid] = ['#disabled' => TRUE];
 
         //@TODO expose arguments to the Webform element config UI.
         $element['hotspots_temp']['ado'] = [
@@ -566,7 +570,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $main_element_parents = array_slice($button['#array_parents'], 0, -1);
 
     $top_element = NestedArray::getValue($form, $main_element_parents);
-
     if (isset($input['_triggering_element_name']) &&
       $input['_triggering_element_name'] == $top_element['#name'].'_addhotspot_button'
       && empty($form_state->get('hotspot_custom_errors'))
@@ -595,7 +598,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       );
     }
     else {
-      // Try first with the new scene button, if no value, go back to scene button.
       $current_scene = $form_state->getValue([$top_element['#name'], 'scene']);
       $current_scene = $current_scene ? $current_scene : $form_state->getValue(
         [$top_element['#name'], 'currentscene']
@@ -608,6 +610,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           foreach ($all_scenes as $scene) {
             if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
               $alreadythere = TRUE;
+              $form_state->setValue([$top_element['#name'], 'currentscene'], $current_scene);
               break;
             }
           }
@@ -620,6 +623,13 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
           $form_state->setValue([$top_element['#name'], 'allscenes'],json_encode($all_scenes));
           $form_state->set($all_scenes_key, $all_scenes);
+          // WE need to set the input also, or Drupal 8 won't allow setting a different
+          // value for the currentscene select box.
+          $user_input = $form_state->getUserInput();
+          if (isset($user_input[$top_element['#name']]['currentscene'])) {
+            $user_input[$top_element['#name']]['currentscene'] = $current_scene;
+          }
+          $form_state->setUserInput($user_input);
           $form_state->setValue([$top_element['#name'], 'currentscene'], $current_scene);
         }
       }
@@ -644,7 +654,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $form,
       array_slice($button['#array_parents'], 0, -2)
     );
-
+    error_log('selectSceneCallBack');
+    error_log($element['#name']);
     $response = new AjaxResponse();
     $data_selector = $element['#attributes']['data-drupal-selector'];
     $response->addCommand(
@@ -745,7 +756,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     array &$form,
     FormStateInterface $form_state
   ) {
-
 
     $button = $form_state->getTriggeringElement();
     $hot_spot_values_parents = array_slice($button['#parents'], 0, -1);
@@ -961,7 +971,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $button = $form_state->getTriggeringElement();
     $element = NestedArray::getValue(
       $form,
-      array_slice($button['#array_parents'], 0, -1)
+      array_slice($button['#array_parents'], 0, -2)
     );
     error_log('setSceneOrientationCallBack');
     $response = new AjaxResponse();
