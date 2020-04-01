@@ -939,7 +939,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
    *
    * Adds Key and View Mode to the Table Drag  Table.
    */
-  public function deleteHotSpot(array &$form, FormStateInterface $form_state) {
+  public static function deleteHotSpot(array &$form, FormStateInterface $form_state) {
 
     error_log('calling deleteHotSpot\n\r');
     $button = $form_state->getTriggeringElement();
@@ -963,6 +963,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     if ($form_state->getValue([$element_name, 'currentscene'])
       && $allscenes) {
+      $all_scenes_key = $element_name . '-allscenes';
       $current_scene = $form_state->getValue([$element_name, 'currentscene']);
       $scene_key = 0;
       $existing_objects = [];
@@ -978,7 +979,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
       error_log(print_r($existing_objects, true));
       if ($existing_objects && is_array($existing_objects)) {
         if (isset($button['#hotspottodelete'])) {
+          error_log('printing hotspots to delete');
           foreach($existing_objects as $key => $hotspot) {
+            error_log(print_r($hotspot),true);
             if ($hotspot->id == $button['#hotspottodelete']) {
               $keytodelete = $key;
             }
@@ -1033,6 +1036,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     error_log($current_scene);
     if ($current_scene) {
       $allscenes = $form_state->getValue([$element_name, 'allscenes']);
+
       $allscenes = json_decode($allscenes, TRUE);
       $current_scene = $form_state->getValue([$element_name, 'scene']);
       $scene_key = 0;

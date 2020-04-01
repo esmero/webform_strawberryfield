@@ -53,9 +53,9 @@
             $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
             // add click handlers for new Hotspots if they have an URL.
             // Empty URLs are handled by Drupal.FormatStrawberryfieldhotspotPopUp()
-            console.log(response.hotspotid);
-            console.log(response.sceneid);
-            $scene.panorama.removeHotSpot(response.hotspotid, response.sceneid);
+            console.log(response);
+            $scene.panorama.removeHotSpot(response.hotspotid.id);
+            console.log("removing hotspot with id " +response.hotspotid.id);
         }
     };
 
