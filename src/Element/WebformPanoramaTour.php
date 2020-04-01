@@ -981,7 +981,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         if (isset($button['#hotspottodelete'])) {
           error_log('printing hotspots to delete');
           foreach($existing_objects as $key => $hotspot) {
-            error_log(print_r($hotspot),true);
+            error_log(print_r($hotspot,true));
             if ($hotspot->id == $button['#hotspottodelete']) {
               $keytodelete = $key;
             }
@@ -1034,39 +1034,24 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $existing_objects = [];
     $current_scene = $form_state->getValue([$element_name, 'currentscene']);
     error_log($current_scene);
-    if ($current_scene) {
-      $allscenes = $form_state->getValue([$element_name, 'allscenes']);
-
-      $allscenes = json_decode($allscenes, TRUE);
-      $current_scene = $form_state->getValue([$element_name, 'scene']);
-      $scene_key = 0;
-      $existing_objects = [];
-      foreach ($allscenes as $key => &$scene) {
-        if ($scene['scene'] == $current_scene
-        ) {
-          $scene_key = $key;
-          $existing_objects = $scene['hotspots'];
-        }
-      }
-    }
-    if (count($existing_objects) > 0) {
+    if (isset($button['#hotspottodelete'])) {
 
       $data_selector2 = $element['hotspots_temp']['#attributes']['data-drupal-selector'];
 
       $response->addCommand(
         new removeHotSpotCommand(
           '[data-drupal-selector="' . $data_selector2 . '"]',
-          end($existing_objects),
+          $button['#hotspottodelete'],
           'webform_strawberryfield_pannellum_editor_addHotSpot'
         )
       );
     }
-    $response->addCommand(
+   /* $response->addCommand(
       new ReplaceCommand(
         '[data-drupal-loaded-node-hotspot-table="' . $data_selector . '"]',
         $element['hotspots_temp']['added_hotspots']
       )
-    );
+    );*/
     return $response;
   }
 
