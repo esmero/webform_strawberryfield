@@ -43,6 +43,25 @@
     };
 
 
+    Drupal.AjaxCommands.prototype.webform_strawberryfield_pannellum_editor_removeHotSpot = function(ajax, response, status) {
+        console.log('removing hotspot');
+        // we need to find the first  '.strawberry-panorama-item' id that is child of data-drupal-selector="edit-panorama-tour-hotspots"
+        console.log(response.selector);
+        $targetScene = $(response.selector).find('.strawberry-panorama-item').attr("id");
+        console.log($targetScene);
+        if (response.hasOwnProperty('hotspotid') && response.hasOwnProperty('sceneid')) {
+            $scene = Drupal.FormatStrawberryfieldPanoramas.panoramas.get($targetScene);
+            // add click handlers for new Hotspots if they have an URL.
+            // Empty URLs are handled by Drupal.FormatStrawberryfieldhotspotPopUp()
+            console.log(response.hotspotid);
+            console.log(response.sceneid);
+            $scene.panorama.removeHotSpot(response.hotspotid, response.sceneid);
+        }
+    };
+
+
+
+
     Drupal.behaviors.webform_strawberryfield_pannellum_editor = {
         attach: function(context, settings) {
             $('.strawberry-panorama-item[data-iiif-image]').once('attache_pne')
