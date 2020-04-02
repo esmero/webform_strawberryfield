@@ -951,15 +951,10 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     $element_name = $element['#name'];
 
-
-    error_log(print_r($element_name,true));
-
     dpm($form_state->getValues());
 
 
     $allscenes = !empty($form_state->getValue([$element_name,'allscenes'])) ? json_decode($form_state->getValue([$element_name,'allscenes']),TRUE) : [];
-    error_log(var_export($allscenes,true));
-
 
     if ($form_state->getValue([$element_name, 'currentscene'])
       && $allscenes) {
@@ -982,14 +977,21 @@ class WebformPanoramaTour extends WebformCompositeBase {
           error_log('printing hotspots to delete');
           foreach($existing_objects as $key => $hotspot) {
             error_log(print_r($hotspot,true));
+            if (is_array($hotspot)) {
+              $hotspot = (object) $hotspot;
+            }
             if ($hotspot->id == $button['#hotspottodelete']) {
               $keytodelete = $key;
+              break;
             }
           }
-          if (isset($keytodelete)) {
-            unset($existing_objects[$button['#hotspottodelete']]);
+          // Because 0 will not pass an isset so ....
+          if ($keytodelete !== NULL) {
+            unset($existing_objects[$keytodelete]);
             $existing_objects = array_values($existing_objects);
             $allscenes[$scene_key]['hotspots'] = $existing_objects;
+            error_log('all scenes after hotspot deletion');
+            error_log(print_r($allscenes,true));
           }
         }
       }
@@ -1017,7 +1019,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     array $form,
     FormStateInterface $form_state
   ) {
-    error_log('calling deleteHotSpotCallback');
+    error_log('calling deleteHotSpotCallback via ajax');
     $button = $form_state->getTriggeringElement();
 
     error_log(print_r($button['#array_parents'],true));
@@ -1057,7 +1059,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
 
   /**
-   * Submit Handler for Settin the Scene Orientation.
+   * Submit Handler for Setting the Scene Orientation.
    *
    * @param array $form
    * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -1095,8 +1097,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $form_state->set($all_scenes_key, $allscenes);
       $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
     }
-
-
 
     // This is strange but needed.
     // If we are creating a new  panorama, addhotspot submit button
