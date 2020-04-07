@@ -8,7 +8,6 @@ use Drupal\webform\Element\WebformCompositeBase;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
-use Drupal\Core\Ajax\InvokeCommand;
 use Drupal\Core\Ajax\SettingsCommand;
 use Drupal\webform_strawberryfield\Ajax\AddHotSpotCommand;
 use Drupal\webform_strawberryfield\Ajax\RemoveHotSpotCommand;
@@ -250,8 +249,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           foreach ($all_scene_nodes as $entity) {
             $options[$entity->id()] = $entity->label();
           }
-          error_log('current node id');
-          error_log(print_r($node->id(), true));
+
           $element['currentscene']['#weight'] = 2;
           $element['currentscene'] =  [
           '#title' => t('Editing Scene'),
@@ -264,11 +262,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
             ],
           '#submit' => [[get_called_class(), 'changeSceneSubmit']],
           ];
-          /*// Hide the select button, at least visually
-          // because it defines the main submit
-          $element['select_button'] = [
-           '#attributes' => ['class' => ['js-hide']]
-          ];*/
         }
 
         $nodeview = $vb->view($node);
@@ -355,7 +348,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         ];
         $optionscenes = is_array($options) ? $options : [];
         // Remove from linkable scenes the current loaded one
-        // unset($optionscenes[$nodeid]);
 
         $element['hotspots_temp']['adoscene'] = [
           '#title' => t('Linkable Scenes'),
@@ -372,9 +364,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
             'data-drupal-hotspot-property' => 'type',
           ],
         ];
-        // Instead of // unset($optionscenes[$nodeid]); because  \Drupal\Core\Form\FormValidator::performRequiredValidation
-        // Will throw a an error if we remove an option that was just submitted for a select
-        // And we really need in this form that all is validated so values are passed around.
 
         $element['hotspots_temp']['adoscene'][$nodeid] = ['#disabled' => TRUE];
 
@@ -474,12 +463,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
             if (is_array($hotspot)) {
               $hotspot = (object) $hotspot;
             }
-            // Key will be in element['#name'].'_'.count($hotspot_list)+1;
 
-
-            //#pre render the button. Tables do not allow
-            // AJAX/Form functionality
-            // So we have to force this
             $delete_hot_spot_button = [
               '#hotspottodelete' => $hotspot->id,
               '#type' => 'submit',
@@ -688,8 +672,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $form,
       array_slice($button['#array_parents'], 0, -2)
     );
-    error_log('selectSceneCallBack');
-    error_log($element['#name']);
     $response = new AjaxResponse();
     $data_selector = $element['#attributes']['data-drupal-selector'];
     $response->addCommand(
@@ -947,7 +929,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
    */
   public static function deleteHotSpot(array &$form, FormStateInterface $form_state) {
 
-    error_log('calling deleteHotSpot\n\r');
     $button = $form_state->getTriggeringElement();
 
     $element = NestedArray::getValue(
@@ -974,13 +955,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
         }
       }
       $keytodelete = NULL;
-      error_log(print_r($existing_objects, true));
       if ($existing_objects && is_array($existing_objects)) {
         if (isset($button['#hotspottodelete'])) {
-          error_log('printing hotspots to delete with id:');
-          error_log($button['#hotspottodelete']);
           foreach($existing_objects as $key => $hotspot) {
-            error_log(print_r($hotspot,true));
             if (is_array($hotspot)) {
               $hotspot = (object) $hotspot;
             }
@@ -994,8 +971,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
             unset($existing_objects[$keytodelete]);
             $existing_objects = array_values($existing_objects);
             $allscenes[$scene_key]['hotspots'] = $existing_objects;
-            error_log('all scenes after hotspot deletion');
-            error_log(print_r($allscenes,true));
           }
         }
       }
@@ -1023,24 +998,17 @@ class WebformPanoramaTour extends WebformCompositeBase {
     array $form,
     FormStateInterface $form_state
   ) {
-    error_log('calling deleteHotSpotCallback via ajax');
     $button = $form_state->getTriggeringElement();
-    error_log(print_r($form_state->getValues(), true));
-    error_log(print_r($button, true));
-    error_log(print_r($button['#array_parents'],true));
-    error_log(print_r(array_slice($button['#array_parents'], 0, -4),true ));
     $element = NestedArray::getValue(
       $form,
       array_slice($button['#array_parents'], 0, -4)
     );
 
     $element_name = $element['#name'];
-    error_log($element_name);
     $response = new AjaxResponse();
     $data_selector = $element['hotspots_temp']['added_hotspots']['#attributes']['data-drupal-loaded-node-hotspot-table'];
     $existing_objects = [];
     $current_scene = $form_state->getValue([$element_name, 'currentscene']);
-    error_log($current_scene);
     if (isset($button['#hotspottodelete'])) {
 
       $data_selector2 = $element['hotspots_temp']['#attributes']['data-drupal-selector'];
@@ -1128,7 +1096,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $form,
       array_slice($button['#array_parents'], 0, -2)
     );
-    error_log('setSceneOrientationCallBack');
     $response = new AjaxResponse();
     $element_name = $element['#name'];
     $data_selector = $element['hotspots_temp']['#attributes']['data-webform_strawberryfield-selector'];
@@ -1155,7 +1122,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     FormStateInterface $form_state
   ) {
 
-    error_log('deleteScene');
     $button = $form_state->getTriggeringElement();
     $hot_spot_values_parents = array_slice($button['#parents'], 0, -1);
 
@@ -1195,7 +1161,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
 
       \Drupal::messenger()->addMessage(t('The Scene was removed'));
-      error_log('done removing Scene and hotspots');
     }
     // This is strange but needed.
     // If we are creating a new  panorama, addhotspot submit button
@@ -1222,7 +1187,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $form,
       array_slice($button['#array_parents'], 0, -2)
     );
-    error_log('deleteSceneCallBack');
     $response = new AjaxResponse();
     $element_name = $element['#name'];
     $data_selector = $element['#attributes']['data-drupal-selector'];
@@ -1259,8 +1223,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ],
         ]
       ];
-      error_log('attaching replacement Drupal settings for the viewer after delete');
-      error_log(print_r($settings, TRUE));
+
       // Why twice? well because merge is deep merge. Gosh JS!
       // And merge = FALSE clears even my brain settings...
       $response->addCommand(new SettingsCommand($settings, TRUE));
