@@ -490,8 +490,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
               ],
               '#value' => t('Remove'),
-              '#id' => $element['#name'].'-remove-hotspot-'.$key,
-              '#name' => $element['#name'].'-remove-hotspot-'.$key,
+              '#id' => $element['#name'].'-remove-hotspot-'.$hotspot->id,
+              '#name' => $element['#name'].'-remove-hotspot-'.$hotspot->id,
               '#submit' => [[get_called_class(),'deleteHotSpot']],
               '#ajax' => [
                 'callback' => [ get_called_class(), 'deleteHotSpotCallback'],
@@ -512,7 +512,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
               'label' =>  [
                 '#type' => 'html_tag',
                 '#tag' => 'p',
-                '#value' => isset($hotspot->text) ? $hotspot->text : t('no name'),
+                '#value' => isset($hotspot->text) ? $hotspot->text ." ". $hotspot->id." " : t('no name'),
                 ],
               'operations' => $delete_hot_spot_button
               ];
@@ -531,7 +531,13 @@ class WebformPanoramaTour extends WebformCompositeBase {
               'data-drupal-loaded-node-hotspot-table' => $nodeid
             ],
           ];
-          $element['hotspots_temp']['added_hotspots'] = array_merge($element['hotspots_temp']['added_hotspots'], $table_options);
+          if (count($table_options)) {
+            // Don't add rows if no Hotspots.
+            $element['hotspots_temp']['added_hotspots'] = array_merge(
+              $element['hotspots_temp']['added_hotspots'],
+              $table_options
+            );
+          }
 
         }
       }
@@ -951,9 +957,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     $element_name = $element['#name'];
 
-    dpm($form_state->getValues());
-
-
     $allscenes = !empty($form_state->getValue([$element_name,'allscenes'])) ? json_decode($form_state->getValue([$element_name,'allscenes']),TRUE) : [];
 
     if ($form_state->getValue([$element_name, 'currentscene'])
@@ -974,7 +977,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
       error_log(print_r($existing_objects, true));
       if ($existing_objects && is_array($existing_objects)) {
         if (isset($button['#hotspottodelete'])) {
-          error_log('printing hotspots to delete');
+          error_log('printing hotspots to delete with id:');
+          error_log($button['#hotspottodelete']);
           foreach($existing_objects as $key => $hotspot) {
             error_log(print_r($hotspot,true));
             if (is_array($hotspot)) {
@@ -1021,7 +1025,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
   ) {
     error_log('calling deleteHotSpotCallback via ajax');
     $button = $form_state->getTriggeringElement();
-
+    error_log(print_r($form_state->getValues(), true));
+    error_log(print_r($button, true));
     error_log(print_r($button['#array_parents'],true));
     error_log(print_r(array_slice($button['#array_parents'], 0, -4),true ));
     $element = NestedArray::getValue(
@@ -1048,12 +1053,12 @@ class WebformPanoramaTour extends WebformCompositeBase {
         )
       );
     }
-   /* $response->addCommand(
+   $response->addCommand(
       new ReplaceCommand(
         '[data-drupal-loaded-node-hotspot-table="' . $data_selector . '"]',
         $element['hotspots_temp']['added_hotspots']
       )
-    );*/
+    );
     return $response;
   }
 
