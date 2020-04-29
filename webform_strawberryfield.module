@@ -419,10 +419,11 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
           $status
         );
         if ($status != 0) {
-          \Drupal::service('messenger')
+          // This message is annoying. Appears over and over.
+          /*\Drupal::service('messenger')
             ->addMessage(
               t('Ups. We could not get EXIF from your file. Sorry.')
-            );
+            );*/
         }
         else {
           $more_str = implode('', $output);
