@@ -25,15 +25,13 @@
                 } else if ($('div.field--widget-strawberryfield-webform-inline-widget').length) {
                     $('.path-node .node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').hide();
                 }
-
-
                 var $moderationstate = $('select[data-drupal-selector="edit-moderation-state-0-state"]', context).once('show-hide-actions');
                 if ($moderationstate.length) {
 
-                    var $select = $moderationstate.on('change', function () {
+                    /* var $select = $moderationstate.on('change', function () {
                         $('.path-node .node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').show();
 
-                    });
+                    }); */
                 }
                 var $nodetitle = $('input[data-drupal-selector="edit-title-0-value"]', context).once('show-hide-actions');
                 if ($nodetitle.length) {
