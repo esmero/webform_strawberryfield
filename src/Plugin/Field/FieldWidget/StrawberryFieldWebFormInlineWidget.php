@@ -301,8 +301,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       $data['data'] = $data_defaults + json_decode($stored_value,true);
     }
 
-
-
     // @see \Drupal\webform_strawberryfield\Element\WebformCustom element.
     // @TODO expose #override options in the widget config.
     // @see \Drupal\webform\Entity\Webform::getDefaultSettings for all settings
@@ -312,25 +310,60 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // IDEA: keep a draft version around in another temp storage
     // reload if empty, clean if correctly submitted
 
+    // @TODO make this a setting
+    // If the node is new show the inline form
+    // But if the Node exists, SBF is there, show the on-click widget
+    if ($items->getEntity()->isNew()) {
 
-    $element['strawberry_webform_inline']  = [
-      '#type' => 'webform_inline_fieldwidget',
-      '#webform' => $my_webform_machinename,
-      '#default_data' => $data['data'],
-      '#override' =>  [
-        'form_submit_once' => FALSE,
-        'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
-        'confirmation_back' => TRUE,
-        'results_disabled' => TRUE,
-        'confirmation_exclude_token' => TRUE,
-        'wizard_progress_link' => TRUE,
-        'submission_user_duplicate' => TRUE,
-        'submission_log' => FALSE,
-        'confirmation_message' => $this->t('Thanks, you are all set! Please Save the content to persist the changes.'),
-      ],
-    ];
+      $element['strawberry_webform_inline'] = [
+        '#type' => 'webform_inline_fieldwidget',
+        '#webform' => $my_webform_machinename,
+        '#default_data' => $data['data'],
+        '#override' => [
+          'form_submit_once' => FALSE,
+          'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
+          'confirmation_back' => TRUE,
+          'results_disabled' => TRUE,
+          'confirmation_exclude_token' => TRUE,
+          'wizard_progress_link' => TRUE,
+          'submission_user_duplicate' => TRUE,
+          'submission_log' => FALSE,
+          'confirmation_message' => $this->t(
+            'Thanks, you are all set! Please Save the content to persist the changes.'
+          ),
+        ],
+      ];
+      $element['strawberry_webform_inline']['#parents'] = $parents;
+    }
+    else {
 
-    $element['strawberry_webform_inline']['#parents'] = $parents;
+      // Webform controller wrapper URL
+      $this_field_name = $this->fieldDefinition->getName();
+
+      $webform_controller_url= Url::fromRoute('webform_strawberryfield.modal_webform',
+        [
+          'webform' =>  $my_webform_machinename,
+          'source_entity_types' => "$entity_type:$bundle",
+          'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+        ]
+      );
+
+      $element['strawberry_webform_open_modal']  = [
+        '#type' => 'link',
+        '#title' => $this->t('Edit @a', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+        '#url' => $webform_controller_url,
+        '#attributes' => [
+          'class' => [
+            'use-ajax',
+            'button',
+            'btn-primary',
+            'btn'
+          ],
+        ],
+      ];
+
+    }
+
 
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
