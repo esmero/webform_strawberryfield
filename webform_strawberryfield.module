@@ -278,6 +278,9 @@ function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, 
   // \Drupal\webform_strawberryfield\Element\WebformWithOverride::preRenderWebformElement
   $element = $variables['element'];
   // This is in particular for 'webform_inline_fieldwidget' element
+  // This is not triggering when the form has validation errors
+  // WebformWithOverride::preRenderWebformElement is not able to set the attribute
+  // Probably we need a better way
   if (isset($element['#attributes']['data-webform-inline-fieldwidget'])) {
     $suggestions = ['webform_inline_fieldwidget_form', 'webform_inline_fieldwidget_form__' . $element['#webform_id']];
   }
@@ -300,7 +303,6 @@ function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, 
 function webform_strawberryfield_preprocess_webform_element_image_file(
   array &$variables
 ) {
-
   if (!empty($variables['file'])) {
     // TODO do we need a setting for this?
     $max_width = 320;
@@ -531,5 +533,3 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
 
   }
 }
-
-
