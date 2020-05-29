@@ -126,6 +126,12 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state)
   {
+
+    // Override the title from the incoming $element.
+    if ($this->getSetting('placeholder') && !empty(trim($this->getSetting('placeholder')))) {
+      $element['#title'] = trim($this->getSetting('placeholder'));
+    }
+
     //Lets gather some basics
     // Where is this field being used, a node?
     $entity_type = $items->getEntity()->getEntityTypeId();
@@ -377,7 +383,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         return;
     }
 
-
     $json_string = $tempstore->get($tempstoreId);
     $json = json_decode($json_string, TRUE);
     $json_error = json_last_error();
@@ -387,9 +392,11 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       return;
     }
     else {
-      $form_state->setError($element, $this->t("Something went wrong, so sorry. Your data does not taste like strawberry and we failed validating it."));
-    }
-
+        $form_state->setError($element, $this->t("Something went wrong, so sorry. Your data does not taste like strawberry (JSON malformed) and we failed validating it: @json_error.",
+          [
+            '@json_error' => $json_error
+          ]));
+      }
   }
 
 
