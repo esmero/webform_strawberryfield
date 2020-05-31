@@ -5,7 +5,15 @@ webform_strawberryfield.metadataauth.autocomplete:
     - core/drupal.autocomplete
 webform_strawberryfield.nodeactions.toggle:
   js:
-    js/hidenodeaction-webform_strawberryfield.js: {}
+    js/hidenodeaction-webform_strawberryfield.js: {minified: false}
+  dependencies:
+    - core/jquerywebform_strawberryfield.nodeactions.toggle
+    - core/drupal
+    - core/drupalSettings
+    - core/drupal.form
+webform_strawberryfield.nodeactions.cameraroll:
+  js:
+    js/cameraroll-webform_strawberryfield.js : {minified: false}
   dependencies:
     - core/jquery
     - core/drupal
