@@ -33,6 +33,7 @@ function webform_strawberryfield_form_alter(&$form,FormStateInterface $form_stat
   /** @var \Drupal\webform\WebformSubmissionForm $submission_form */
   $submission_form = $form_state->getFormObject();
   $form['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.nodeactions.toggle';
+  $form['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.nodeactions.cameraroll';
 
   if (strpos($form_id, 'webform_submission') === 0
     && $submission_form instanceof WebformSubmissionForm) {
@@ -278,6 +279,9 @@ function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, 
   // \Drupal\webform_strawberryfield\Element\WebformWithOverride::preRenderWebformElement
   $element = $variables['element'];
   // This is in particular for 'webform_inline_fieldwidget' element
+  // This is not triggering when the form has validation errors
+  // WebformWithOverride::preRenderWebformElement is not able to set the attribute
+  // Probably we need a better way
   if (isset($element['#attributes']['data-webform-inline-fieldwidget'])) {
     $suggestions = ['webform_inline_fieldwidget_form', 'webform_inline_fieldwidget_form__' . $element['#webform_id']];
   }
@@ -300,7 +304,6 @@ function webform_strawberryfield_theme_suggestions_webform_alter(&$suggestions, 
 function webform_strawberryfield_preprocess_webform_element_image_file(
   array &$variables
 ) {
-
   if (!empty($variables['file'])) {
     // TODO do we need a setting for this?
     $max_width = 320;
@@ -419,10 +422,11 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
           $status
         );
         if ($status != 0) {
-          \Drupal::service('messenger')
+          // This message is annoying. Appears over and over.
+          /*\Drupal::service('messenger')
             ->addMessage(
               t('Ups. We could not get EXIF from your file. Sorry.')
-            );
+            );*/
         }
         else {
           $more_str = implode('', $output);
@@ -530,5 +534,3 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
 
   }
 }
-
-

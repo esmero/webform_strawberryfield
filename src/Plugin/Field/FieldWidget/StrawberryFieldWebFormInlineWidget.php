@@ -136,6 +136,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Where is this field being used, a node?
     $entity_type = $items->getEntity()->getEntityTypeId();
     $bundle = $items->getEntity()->bundle();
+    $bundle_label = $items->getEntity()->type->entity->label();
     // So does the current loaded entity, where this widget is shown
     // has an id? If it has means we are editing!
     // We can always check via $items->getEntity()->isNew()
@@ -164,6 +165,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       $entity_uuid = $items->getEntity()->uuid();
       $entity_id = $items->getEntity()->id();
     }
+    $form_state->set('strawberryfield_webform_bundle_label', $bundle_label);
 
     // We will identify this widget amongst others using its form parents
     // as sha1 seed we use something unique what will stay the same across
@@ -254,6 +256,27 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     );
 
     $savedvalue = $items[$delta]->getValue();
+    $tempstore = \Drupal::service('tempstore.private')->get('archipel');
+    $tempstoreId = $this_widget_id;
+
+    /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
+    // Which means an abandoned Metadata Sessions somewhere
+    // Someone saved 'metadata' during a form update and left for coffee
+    // WE can reuse!
+    if (($tempstore->getMetadata($tempstoreId) != NULL) && $items->getEntity()->isNew()) {
+      $json_string = $tempstore->get($tempstoreId);
+      $json = json_decode($json_string, TRUE);
+      $json_error = json_last_error();
+      if ($json_error == JSON_ERROR_NONE) {
+        $savedvalue['value'] = $json_string;
+      }
+      $element['strawberry_webform_inline_message'] = [
+          '#type' => 'item',
+          '#title' => $this
+            ->t('Resuming metadata session:'),
+          '#markup' =>  $this->t('We found and loaded a previous unfinished metadata session for you.')
+      ];
+    }
 
     // Autofill from a previus submision if current value is empty
     $webform_autofill = empty($savedvalue['value']) || $items->getEntity()->isNew();
@@ -278,8 +301,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       $data['data'] = $data_defaults + json_decode($stored_value,true);
     }
 
-
-
     // @see \Drupal\webform_strawberryfield\Element\WebformCustom element.
     // @TODO expose #override options in the widget config.
     // @see \Drupal\webform\Entity\Webform::getDefaultSettings for all settings
@@ -289,25 +310,60 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // IDEA: keep a draft version around in another temp storage
     // reload if empty, clean if correctly submitted
 
+    // @TODO make this a setting
+    // If the node is new show the inline form
+    // But if the Node exists, SBF is there, show the on-click widget
+    if ($items->getEntity()->isNew()) {
 
-    $element['strawberry_webform_inline']  = [
-      '#type' => 'webform_inline_fieldwidget',
-      '#webform' => $my_webform_machinename,
-      '#default_data' => $data['data'],
-      '#override' =>  [
-        'form_submit_once' => FALSE,
-        'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
-        'confirmation_back' => TRUE,
-        'results_disabled' => TRUE,
-        'confirmation_exclude_token' => TRUE,
-        'wizard_progress_link' => TRUE,
-        'submission_user_duplicate' => TRUE,
-        'submission_log' => FALSE,
-        'confirmation_message' => $this->t('Thanks, you are all set! Please Save the content to persist the changes.'),
-      ],
-    ];
+      $element['strawberry_webform_inline'] = [
+        '#type' => 'webform_inline_fieldwidget',
+        '#webform' => $my_webform_machinename,
+        '#default_data' => $data['data'],
+        '#override' => [
+          'form_submit_once' => FALSE,
+          'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
+          'confirmation_back' => TRUE,
+          'results_disabled' => TRUE,
+          'confirmation_exclude_token' => TRUE,
+          'wizard_progress_link' => TRUE,
+          'submission_user_duplicate' => TRUE,
+          'submission_log' => FALSE,
+          'confirmation_message' => $this->t(
+            'Thanks, you are all set! Please Save the content to persist the changes.'
+          ),
+        ],
+      ];
+      $element['strawberry_webform_inline']['#parents'] = $parents;
+    }
+    else {
 
-    $element['strawberry_webform_inline']['#parents'] = $parents;
+      // Webform controller wrapper URL
+      $this_field_name = $this->fieldDefinition->getName();
+
+      $webform_controller_url= Url::fromRoute('webform_strawberryfield.modal_webform',
+        [
+          'webform' =>  $my_webform_machinename,
+          'source_entity_types' => "$entity_type:$bundle",
+          'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+        ]
+      );
+
+      $element['strawberry_webform_open_modal']  = [
+        '#type' => 'link',
+        '#title' => $this->t('Edit @a', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+        '#url' => $webform_controller_url,
+        '#attributes' => [
+          'class' => [
+            'use-ajax',
+            'button',
+            'btn-primary',
+            'btn'
+          ],
+        ],
+      ];
+
+    }
+
 
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
@@ -370,16 +426,29 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
 
   public function validateWebform($element, FormStateInterface $form_state) {
     // Validate
-    // We have two states really:
-    // If old/loaded value is not empty then
+
     $tempstoreId = $form_state->get('strawberryfield_webform_widget_id');
     /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
 
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
-    if ($tempstore->getMetadata($tempstoreId) == NULL) {
-        // Means its empty. This can be Ok if something else than "save"
-        // Is triggering the Ajax Submit action like the "Display Switch"
-        // @TODO investigate some #limit_validation_error options to avoid that
+    if ($tempstore->getMetadata($tempstoreId) == NULL ) {
+      // Means its empty. This can be Ok if something else than "save"
+      // Is triggering the Ajax Submit action like the "Display Switch"
+      // Or we are not enforcing (required) really any values
+      if ($form_state->get('strawberryfield_webform_isnew')) {
+        // But if this a new Object and the tempstore is empty means
+        // No filling, no doing anything has happened
+        // And that is bad. So mark an error
+        $form_state->setError(
+          $element,
+          $this->t(
+            "Please complete all steps. You can not Save this @bundle_label without completing the required Form.",
+            [
+              '@bundle_label' => $form_state->get('strawberryfield_webform_bundle_label')
+            ]
+          )
+        );
+      }
         return;
     }
 
@@ -388,7 +457,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $json_error = json_last_error();
     if ($json_error == JSON_ERROR_NONE) {
       $form_state->setValueForElement($element['strawberry_webform_widget']['json'], $json_string);
-      // Let tempstore entry expire, don't remove manually.
+      // Let tempstore entry expire or be removed by \Drupal\webform_strawberryfield\EventSubscriber\WebformStrawberryfieldDeleteTmpStorage
       return;
     }
     else {

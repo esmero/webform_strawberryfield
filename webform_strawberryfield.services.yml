@@ -1,0 +1,6 @@
+services:
+  webform_strawberryfield.deletetmpstorage_subscriber:
+    class: Drupal\webform_strawberryfield\EventSubscriber\WebformStrawberryfieldDeleteTmpStorage
+    tags:
+      - {name: event_subscriber}
+    arguments: ['@string_translation', '@messenger', '@logger.factory', '@tempstore.private']
