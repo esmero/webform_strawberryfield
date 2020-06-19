@@ -8,11 +8,12 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\WebformElement;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
 
 /**
- * Provides an 'LoC Subject Heading' element.
+ * Provides an 'Wikidata Items' element.
  *
  * @WebformElement(
  *   id = "webform_metadata_wikidata",
@@ -56,5 +57,36 @@ class WebformWikiData extends WebformCompositeBase {
     }
     return $lines;
   }
+
+  /**
+   * @param array $element
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *
+   * @return array
+   */
+  public static function hiddenElementAfterBuild(
+    array $element,
+    FormStateInterface $form_state
+  ) {
+    // We override this method only to convert non accsible elements
+    // Into hidden ones, in case Multiples are being show as tables
+    // Because initialization in that case happens does not happen in
+    // \Drupal\webform_strawberryfield\Element\WebformWikiData::processWebformComposite
+
+    $element = parent::hiddenElementAfterBuild(
+      $element,
+      $form_state
+    );
+    if (isset($element['#element'])) {
+      foreach ($element['#element'] as $subelement_key => &$subelement) {
+        if (isset($subelement['#access']) && !$subelement['#access']) {
+          $subelement['#type'] = 'hidden';
+          $subelement['#access'] = TRUE;
+        }
+      }
+    }
+    return $element;
+  }
+
 
 }
