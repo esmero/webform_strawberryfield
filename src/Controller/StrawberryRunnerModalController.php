@@ -162,14 +162,27 @@ class StrawberryRunnerModalController extends ControllerBase
         // See workaround at \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::preprocessConfirmation
         $new_settings = [
             'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
-            'confirmation_back' => FALSE,
+            'confirmation_back' => TRUE,
             'results_disabled' => TRUE,
             'autofill' => FALSE,
-            'confirmation_message' => $this->t('Thanks, you are all set! Please Save the content to persist the changes.')
+            'ajax' => TRUE,
+            'form_submit_once' => FALSE,
+            'confirmation_exclude_token' => TRUE,
+            'wizard_progress_link' => TRUE,
+            'submission_user_duplicate' => TRUE,
+            'confirmation_message' => $this->t(
+            'Thanks, you are all set! Please Save the content to persist the changes.')
         ];
 
-        // @todo make autofill v/s none a user setting.
 
+        // @todo make autofill v/s none a user setting.
+        // Override in a way that the handler can actually act on
+        // @See https://www.drupal.org/project/webform/issues/3088386
+        // and where we do this
+        // \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::overrideSettings
+        $data['strawberryfield:override'] = $new_settings;
+
+        // This really does not work on 5.x but could eventually on 6.x
         $webform->setSettingsOverride($new_settings);
 
         $lawebforma = $webform->getSubmissionForm($data);
