@@ -8,7 +8,7 @@
     'use strict';
 
     /**
-     * Attaches our custom show/hide node actions button
+     * Attaches our custom camera roll enabler for IOS and Android devices
      *
      * @type {Drupal~behavior}
      *
