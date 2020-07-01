@@ -17,8 +17,8 @@ use Drupal\Core\Form\FormStateInterface;
  *
  * @WebformElement(
  *   id = "webform_metadata_loc",
- *   label = @Translation("LoC heading"),
- *   description = @Translation("Provides a form element to reconciliate against LoC Headings."),
+ *   label = @Translation("LoC Linked Open Data"),
+ *   description = @Translation("Provides a form element to reconciliate against LoC Headings and similar LoD Sources."),
  *   category = @Translation("Composite elements"),
  *   multiline = TRUE,
  *   composite = TRUE,
@@ -32,7 +32,7 @@ class WebformLoC extends WebformCompositeBase {
     $properties = [
         'vocab' => 'subjects',
         'rdftype' => 'FullNameElement',
-      ] + $this->getDefaultBaseProperties();
+      ] + parent::getDefaultProperties();
     return $properties;
   }
 
