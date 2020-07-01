@@ -94,11 +94,13 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    *
    * @param \Symfony\Component\HttpFoundation\Request $request
    * @param $auth_type
+   * @param $vocab
+   * @param $rdftype
    * @param $count
    *
    * @return \Symfony\Component\HttpFoundation\JsonResponse
    */
-  public function handleAutocomplete(Request $request, $auth_type, $count) {
+  public function handleAutocomplete(Request $request, $auth_type, $vocab = 'subjects', $rdftype = NULL, $count) {
     $results = [];
     //@TODO pass count to the actual fetchers
     //@TODO maybe refactor into plugins so others can write any other reconciliators
@@ -106,7 +108,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     // Get the typed string from the URL, if it exists.
     if ($input = $request->query->get('q')) {
       switch($auth_type) {
-        case 'loc':  $results = $this->loc($input);
+        case 'loc':  $results = $this->loc($input, $vocab, $rdftype);
         break;
         case 'wikidata': $results = $this->wikidata($input);
         break;
@@ -122,12 +124,57 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
   /**
    * @param $input
+   *    The query
+   * @param $vocab
+   *   The 'suggest' enabled endpoint at LoC
    *
    * @return array
    */
-  protected function loc($input){
+  protected function loc($input, $vocab, $rdftype){
+    //@TODO make the following whitelist a constant since we use it in
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
+    if (!in_array($vocab, [
+      'subjects',
+      'names',
+      'genreForms',
+      'graphicMaterials',
+      'geographicAreas',
+      'rdftype',
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@vocab for LoC autocomplete is not in in our whitelist.',
+          [
+            '@vocab' => $vocab,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Vocabulary {$vocab} in LoC Query"
+      ];
+      return $results;
+    }
+    // So happens that some are Vocabularies and some Authorities
+    // So So we need to subclassify
+    $endpoint = [
+      'subjects' => 'authorities',
+      'names' => 'authorities',
+      'genreForms' => 'authorities',
+      'graphicMaterials'  => 'vocabulary',
+      'geographicAreas' => 'vocabulary',
+      'rdftype' => '',
+    ];
+    $path = $endpoint[$vocab];
+
     $input = urlencode($input);
-    $urlindex =  '/authorities/subjects/suggest/?q=' . $input;
+
+    if ($vocab == 'rdftype')  {
+      $urlindex =  "/suggest/?q=" . $input . "&rdftype=".$rdftype;
+    } else {
+      $urlindex =  "/{$path}/{$vocab}/suggest/?q=" . $input;
+    }
+
     $baseurl = 'https://id.loc.gov';
     $remoteUrl = $baseurl.$urlindex;
     $options['headers']=['Accept' => 'application/json'];
@@ -150,12 +197,12 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       else {
           $results[] = [
             'value' => NULL,
-            'label' => 'Sorry no Match from LoC Subject Headings'
+            'label' => "Sorry no match from LoC {$vocab} {$path}"
           ];
         }
       return  $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
@@ -354,7 +401,7 @@ SPARQL;
       return [];
     }
     if (!UrlHelper::isValid($remoteUrl, $absolute = TRUE)) {
-      $this->messenger->addError(
+      $this->messenger()->addError(
         $this->t('We can not fetch Data from @$remoteUrl, check your URL',
           ['@$remoteUrl' =>  $remoteUrl]
         )
@@ -368,7 +415,7 @@ SPARQL;
     }
     catch(ClientException $exception) {
       $responseMessage = $exception->getMessage();
-      $this->messenger->addError(
+      $this->messenger()->addError(
         $this->t('We tried to contact @url but we could not. <br> The WEB says: @response. <br> Check that URL!',
           [
             '@url' => $remoteUrl,
