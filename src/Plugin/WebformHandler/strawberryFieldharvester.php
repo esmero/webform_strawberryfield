@@ -277,17 +277,17 @@ class strawberryFieldharvester extends WebformHandlerBase {
     // @see https://www.drupal.org/project/webform/issues/3067958
     if (isset($entity_mapping_structure['entity:node'])) {
       //@TODO change this stub. Get every element that extends Drupal\webform\Plugin\WebformElementEntityReferenceInterface()
-      $entity_mapping_structure['entity:node'] = array_unique(
-        $entity_mapping_structure['entity:node'],
+      $entity_mapping_structure['entity:node'] = array_values(
+        array_unique($entity_mapping_structure['entity:node'],
         SORT_STRING
-      );
+      ));
     }
 
     if (isset($entity_mapping_structure['entity:file'])) {
-      $entity_mapping_structure['entity:file'] = array_unique(
-        $entity_mapping_structure['entity:file'],
+      $entity_mapping_structure['entity:file'] = array_values(
+        array_unique($entity_mapping_structure['entity:file'],
         SORT_STRING
-      );
+      ));
     }
     // Distribute all processed AS values for each field into its final JSON
     // Structure, e.g as:image, as:application, as:documents, etc.

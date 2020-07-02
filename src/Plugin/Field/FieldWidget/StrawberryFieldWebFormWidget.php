@@ -340,16 +340,14 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
   }
 
   public function validateWebform($element, FormStateInterface $form_state) {
-    // Validate
-    // We have two states really:
-    // If old/loaded value is not empty then
+
     $tempstoreId = $form_state->get('strawberryfield_webform_widget_id');
     /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
     if ($tempstore->getMetadata($tempstoreId) == NULL) {
       // Means its empty. This can be Ok if something else than "save"
       // Is triggering the Ajax Submit action like the "Display Switch"
-      // @TODO investigate some #limit_validation_error options to avoid that
+      // Or we are not enforcing (required) really any values
       return;
     }
 
