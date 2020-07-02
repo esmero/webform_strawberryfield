@@ -11,6 +11,7 @@ namespace Drupal\webform_strawberryfield\Plugin\WebformElement;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
 
 /**
  * Provides an 'LoC Heading' element.
@@ -29,26 +30,54 @@ class WebformLoC extends WebformCompositeBase {
 
 
   public function getDefaultProperties() {
-    $properties = [
+
+    $properties = parent::getDefaultProperties() + [
         'vocab' => 'subjects',
         'rdftype' => 'FullNameElement',
       ] + parent::getDefaultProperties();
     return $properties;
+
   }
 
   public function prepare(
     array &$element,
     WebformSubmissionInterface $webform_submission = NULL
   ) {
-    parent::prepare(
-      $element,
-      $webform_submission
-    );
+
     // @TODO explore this method to act on submitted data v/s element behavior
-    // e.g $webform_submission->getData());
-    // $vocab = $this->getElementProperty($element, 'vocab');
+
+    $vocab = $this->getElementProperty($element, 'vocab');
+    $rdftype = $this->getElementProperty($element, 'rdftype');
 
   }
+
+  /**
+   * Set multiple element wrapper.
+   *
+   * @param array $element
+   *   An element.
+   */
+  protected function prepareMultipleWrapper(array &$element) {
+
+    parent::prepareMultipleWrapper($element);
+    // Finally!
+    // This is the last chance we have to affect the render array
+    // This is where the original element type is also
+    // swapped by webform_multiple
+    // breaking all our #process callbacks.
+    $vocab = 'subjects';
+    $rdftype = 'thing';
+    if (isset($element['#vocab'])) {
+      $vocab = $element['#vocab'];
+    }
+    if (($vocab == 'rdftype') && isset($element['#rdftype'])) {
+      $rdftype = trim($element['#rdftype']);
+    }
+    $element['#element']['label']["#autocomplete_route_parameters"] =
+      ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
+
+  }
+
 
   /**
    * {@inheritdoc}

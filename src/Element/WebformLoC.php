@@ -17,14 +17,11 @@ class WebformLoC extends WebformCompositeBase {
    * {@inheritdoc}
    */
   public function getInfo() {
-    //@TODO add an extra option to define auth_type.
-    //@TODO expose as an select option inside \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
-    $info = parent::getInfo();
-    // Always defaults to subjects
-    $info = $info + [
-      '#vocab' => 'subjects',
-      '#rdftype' => 'FullNameElement',
-    ];
+
+    $info =  parent::getInfo() + [
+      '#vocab' => '',
+      '#rdftype' => ''
+        ];
     return $info;
   }
 
@@ -32,21 +29,23 @@ class WebformLoC extends WebformCompositeBase {
    * {@inheritdoc}
    */
   public static function getCompositeElements(array $element) {
+
     $elements = [];
     $vocab = 'subjects';
     $rdftype = 'thing';
-  if (isset($element['#vocab'])) {
-    $vocab = $element['#vocab'];
-  }
-  if (($vocab == 'rdftype') && isset($element['#rdftype'])) {
-    $rdftype = trim($element['#rdftype']);
-  }
+    if (isset($element['#vocab'])) {
+      $vocab = $element['#vocab'];
+    }
+    if (($vocab == 'rdftype') && isset($element['#rdftype'])) {
+      $rdftype = trim($element['#rdftype']);
+    }
+
     $class = '\Drupal\webform_strawberryfield\Element\WebformLoC';
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('Label'),
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
-      '#autocomplete_route_parameters' => array('auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10),
+      '#autocomplete_route_parameters' => ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10],
       '#attributes' => [
         'data-source-strawberry-autocomplete-key' => 'label',
         'data-target-strawberry-autocomplete-key' => 'uri'
@@ -62,18 +61,32 @@ class WebformLoC extends WebformCompositeBase {
     return $elements;
   }
 
+
+
   /**
    * {@inheritdoc}
    */
   public static function processWebformComposite(&$element, FormStateInterface $form_state, &$complete_form) {
+    // @Disclaimer: This function is the worst and deceiving. Keeping it here
+    // So i never make this error again. Because of
+    // \Drupal\webform\Plugin\WebformElement\WebformCompositeBase::prepareMultipleWrapper
+    // Basically, in case of having multiple elements :: processWebformComposite
+    // is *never* called because it actually converts the 'WebformComposite' element into a
+    // \Drupal\webform\Element\WebformMultiple calling ::processWebformMultiple element
+    // So basically whatever i do here gets skipped if multiple elements are allowed.
     $element = parent::processWebformComposite($element, $form_state, $complete_form);
-
-    //dpm('the element');
-    //dpm($element);
-
+    $vocab = 'subjects';
+    $rdftype = 'thing';
+    if (isset($element['#vocab'])) {
+      $vocab = $element['#vocab'];
+    }
+    if (($vocab == 'rdftype') && isset($element['#rdftype'])) {
+      $rdftype = trim($element['#rdftype']);
+    }
+    $element['label']["#autocomplete_route_parameters"] =
+      ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
     return $element;
   }
-
 
   /**
    * @param array $element
@@ -92,5 +105,6 @@ class WebformLoC extends WebformCompositeBase {
     $element['#attributes']['data-strawberry-autocomplete'] = 'LoC';
     return $element;
   }
+
 
 }
