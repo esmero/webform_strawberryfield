@@ -323,7 +323,14 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
     $format = $variables['format'];
 
     $uri = $file->getFileUri();
+    $filename = $file->getFilename();
+    $fileextension = pathinfo(
+      $filename,
+      PATHINFO_EXTENSION
+    );
+
     $url = Url::fromUri(file_create_url($uri));
+
     if (!$file->isTemporary()) {
 
       $iiifserversettings = \Drupal::config(
@@ -380,10 +387,7 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
 
       $route_parameters = [
         'uuid' => $file->uuid(),
-        'format' => 'default.' . pathinfo(
-            $file->getFilename(),
-            PATHINFO_EXTENSION
-          ),
+        'format' => 'default.' . $fileextension,
       ];
       $publicurl = Url::fromRoute(
         'format_strawberryfield.tempiiifbinary',
@@ -403,7 +407,7 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
         $cache_key = md5($uri);
         $templocation = \Drupal::service('file_system')->copy(
           $uri,
-          'temporary://sbr_' . $cache_key . '_' . basename($uri),
+          'temporary://sbr_' . $cache_key . '.' . $fileextension,
           FileSystemInterface::EXISTS_REPLACE
         );
         $templocation = \Drupal::service('file_system')->realpath(
@@ -417,18 +421,14 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
       }
       if ($templocation) {
         $result = exec(
-          'exiftool -json -q -a -gps:all -Common "-gps*" -xmp:all  -ImageWidth -ImageHeight -Canon -Nikon-AllDates -pdf:all -ee -MIMEType ' . escapeshellcmd($templocation),
+          'exiftool -json -q -a -gps:all -Common "-gps*" -xmp:all  -ImageWidth -ImageHeight -Canon -Nikon-AllDates -pdf:all -ee -MIMEType ' . escapeshellarg(
+            $templocation
+          ),
           $output,
           $status
         );
-        if ($status != 0) {
-          // This message is annoying. Appears over and over.
-          /*\Drupal::service('messenger')
-            ->addMessage(
-              t('Ups. We could not get EXIF from your file. Sorry.')
-            );*/
-        }
-        else {
+        if ($status == 0) {
+
           $more_str = implode('', $output);
           $json = json_decode($more_str, TRUE);
           $json_error = json_last_error();
@@ -460,9 +460,8 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
       }
     }
 
-    $extension = pathinfo($uri, PATHINFO_EXTENSION);
     $is_image = in_array(
-      $extension,
+      $fileextension,
       ['gif', 'png', 'jpg', 'jpeg', 'jp2', 'tiff']
     );
 
@@ -491,8 +490,8 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
       '#uri' => $url,
       '#attributes' => [
         'class' => ['webform-strawberryfield-image-file'],
-        'alt' => $file->getFilename(),
-        'title' => $file->getFilename(),
+        'alt' => $filename,
+        'title' => $filename,
         'style' => "max-width:{$max_width}px;height:auto",
       ],
     ];
@@ -531,6 +530,5 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
           break;
       }
     }
-
   }
 }
