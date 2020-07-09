@@ -339,15 +339,17 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
 
       // Webform controller wrapper URL
       $this_field_name = $this->fieldDefinition->getName();
+      //@see \Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController
+      // We need to assume nothing of this will ever work without AJAX/JS.
 
       $webform_controller_url= Url::fromRoute('webform_strawberryfield.modal_webform',
         [
           'webform' =>  $my_webform_machinename,
           'source_entity_types' => "$entity_type:$bundle",
           'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+          'modal' => FALSE
         ]
       );
-
       $element['strawberry_webform_open_modal']  = [
         '#type' => 'link',
         '#title' => $this->t('Edit @a', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
@@ -361,7 +363,26 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           ],
         ],
       ];
-
+      $webform_controller_url_close= Url::fromRoute('webform_strawberryfield.close_modal_webform',
+        [
+          'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+          'modal' => FALSE,
+        ]
+      );
+      $element['strawberry_webform_close_modal'] = [
+        '#type' => 'link',
+        '#title' => $this->t('Cancel @a editing', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+        '#url' => $webform_controller_url_close,
+        '#attributes' => [
+          'class' => [
+            'use-ajax',
+            'button',
+            'btn-warning',
+            'btn',
+            'js-hide'
+          ],
+        ],
+      ];
     }
 
 
@@ -524,6 +545,5 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     return $activitystream->getAsBody()?:[];
 
   }
-
 
 }
