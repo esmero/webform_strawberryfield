@@ -26,6 +26,7 @@
                     Entity Form.
                     */
                     $('.path-node .node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').show();
+                    $('.path-node .node-form div[data-drupal-selector="edit-footer"]').not('.webform-actions').show();
                     $('.webform-confirmation').closest('[data-strawberryfield-selector="strawberry-webform-widget"]').each(function() {
                         var $id = $(this).attr('id') + '-strawberry-webform-close-modal';
                         $('#' + $id).toggleClass('js-hide');
@@ -34,6 +35,7 @@
 
                } else if ($('div.field--widget-strawberryfield-webform-inline-widget').length) {
                    $('.path-node .node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').hide();
+                   $('.path-node .node-form div[data-drupal-selector="edit-footer"]').not('.webform-actions').hide();
                }
                var $moderationstate = $('select[data-drupal-selector="edit-moderation-state-0-state"]', context).once('show-hide-actions');
                if ($moderationstate.length) {
