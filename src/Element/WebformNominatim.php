@@ -317,6 +317,14 @@ class WebformNominatim extends WebformLocationBase {
         );
       }
     }
+    // Reset current selection, if any. That way we can deselect wrongly made options
+    // By researching.
+    $form_state->set($my_geosjonkey.'-table-option', NULL);
+    $userinput = $form_state->getUserInput();
+    // Only way to get that tableselect form to rebuild completely
+    unset($userinput[$top_element['#name']]['feature']['table']);
+    $form_state->setUserInput($userinput);
+
     // Rebuild the form.
     $form_state->setRebuild(TRUE);
   }

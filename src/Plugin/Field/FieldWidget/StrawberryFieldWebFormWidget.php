@@ -324,7 +324,8 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       '#id' => 'webform_output_' . $this_widget_id,
       '#default_value' => $current_value['creation_method'],
     ];
-
+    // Because the actual form attaches via AJAX the library/form alter never triggers my friends.
+    $element['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.nodeactions.toggle';
     return $element;
   }
 
