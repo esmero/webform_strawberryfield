@@ -168,7 +168,6 @@ class WebformNominatim extends WebformLocationBase {
             'category' => $feature->value->properties->category,
           ];
         }
-        dpm($form_state->get($my_geosjonkey.'-table-option'));
         $element['feature']['table'] = [
           '#title' => t('OpenStreet Map Nominatim Best Matches'),
           '#type' => 'tableselect',
