@@ -33,7 +33,11 @@
                     })
 
 
-               } else if ($('div.field--widget-strawberryfield-webform-inline-widget').length) {
+               } else if (
+                    $('div.field--widget-strawberryfield-webform-inline-widget').length ||
+                    $('div.field--widget-strawberryfield-webform-widget').length
+                   )
+               {
                    $('.path-node .node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').hide();
                    $('.path-node .node-form div[data-drupal-selector="edit-footer"]').not('.webform-actions').hide();
                }
