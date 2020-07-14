@@ -168,6 +168,7 @@ class WebformNominatim extends WebformLocationBase {
             'category' => $feature->value->properties->category,
           ];
         }
+        dpm($form_state->get($my_geosjonkey.'-table-option'));
         $element['feature']['table'] = [
           '#title' => t('OpenStreet Map Nominatim Best Matches'),
           '#type' => 'tableselect',
@@ -320,6 +321,11 @@ class WebformNominatim extends WebformLocationBase {
     // Reset current selection, if any. That way we can deselect wrongly made options
     // By researching.
     $form_state->set($my_geosjonkey.'-table-option', NULL);
+    $userinput = $form_state->getUserInput();
+    // Only way to get that tableselect form to rebuild completely
+    unset($userinput[$top_element['#name']]['feature']['table']);
+    $form_state->setUserInput($userinput);
+
     // Rebuild the form.
     $form_state->setRebuild(TRUE);
   }
