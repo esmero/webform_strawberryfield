@@ -34,8 +34,8 @@
 
 
                } else if (
-                    $('div.field--widget-strawberryfield-webform-inline-widget').length ||
-                    $('div.field--widget-strawberryfield-webform-widget').length
+                    $('div.field--widget-strawberryfield-webform-inline-widget form.webform-submission-form').length ||
+                    $('div.field--widget-strawberryfield-webform-widget form.webform-submission-form').length
                    )
                {
                    $('.path-node .node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').hide();
