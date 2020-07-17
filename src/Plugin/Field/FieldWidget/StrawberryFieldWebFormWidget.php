@@ -125,6 +125,12 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state)
   {
+
+    // Override the title from the incoming $element.
+    if ($this->getSetting('placeholder') && !empty(trim($this->getSetting('placeholder')))) {
+      $element['#title'] = trim($this->getSetting('placeholder'));
+    }
+
     //Lets gather some basics
     // Where is this field being used, a node?
     $entity_type = $items->getEntity()->getEntityTypeId();
@@ -216,7 +222,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         $my_webform->toUrl()->setAbsolute()->toString()
       );
     } catch (EntityMalformedException $e) {
-      return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
+        return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
     }
 
     $this_field_name = $this->fieldDefinition->getName();
@@ -240,6 +246,13 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         'webform' =>  $my_webform_machinename,
         'source_entity_types' => "$entity_type:$bundle",
         'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+        'modal' => FALSE
+      ]
+    );
+    $webform_controller_url_close= Url::fromRoute('webform_strawberryfield.close_modal_webform',
+      [
+        'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+        'modal' => FALSE,
       ]
     );
 
@@ -275,6 +288,21 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       ],
     ];
 
+    $element['strawberry_webform_close_modal'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Cancel @a editing', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+      '#url' => $webform_controller_url_close,
+      '#attributes' => [
+        'class' => [
+          'use-ajax',
+          'button',
+          'btn-warning',
+          'btn',
+          'js-hide'
+        ],
+      ],
+    ];
+
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
 
@@ -296,7 +324,8 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       '#id' => 'webform_output_' . $this_widget_id,
       '#default_value' => $current_value['creation_method'],
     ];
-
+    // Because the actual form attaches via AJAX the library/form alter never triggers my friends.
+    $element['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.nodeactions.toggle';
     return $element;
   }
 
@@ -331,20 +360,17 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
     ];
 
     return $element;
-
   }
 
   public function validateWebform($element, FormStateInterface $form_state) {
-    // Validate
-    // We have two states really:
-    // If old/loaded value is not empty then
+
     $tempstoreId = $form_state->get('strawberryfield_webform_widget_id');
     /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
     if ($tempstore->getMetadata($tempstoreId) == NULL) {
       // Means its empty. This can be Ok if something else than "save"
       // Is triggering the Ajax Submit action like the "Display Switch"
-      // @TODO investigate some #limit_validation_error options to avoid that
+      // Or we are not enforcing (required) really any values
       return;
     }
 
@@ -357,9 +383,11 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       return;
     }
     else {
-      $form_state->setError($element, $this->t("Something went wrong, so sorry. Your data does not taste like strawberry and we failed validating it."));
+      $form_state->setError($element, $this->t("Something went wrong, so sorry. Your data does not taste like strawberry (JSON malformed) and we failed validating it: @json_error.",
+        [
+          '@json_error' => $json_error
+        ]));
     }
-
   }
 
 

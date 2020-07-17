@@ -12,10 +12,13 @@ webform_strawberryfield.close_modal_webform:
   requirements:
     _permission: 'access content'
 webform_strawberryfield.auth_autocomplete:
-  path: '/webform_strawberry/auth_autocomplete/{auth_type}/{count}'
+  path: '/webform_strawberry/auth_autocomplete/{auth_type}/{vocab}/{rdftype}/{count}'
   defaults:
     _controller: '\Drupal\webform_strawberryfield\Controller\AuthAutocompleteController::handleAutocomplete'
     _format: json
+    vocab: subjects
+    count: 1
+    rdftype: thing
   requirements:
     _access: 'TRUE'
 webform_strawberryfield.nominatim:

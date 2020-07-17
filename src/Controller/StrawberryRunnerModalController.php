@@ -15,6 +15,7 @@ use Drupal\Core\Ajax\CloseDialogCommand;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\Request;
+use Drupal\Component\Utility\Html;
 use Drupal\Core\Entity\ContentEntityInterface;
 
 
@@ -52,7 +53,7 @@ class StrawberryRunnerModalController extends ControllerBase
         list($source_entity_type, $bundle) = explode(':', $source_entity_types);
         //@TODO allow some type of per bundle hook?
         $state = $request->get('state');
-
+        $modal = $request->get('modal') ? $request->get('modal') : FALSE;
 
         // with $uuid the uuid of the entity that is being edited and for which
         // a widget is being openend in the form of a webform
@@ -162,14 +163,27 @@ class StrawberryRunnerModalController extends ControllerBase
         // See workaround at \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::preprocessConfirmation
         $new_settings = [
             'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
-            'confirmation_back' => FALSE,
+            'confirmation_back' => TRUE,
             'results_disabled' => TRUE,
             'autofill' => FALSE,
-            'confirmation_message' => $this->t('Thanks, you are all set! Please Save the content to persist the changes.')
+            'ajax' => TRUE,
+            'form_submit_once' => FALSE,
+            'confirmation_exclude_token' => TRUE,
+            'wizard_progress_link' => TRUE,
+            'submission_user_duplicate' => TRUE,
+            'confirmation_message' => $this->t(
+            'Thanks, you are all set! Please Save the content to persist the changes.')
         ];
 
-        // @todo make autofill v/s none a user setting.
 
+        // @todo make autofill v/s none a user setting.
+        // Override in a way that the handler can actually act on
+        // @See https://www.drupal.org/project/webform/issues/3088386
+        // and where we do this
+        // \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::overrideSettings
+        $data['strawberryfield:override'] = $new_settings;
+
+        // This really does not work on 5.x but could eventually on 6.x
         $webform->setSettingsOverride($new_settings);
 
         $lawebforma = $webform->getSubmissionForm($data);
@@ -186,24 +200,64 @@ class StrawberryRunnerModalController extends ControllerBase
 
         // Add an AJAX command to open a modal dialog with the form as the content.
         //@TODO Allow widget to pass the mode, either inline, Dialog or Append.
-        //$response->addCommand(new OpenModalDialogCommand(t('Please follow the steps.'), $lawebforma, ['width' => '90%']));
 
-        //$response->addCommand(new \Drupal\Core\Ajax\AppendCommand('#edit-field-descriptive-metadata-0', $lawebforma));
-        // @TODO pass the selector as an argument so we can have many inserts.
-        $response->addCommand(new \Drupal\Core\Ajax\HtmlCommand('#edit-field-descriptive-metadata-0', $lawebforma));
+        if ($modal) {
+          // New window.
+          $response->addCommand(new OpenModalDialogCommand(t('Please follow the steps.'), $lawebforma, ['width' => '90%']));
+        }
+        else {
 
+         // inline replacement
+          $selector = 'edit-'.Html::cleanCssIdentifier($field_name ."_". $delta);
+          // Selector us built using the field name and the delta.
+          $response->addCommand(new \Drupal\Core\Ajax\AppendCommand('#'.$selector, $lawebforma));
+          $selector2 = '[data-drupal-selector="'.$selector .'-strawberry-webform-open-modal"]';
+          $selector3 = '[data-drupal-selector="'.$selector .'-strawberry-webform-close-modal"]';
+          $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector2, 'toggleClass', ['js-hide']));
+          $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector3, 'toggleClass', ['js-hide']));
+        }
       return $response;
 
     }
 
-    public function closeModalForm(Request $request)
-    {
 
-        $response = new AjaxResponse();
-        $response->addCommand(new CloseDialogCommand());
-        return $response;
+
+  public function closeModalForm(Request $request)
+  {
+
+    $state = $request->get('state');
+    $modal = $request->get('modal') ? $request->get('modal') : FALSE;
+
+    // with $uuid the uuid of the entity that is being edited and for which
+    // a widget is being openend in the form of a webform
+    // field name the machine name of the field that contains the original data
+    // inside that source entity
+
+    list($source_uuid, $field_name, $delta, $widgetid) = explode(':', $state);
+    $response = new AjaxResponse();
+
+    if ($modal) {
+      $response->addCommand(new CloseDialogCommand());
+      return $response;
+    }
+    else {
+      // inline replacement
+      $selector = 'edit-'.Html::cleanCssIdentifier($field_name ."_". $delta);
+      // Selector us built using the field name and the delta.
+      $response->addCommand(new \Drupal\Core\Ajax\RemoveCommand('#'.$selector. ' .webform-ajax-form-wrapper'));
+      $selector2 = '[data-drupal-selector="'.$selector .'-strawberry-webform-open-modal"]';
+      $selector3 = '[data-drupal-selector="'.$selector .'-strawberry-webform-close-modal"]';
+      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector2, 'toggleClass', ['js-hide']));
+      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector3, 'toggleClass', ['js-hide']));
+      /// Shows the Save buttons back.
+      /// @TODO this should go into Drupal.behaviors.webformstrawberryHideNodeActions JS
+      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand('.path-node .node-form div[data-drupal-selector="edit-actions"]', 'show', []));
 
     }
+    return $response;
+
+
+  }
 
 
 }

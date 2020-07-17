@@ -44,7 +44,6 @@ class WebformWithOverride extends Webform {
     if (!$webform) {
       return $element;
     }
-
     if ($webform->access('submission_create')) {
       $values = [];
 
@@ -73,7 +72,8 @@ class WebformWithOverride extends Webform {
       // Where we can get rid of the internal 'form' rendering
       // Allowing DOM to set the so needed classes for the wrapper
       // So states and other WEbform AJAX libraries can work correctly.
-      // We don't want a full blown preprocess (yet).
+      // @TODO we will need a full blown preprocess since this is not being set
+      // If the form fails to validate in some step.
       $element['webform_build']['#attributes']['data-webform-inline-fieldwidget'] = 'true';
 
       // Set custom form action.
@@ -92,7 +92,6 @@ class WebformWithOverride extends Webform {
       $renderer->addCacheableDependency($element, $config);
       $renderer->addCacheableDependency($element, $webform);
     }
-
     return $element;
   }
 
