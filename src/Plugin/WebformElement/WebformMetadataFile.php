@@ -14,6 +14,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 use Drupal\file\FileInterface;
 use Drupal\strawberryfield\Tools\JsonSimpleXMLElementDecorator;
+use Drupal\strawberryfield\Tools\SimpleXMLtoArray;
 
 /**
  * Provides a 'file element that can import into the submission/ process other formats' element.
@@ -90,14 +91,13 @@ class WebformMetadataFile extends WebformManagedFileBase {
   /**
    * {@inheritdoc}
    */
-  public function postSave(array &$element, WebformSubmissionInterface $webform_submission, $update = TRUE) {
+  public function preSave(array &$element, WebformSubmissionInterface $webform_submission, $update = TRUE) {
     // Get current value and original value for this element.
 
-    parent::postSave($element, $webform_submission, $update);
+    parent::preSave($element, $webform_submission, $update);
     $key = $element['#webform_key'];
-    $data = $webform_submission->getData();
-    $data['imported_xml_data'] = ['holi' => 'buh'];
-    $webform_submission->setData($data);
+    // $data = $webform_submission->getData();
+    // $webform_submission->setData($data);
     $value = $this->getValue($element, $webform_submission, []);
     $files = $this->getFiles($element, $value, []);
     /* idea: we could remove the parsed JSON once its not needed anymore */
@@ -114,6 +114,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
    */
   protected function processXML(FileInterface $file) {
     $jsonarray = [];
+    $xmljsonarray = [];
     if (!$file) {
       return $jsonarray;
     }
@@ -150,10 +151,19 @@ class WebformMetadataFile extends WebformManagedFileBase {
       // Root key is
       $rootkey = $simplexml->getName();
       $md5 = md5_file($uri);
-      $xmltojson = new JsonSimpleXMLElementDecorator($simplexml, TRUE, TRUE, 5);
-      // Destination key
+      /*
+      Not longer using the decorator here since we want to push
+      consistently (shape) structured data, plus a few less CPU cycles
+      $xmltojson = new JsonSimpleXMLElementDecorator($simplexml, TRUE, TRUE, 50);
+
       $xmljsonstring = json_encode($xmltojson, JSON_PRETTY_PRINT);
       $xmljsonarray =  json_decode($xmljsonstring, TRUE);
+      */
+      $SimpleXMLtoArray = new SimpleXMLtoArray($simplexml);
+      $xmljsonarray = $SimpleXMLtoArray->xmlToArray();
+      // We are casting everything to associative.
+      // Do we want that?
+
       $jsonarray['ap:importeddata'] = [
         'dr:uuid' => $file->uuid(),
         'checksum' => $md5,
