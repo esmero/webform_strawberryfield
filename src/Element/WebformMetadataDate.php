@@ -35,7 +35,6 @@ class WebformMetadataDate extends FormElement {
         [$class, 'preRenderWebformCompositeFormElement'],
       ],
       '#required' => FALSE,
-      '#initialize' => FALSE,
     ];
   }
 
