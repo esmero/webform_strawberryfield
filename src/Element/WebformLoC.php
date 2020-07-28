@@ -74,6 +74,8 @@ class WebformLoC extends WebformCompositeBase {
     // is *never* called because it actually converts the 'WebformComposite' element into a
     // \Drupal\webform\Element\WebformMultiple calling ::processWebformMultiple element
     // So basically whatever i do here gets skipped if multiple elements are allowed.
+    // Solution is acting here instead:
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC::prepareMultipleWrapper
     $element = parent::processWebformComposite($element, $form_state, $complete_form);
     $vocab = 'subjects';
     $rdftype = 'thing';
