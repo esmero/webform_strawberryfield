@@ -222,7 +222,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         $my_webform->toUrl()->setAbsolute()->toString()
       );
     } catch (EntityMalformedException $e) {
-      return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
+        return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
     }
 
     $this_field_name = $this->fieldDefinition->getName();
@@ -246,6 +246,13 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         'webform' =>  $my_webform_machinename,
         'source_entity_types' => "$entity_type:$bundle",
         'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+        'modal' => FALSE
+      ]
+    );
+    $webform_controller_url_close= Url::fromRoute('webform_strawberryfield.close_modal_webform',
+      [
+        'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+        'modal' => FALSE,
       ]
     );
 
@@ -281,6 +288,21 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       ],
     ];
 
+    $element['strawberry_webform_close_modal'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Cancel @a editing', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+      '#url' => $webform_controller_url_close,
+      '#attributes' => [
+        'class' => [
+          'use-ajax',
+          'button',
+          'btn-warning',
+          'btn',
+          'js-hide'
+        ],
+      ],
+    ];
+
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
 
@@ -302,7 +324,8 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       '#id' => 'webform_output_' . $this_widget_id,
       '#default_value' => $current_value['creation_method'],
     ];
-
+    // Because the actual form attaches via AJAX the library/form alter never triggers my friends.
+    $element['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.nodeactions.toggle';
     return $element;
   }
 
