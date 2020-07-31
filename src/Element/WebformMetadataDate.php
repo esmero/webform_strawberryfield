@@ -23,37 +23,37 @@ class WebformMetadataDate extends FormElement {
    * {@inheritdoc}
    */
   public function getInfo() {
+
     $class = get_class($this);
-    return [
-      '#input' => TRUE,
-      '#size' => 60,
-      '#process' => [
-        [$class, 'processAjaxForm'],
-        [$class, 'processWebformMetadataDate'],
-      ],
-      '#pre_render' => [
+    $info['#input'] = TRUE;
+    $info['#size'] = 60;
+    $info['#pre_render'] = [
         [$class, 'preRenderWebformCompositeFormElement'],
-      ],
-      '#required' => FALSE,
-    ];
+      ];
+     $info['#required'] = FALSE;
+      // Add validate callback.
+    $info['#element_validate'] = [[$class, 'validateMetadataDates']];
+    $info['#process'] = [[$class, 'processWebformMetadataDate']];
+    return $info;
   }
 
   /**
    * {@inheritdoc}
    */
   public static function valueCallback(&$element, $input, FormStateInterface $form_state) {
-    if ($input === FALSE) {
-      if (!isset($element['#default_value'])) {
-        $element['#default_value'] = '';
+    if ($input !== FALSE) {
+      if (!isset($input) && !empty($element['#default_value'])) {
+        $element['#needs_validation'] = TRUE;
       }
-      return [
-        'date_from' => $element['#default_value'],
-        'date_to' => $element['#default_value'],
-        'date_free' => $element['#default_value'],
-      ];
+      return $input;
     }
     else {
-      return $input;
+
+     $value = isset($element['#default_value']) ? $element['#default_value'] : NULL;
+      if (!isset($value)) {
+        $element['#has_garbage_value'] = TRUE;
+      }
+      return $value;
     }
   }
 
@@ -61,12 +61,6 @@ class WebformMetadataDate extends FormElement {
    * Expand an email confirm field into two HTML5 email elements.
    */
   public static function processWebformMetadataDate(&$element, FormStateInterface $form_state, &$complete_form) {
-
-    if (isset($element['#initialize'])) {
-      return $element;
-    }
-    $element['#initialize'] = TRUE;
-
 
     $element['#tree'] = TRUE;
     $name_prefix = $element['#name'];
@@ -108,11 +102,57 @@ class WebformMetadataDate extends FormElement {
       '#help_display',
     ];
 
+    $date_from_value = NULL;
+    $date_to_value = NULL;
+    $date_free_value = NULL;
+
+    // Let's parse the value passed and let's see which date type it conforms
+    $type = 'date_free';
+    if (isset($element['#default_value']) && !empty($element['#default_value'])) {
+      if (is_array($element['#default_value'])) {
+        // This is the default. When stored value is present
+        $type = isset($element['#default_value']['date_type']) ? $element['#default_value']['date_type'] : $type;
+        $date_from_value = isset($element['#default_value']['date_from']) ? $element['#default_value']['date_from'] : $date_from_value;
+        $date_to_value = isset($element['#default_value']['date_to']) ? $element['#default_value']['date_to'] : $date_to_value;
+        $date_free_value = isset($element['#default_value']['date_free']) ? $element['#default_value']['date_free'] : $date_free_value;
+      }
+      else {
+        // Means we are reading a string and we are parsing it depending on the format into
+        // Components
+        // Start with range
+        $range_split = explode('/', $element['#default_value']);
+        if (count($range_split) == 2) {
+          $type = 'date_range';
+          foreach ($range_split as $key => $possible_date_string) {
+            if ($key == 0) {
+              $date_from_value = $possible_date_string;
+            }
+            else {
+              $date_to_value = $possible_date_string;
+            }
+            if (strtotime($possible_date_string) === FALSE) {
+              $type = 'date_free';
+            }
+          }
+        }
+        if ($type == 'date_free') {
+          if (strtotime($element['#default_value']) !== FALSE) {
+            $type = 'date_point';
+            $date_from_value = $element['#default_value'];
+            $date_to_value = NULL;
+          }
+          else {
+            $date_free_value = $element['#default_value'];
+          }
+        }
+      }
+    }
+
     // The date formatting/options
     $element['date_type'] = [
       '#type' => 'radios',
       '#title' => 'Date Type',
-      '#default_value' => 'date_point',
+      '#default_value' => $type,
       '#options' => [
         'date_point' => t('Valid ISO 8601 Date'),
         'date_range' => t('Valid ISO 8601 Range'),
@@ -122,14 +162,14 @@ class WebformMetadataDate extends FormElement {
 
     $element['date_from'] = $element_shared_properties + array_intersect_key($element, array_combine($date_from_properties, $date_from_properties));
     $element['date_from']['#attributes']['class'][] = 'webform-date-from';
-    $element['date_from']['#value'] = empty($element['#value']) ? NULL : $element['#value']['date_from'];
+    $element['date_from']['#default_value'] = $date_from_value;
     $element['date_from']['#error_no_message'] = TRUE;
 
     $element['date_to'] = $element_shared_properties;
     $element['date_to']['#title'] = t('To Date');
 
     $element['date_to']['#attributes']['class'][] = 'webform-date-to';
-    $element['date_to']['#value'] = empty($element['#value']) ? NULL : $element['#value']['date_to'];
+    $element['date_to']['#default_value'] = $date_to_value;
     $element['date_to']['#error_no_message'] = TRUE;
 
 
@@ -177,12 +217,11 @@ class WebformMetadataDate extends FormElement {
 
     $element['date_free']['#title'] = t('Free form Date');
     $element['date_free']['#attributes']['class'][] = 'webform-date-free';
-    $element['date_free']['#value'] = empty($element['#value']) ? NULL : $element['#value']['date_free'];
+    $element['date_free']['#default_value'] = $date_free_value;
     $element['date_free']['#error_no_message'] = TRUE;
     $element['date_free']['#type'] = 'textfield';
     $element['date_free']['#webform_element'] = TRUE;
     $element['date_free']['#size'] =  isset($element['#size']) ? $element['#size'] : '60';
-    //dpm($element['date_free']);
 
     $element['date_to']['#states'] = [
       'invisible' => [
@@ -224,9 +263,6 @@ class WebformMetadataDate extends FormElement {
       $element['#help_display']
     );
 
-    // Add validate callback.
-    $element += ['#element_validate' => []];
-    array_unshift($element['#element_validate'], [get_called_class(), 'validateMetadataDates']);
 
     // Add flexbox support.
     if (!empty($element['#flexbox'])) {
@@ -265,89 +301,23 @@ class WebformMetadataDate extends FormElement {
     else {
       $metadatadate_element =& $element;
     }
+    if (empty($element['#value']) && isset($element['#webform_multiple'])) {
 
-    $date_from = trim($metadatadate_element['date_from']['#value']);
-    $date_to = trim($metadatadate_element['date_to']['#value']);
-    $date_free = trim($metadatadate_element['date_free']['#value']);
-    $choosen_option = $metadatadate_element['date_type']['#value'];
-
-    $value_to_save = $date_from;
-    $has_access = (!isset($element['#access']) || $element['#access'] === TRUE);
-    if ($has_access) {
-      // Depending on the choosen option our validation will vary
-      // Start with point data
-
-      if ($choosen_option == 'date_point') {
-        ///$form_state->setError($element, t('Date point'));
-        // Date field must be converted from a two-element array into a single
-        // string regardless of validation results.
-
-        $element['#value'] = $value_to_save;
-        $form_state->setValueForElement($element, $value_to_save);
-      }
-
-      if ($choosen_option == 'date_range') {
-       // $form_state->setError($element, t('To Date needs to be same or higher than from Date'));
-        $element['#value'] = $date_from.'/'.$date_to;
-        $form_state->setValueForElement($element,  $date_from.'/'.$date_to);
-
-      }
-
-      if ($choosen_option == 'date_free') {
-        //$form_state->setError($element, t('Free date basically allows anything'));
-        $element['#value'] = $date_free;
-        $form_state->setValueForElement($element,  $date_free);
-      }
-
-      // Compare email addresses.
-      if ((!empty($date_from) || !empty($date_to)) && strcmp($date_from, $date_to)) {
-        //$form_state->setError($element, t('To Date needs to be same or higher than from Date'));
-      }
-      else {
-        // NOTE: Only date_from needs to be validated since date_to is the same value.
-        // Verify the required value.
-        if ($metadatadate_element['date_from']['#required'] && empty($date_from)) {
-          $required_error_title = (isset($metadatadate_element['date_from']['#title'])) ? $metadatadate_element['date_from']['#title'] : NULL;
-          WebformElementHelper::setRequiredError($element, $form_state, $required_error_title);
-        }
-        // Verify that the value is not longer than #maxlength.
-        if (isset($metadatadate_element['date_from']['#maxlength']) && mb_strlen($date_from) > $metadatadate_element['date_from']['#maxlength']) {
-          $t_args = [
-            '@name' => $metadatadate_element['date_from']['#title'],
-            '%max' => $metadatadate_element['date_from']['#maxlength'],
-            '%length' => mb_strlen($date_from),
-          ];
-          $form_state->setError($element, t('@name cannot be longer than %max characters but is currently %length characters long.', $t_args));
-        }
-      }
-
-      // Add email validation errors for inline form errors.
-      // @see \Drupal\Core\Render\Element\Email::validateEmail
-      $inline_errors = empty($complete_form['#disable_inline_form_errors'])
-        && \Drupal::moduleHandler()->moduleExists('inline_form_errors');
-      $mail_error = $form_state->getError($metadatadate_element['date_from']);
-      if ($inline_errors && $mail_error) {
-        $form_state->setError($element, $mail_error);
+      $value = NestedArray::getValue($form_state->getValues(), $element['#parents']);
+      $valuetoset = [
+        'date_free' => $metadatadate_element['date_free']['#value'],
+        'date_from' => $metadatadate_element['date_from']['#value'],
+        'date_to' => $metadatadate_element['date_to']['#value'],
+        'date_type' => $metadatadate_element['date_type']['#value'],
+        ];
+      // Not setting anything here yet
+      // Once validation happens we should process further.
+    } else {
+      if (!empty($element['#value'])) {
+        $value = $form_state->getValue($element['#parents'], []);
+        $element['#value'] = $value;
+        $form_state->setValueForElement($element, $value);
       }
     }
-
-    // Set #title for other validation callbacks.
-    // @see \Drupal\webform\Plugin\WebformElementBase::validateUnique
-    if (isset($metadatadate_element['date_from']['#title'])) {
-      $element['#title'] = $metadatadate_element['date_from']['#title'];
-    }
-
-    // Date field must be converted from a two-element array into a single
-    // string regardless of validation results.
-    /*$form_state->setValueForElement($metadatadate_element['date_from'], NULL);
-    $form_state->setValueForElement($metadatadate_element['date_to'], NULL);
-    $form_state->setValueForElement($metadatadate_element['date_free'], NULL);
-    $form_state->setValueForElement($metadatadate_element['date_type'], NULL);*/
-
-     //$element['#value'] = $value_to_save;
-     //$form_state->setValueForElement($element, $value_to_save);
   }
-
-
-
 }
