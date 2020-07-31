@@ -6,6 +6,7 @@ use Drupal\Core\Render\Element\FormElement;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\Utility\WebformElementHelper;
 use Drupal\webform\Element\WebformCompositeFormElementTrait;
+use Drupal\Component\Utility\NestedArray;
 
 /**
  * Provides a webform element requiring users to double-element and confirm an email address.
