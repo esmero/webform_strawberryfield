@@ -58,8 +58,7 @@ abstract class MetadataDateBase extends WebformElementBase {
 
     parent::prepare($element, $webform_submission);
 
-    // Parse #default_value date input format.
-    $this->parseInputFormat($element, '#default_value');
+    // We no longer parse the dates here because each individual subelement will do this
 
     // Set date min/max attributes.
     // This overrides extra attributes set via Datetime::processDatetime.
@@ -363,6 +362,7 @@ abstract class MetadataDateBase extends WebformElementBase {
     }
     elseif (is_array($element[$property])) {
       foreach ($element[$property] as $key => $value) {
+        dpm($value);
         $timestamp = strtotime($value);
         $element[$property][$key] = ($timestamp) ? \Drupal::service('date.formatter')->format($timestamp, 'html_' . $this->getDateType($element)) : NULL;
       }
@@ -474,7 +474,6 @@ abstract class MetadataDateBase extends WebformElementBase {
   public static function validateDate(&$element, FormStateInterface $form_state, &$complete_form) {
 
     return;
-
 
     $value = $element['#value'];
     $name = empty($element['#title']) ? $element['#parents'][0] : $element['#title'];
