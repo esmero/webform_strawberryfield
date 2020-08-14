@@ -29,15 +29,23 @@ use Drupal\Core\Render\Element;
 class WebformLoC extends WebformCompositeBase {
 
 
+  protected function defineDefaultBaseProperties() {
+    return [
+      'vocab' => 'subjects',
+      'rdftype' => 'FullName',
+    ];
+    }
   public function getDefaultProperties() {
-
     $properties = parent::getDefaultProperties() + [
         'vocab' => 'subjects',
-        'rdftype' => 'FullNameElement',
-      ] + parent::getDefaultProperties();
-    return $properties;
+        'rdftype' => 'FullName',
+      ] + parent::defineDefaultProperties()
+      + $this->defineDefaultBaseProperties();
 
+    return $properties;
   }
+
+
 
   public function prepare(
     array &$element,
@@ -45,10 +53,6 @@ class WebformLoC extends WebformCompositeBase {
   ) {
 
     // @TODO explore this method to act on submitted data v/s element behavior
-
-    $vocab = $this->getElementProperty($element, 'vocab');
-    $rdftype = $this->getElementProperty($element, 'rdftype');
-
   }
 
   /**
@@ -60,6 +64,7 @@ class WebformLoC extends WebformCompositeBase {
   protected function prepareMultipleWrapper(array &$element) {
 
     parent::prepareMultipleWrapper($element);
+
     // Finally!
     // This is the last chance we have to affect the render array
     // This is where the original element type is also
@@ -67,15 +72,16 @@ class WebformLoC extends WebformCompositeBase {
     // breaking all our #process callbacks.
     $vocab = 'subjects';
     $rdftype = 'thing';
-    if (isset($element['#vocab'])) {
-      $vocab = $element['#vocab'];
+    $vocab = $this->getElementProperty($element, 'vocab');
+    $vocab = $vocab ?:  $this->getDefaultProperty($vocab);
+    if ($vocab == 'rdftype') {
+      $rdftype = trim($this->getElementProperty($element, 'rdftype'));
     }
-    if (($vocab == 'rdftype') && isset($element['#rdftype'])) {
-      $rdftype = trim($element['#rdftype']);
-    }
-    $element['#element']['label']["#autocomplete_route_parameters"] =
-      ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
 
+    $rdftype = $rdftype ?: $this->getDefaultProperty($rdftype);
+
+    $element['#element']['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
+      ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
   }
 
 
@@ -129,14 +135,13 @@ class WebformLoC extends WebformCompositeBase {
       ],
       '#title' => $this->t("What LoC Autocomplete Source Provider to use."),
       '#description' => $this->t('See <a href="http://id.loc.gov">Linked Data Service</a>. If the link is to an Authority is http://id.loc.gov/authorities/names then the value to use there is <em>names</em>'),
-      '#default_value' => 'subjects',
     ];
     // Not sure if this has a sub authority and how that works/if suggest
     $form['composite']['rdftype'] = [
       '#type' => 'textfield',
       '#title' => $this->t("What RDF type to use as filter"),
-      '#description' => $this->t('See <a href="http://id.loc.gov/ontologies/madsrdf/v1.html">Use one of the Classes listed here</a>. Defaults to <em>FullNameElement</em>'),
-      '#default_value' => 'FullNameElement',
+      '#description' => $this->t('See <a href="http://id.loc.gov/ontologies/madsrdf/v1.html">Use one of the Classes listed here</a>. Defaults to <em>FullName</em>'),
+      '#default_value' => 'FullName',
       '#states' => [
         'visible' => [
           ':input[name="properties[vocab]"]' => ['value' => 'rdftype'],
@@ -146,6 +151,5 @@ class WebformLoC extends WebformCompositeBase {
 
     return $form;
   }
-
 
 }

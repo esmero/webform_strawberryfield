@@ -19,8 +19,8 @@ class WebformLoC extends WebformCompositeBase {
   public function getInfo() {
 
     $info =  parent::getInfo() + [
-      '#vocab' => '',
-      '#rdftype' => ''
+      '#vocab' => 'subjects',
+      '#rdftype' => 'FullName'
         ];
     return $info;
   }

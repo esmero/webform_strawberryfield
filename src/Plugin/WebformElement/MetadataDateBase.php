@@ -362,7 +362,6 @@ abstract class MetadataDateBase extends WebformElementBase {
     }
     elseif (is_array($element[$property])) {
       foreach ($element[$property] as $key => $value) {
-        dpm($value);
         $timestamp = strtotime($value);
         $element[$property][$key] = ($timestamp) ? \Drupal::service('date.formatter')->format($timestamp, 'html_' . $this->getDateType($element)) : NULL;
       }
