@@ -34,7 +34,8 @@ class WebformLoC extends WebformCompositeBase {
       'vocab' => 'subjects',
       'rdftype' => 'FullName',
     ];
-    }
+  }
+
   public function getDefaultProperties() {
     $properties = parent::getDefaultProperties() + [
         'vocab' => 'subjects',
