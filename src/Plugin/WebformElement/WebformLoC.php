@@ -81,8 +81,15 @@ class WebformLoC extends WebformCompositeBase {
 
     $rdftype = $rdftype ?: $this->getDefaultProperty($rdftype);
 
-    $element['#element']['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
-      ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
+    if (isset($element['#element']['#webform_composite_elements']['label'])) {
+      $element['#element']['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
+        [
+          'auth_type' => 'loc',
+          'vocab' => $vocab,
+          'rdftype' => $rdftype,
+          'count' => 10
+        ];
+    }
   }
 
 
