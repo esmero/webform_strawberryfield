@@ -39,7 +39,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
 
     $properties = parent::getDefaultProperties() + [
         'jsonkey' => 'imported_metadata',
-        'keepxml' => TRUE,
+        'keepfile' => TRUE,
       ] + parent::getDefaultProperties();
     return $properties;
 
@@ -57,10 +57,15 @@ class WebformMetadataFile extends WebformManagedFileBase {
     $file = $this->getFile($element, $value, []);
     $data = $webform_submission->getData();
     if ($file) {
+      if (isset($data['ap:importeddata'])) {
+        foreach ($data['ap:importeddata'] as $imported_frag) {
+
+        }
+      }
       if (!isset($data['ap:importeddata']['dr:uuid']) ||
        $data['ap:importeddata']['dr:uuid'] != $file->uuid()) {
-        $imported_xml = $this->processXML($file);
-        $data = array_merge($data, $imported_xml);
+        $imported_data = $this->processFileContent($file);
+        $data = array_merge($data, $imported_data);
         $webform_submission->setData($data);
       }
     }
@@ -78,10 +83,10 @@ class WebformMetadataFile extends WebformManagedFileBase {
       '#description' => $this->t('JSON key to be used <em>names</em>'),
       '#default_value' => 'subjects',
     ];
-    $form['keepxml'] = [
+    $form['keepfile'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Keep imported XML after persisting?'),
-      '#description' => $this->t('If the imported XML should be kept as inline data or should be purged on save.'),
+      '#description' => $this->t('If the imported File should be kept as inline data or should be purged on save.'),
       '#default_value' => 'subjects',
     ];
 
@@ -112,7 +117,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
    *
    * @return array
    */
-  protected function processXML(FileInterface $file) {
+  protected function processFileContent(FileInterface $file) {
     $jsonarray = [];
     $xmljsonarray = [];
     if (!$file) {
@@ -183,7 +188,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
    *
    * @return array An array of errors
    */
-  protected function getXmlErrors($internalErrors)
+  private function getXmlErrors($internalErrors)
   {
     $errors = [];
     foreach (libxml_get_errors() as $error) {
