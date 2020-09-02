@@ -79,9 +79,28 @@ class WebformLoC extends WebformCompositeBase {
     }
 
     $rdftype = $rdftype ?: $this->getDefaultProperty($rdftype);
-
-    $element['#element']['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
-      ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
+    // This seems to have been an old Webform module variation
+    // Keeping it here until sure its not gone for good
+    if (isset($element['#element']['#webform_composite_elements']['label'])) {
+      $element['#element']['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
+        [
+          'auth_type' => 'loc',
+          'vocab' => $vocab,
+          'rdftype' => $rdftype,
+          'count' => 10
+        ];
+    }
+    // For some reason i can not understand, when multiples are using
+    // Tables, the #webform_composite_elements -> 'label' is not used...
+    if (isset($element["#multiple__header"]) && $element["#multiple__header"] == true) {
+      $element['#element']['label']["#autocomplete_route_parameters"] =
+        [
+          'auth_type' => 'loc',
+          'vocab' => $vocab,
+          'rdftype' => $rdftype,
+          'count' => 10
+        ];
+    }
   }
 
 
