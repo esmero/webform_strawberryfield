@@ -49,23 +49,32 @@ class WebformMetadataFile extends WebformManagedFileBase {
     array &$element,
     WebformSubmissionInterface $webform_submission = NULL
   ) {
-
     // @TODO explore this method to act on submitted data v/s element behavior
-
+    // This only acts on upload
+    // But once uploaded we need a way of doing it again.
+    // Kids: this method is used by other subclasses. So always
+    // Remember it needs to stay generic handling also existing keys
     parent::prepare($element,$webform_submission );
+
     $value = $this->getValue($element, $webform_submission, []);
     $file = $this->getFile($element, $value, []);
     $data = $webform_submission->getData();
+    $needs_import = FALSE;
     if ($file) {
-      if (isset($data['ap:importeddata'])) {
-        foreach ($data['ap:importeddata'] as $imported_frag) {
-
+      $needs_import = TRUE;
+      if (isset($data['ap:importeddata'][$this->getKey($element)]['dr:uuid'])) {
+          if ($data['ap:importeddata'][$this->getKey($element)]['dr:uuid'] == $file->uuid()) {
+            $needs_import = FALSE;
+          }
         }
-      }
-      if (!isset($data['ap:importeddata']['dr:uuid']) ||
-       $data['ap:importeddata']['dr:uuid'] != $file->uuid()) {
-        $imported_data = $this->processFileContent($file);
-        $data = array_merge($data, $imported_data);
+      if ($needs_import) {
+        $imported_data['ap:importeddata'][$this->getKey($element)] = $this->processFileContent($file);
+        if (isset($data['ap:importeddata'])) {
+          $newimporteddata = array_merge($data['ap:importeddata'], $imported_data['ap:importeddata']);
+        } else {
+          $newimporteddata = $imported_data['ap:importeddata'];
+        }
+        $data['ap:importeddata'] = $newimporteddata;
         $webform_submission->setData($data);
       }
     }
@@ -89,7 +98,6 @@ class WebformMetadataFile extends WebformManagedFileBase {
       '#description' => $this->t('If the imported File should be kept as inline data or should be purged on save.'),
       '#default_value' => 'subjects',
     ];
-
     return $form;
   }
 
@@ -105,6 +113,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
     // $webform_submission->setData($data);
     $value = $this->getValue($element, $webform_submission, []);
     $files = $this->getFiles($element, $value, []);
+
     /* idea: we could remove the parsed JSON once its not needed anymore */
     // Why? Because we can always reparse it
     // Because we maybe just want to copy values into the purer simpler raw
@@ -169,12 +178,14 @@ class WebformMetadataFile extends WebformManagedFileBase {
       // We are casting everything to associative.
       // Do we want that?
 
-      $jsonarray['ap:importeddata'] = [
+      $jsonarray = [
         'dr:uuid' => $file->uuid(),
         'checksum' => $md5,
         'crypHashFunc' =>  'md5',
         'standard' => $rootkey,
+        'webform_element_type' => $this->pluginDefinition['id'],
         'content' => $xmljsonarray,
+        'format' => 'xml'
       ];
     }
 

@@ -90,12 +90,14 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
 
     if (!empty($data) && ($index >=2)) {
       $md5 = md5_file($uri);
-      $jsonarray['ap:importeddatacsv'] = [
+      $jsonarray = [
         'dr:uuid' => $file->uuid(),
         'checksum' => $md5,
         'crypHashFunc' =>  'md5',
-        'standard' => $this->pluginDefinition['id'],
+        'webform_element_type' => $this->pluginDefinition['id'],
+        'standard' => NULL,
         'content' => $data,
+        'format' => 'csv',
       ];
     }
     return $jsonarray;

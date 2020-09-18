@@ -17,7 +17,7 @@
         "mtdowling/jmespath.php":"^2.5",
         "strawberryfield/strawberryfield":"dev-8.x-1.0-beta3",
         "strawberryfield/format_strawberryfield":"dev-8.x-1.0-beta3",
-        "drupal/webform": "^5.19",
+        "drupal/webform": "^5.19 || ^6.0",
         "drupal/webform_views": "^5.0"
     }
 }
