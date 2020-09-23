@@ -28,7 +28,7 @@ use Drupal\strawberryfield\Tools\Ocfl\OcflHelper;
  * Form submission handler when Webform is used as strawberyfield widget.
  *
  * @WebformHandler(
- *   id = " strawberryField_webform_handler",
+ *   id = "strawberryField_webform_handler",
  *   label = @Translation("A strawberryField harvester"),
  *   category = @Translation("Form Handler"),
  *   description = @Translation("StrawberryField Harvester"),
