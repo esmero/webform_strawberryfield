@@ -59,7 +59,7 @@ class WebformMetadataDate extends FormElement {
   }
 
   /**
-   * Expand an email confirm field into two HTML5 email elements.
+   * Expand date element into multiple inputs. .
    */
   public static function processWebformMetadataDate(&$element, FormStateInterface $form_state, &$complete_form) {
 
@@ -116,6 +116,7 @@ class WebformMetadataDate extends FormElement {
         $date_from_value = isset($element['#default_value']['date_from']) ? $element['#default_value']['date_from'] : $date_from_value;
         $date_to_value = isset($element['#default_value']['date_to']) ? $element['#default_value']['date_to'] : $date_to_value;
         $date_free_value = isset($element['#default_value']['date_free']) ? $element['#default_value']['date_free'] : $date_free_value;
+        dpm($element['#default_value']);
       }
       else {
         // Means we are reading a string and we are parsing it depending on the format into
@@ -238,13 +239,17 @@ class WebformMetadataDate extends FormElement {
       ],
     ];
 
-    $element['date_free']['#states'] = [
-      'invisible' => [
-        [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_point']],
-        'or',
-        [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_range']],
-      ]
-    ];
+
+
+    if (!isset($element['#showfreeformalways']) || (isset($element['#showfreeformalways']) && $element['#showfreeformalways'] == FALSE )) {
+      $element['date_free']['#states'] = [
+        'invisible' => [
+          [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_point']],
+          'or',
+          [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_range']],
+        ]
+      ];
+    }
 
 
     // Don't require the main element.

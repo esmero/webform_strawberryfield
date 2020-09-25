@@ -51,6 +51,7 @@ class WebformMetadataDate extends MetadataDateBase {
 
     return [
         'datepicker' => FALSE,
+        'showfreeformalways' => FALSE,
         'datepicker_button' => FALSE,
         'date_date_format' => $date_format,
         'placeholder' => '',
@@ -102,6 +103,8 @@ class WebformMetadataDate extends MetadataDateBase {
       // @see \Drupal\Core\Render\Element\Date::processDate
       $element['#attributes']['data-drupal-date-format'] = [$element['#date_date_format']];
     }
+
+
   }
 
   /**
@@ -124,7 +127,14 @@ class WebformMetadataDate extends MetadataDateBase {
    */
   public function form(array $form, FormStateInterface $form_state) {
     $form = parent::form($form, $form_state);
-
+    $form['date']['showfreeformalways'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Always show the free Form date input too'),
+      '#description' => $this->t(
+        'If checked both Point and Range modes will also allow a non validated free form input'
+      ),
+      '#return_value' => TRUE,
+    ];
     $form['date']['datepicker'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Use date picker'),
