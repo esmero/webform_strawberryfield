@@ -69,7 +69,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
         }
       if ($needs_import) {
         $imported_data['ap:importeddata'][$this->getKey($element)] = $this->processFileContent($file);
-        if (isset($data['ap:importeddata'])) {
+        if (isset($data['ap:importeddata']) && is_array($data['ap:importeddata'])) {
           $newimporteddata = array_merge($data['ap:importeddata'], $imported_data['ap:importeddata']);
         } else {
           $newimporteddata = $imported_data['ap:importeddata'];
