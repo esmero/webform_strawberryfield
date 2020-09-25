@@ -116,7 +116,6 @@ class WebformMetadataDate extends FormElement {
         $date_from_value = isset($element['#default_value']['date_from']) ? $element['#default_value']['date_from'] : $date_from_value;
         $date_to_value = isset($element['#default_value']['date_to']) ? $element['#default_value']['date_to'] : $date_to_value;
         $date_free_value = isset($element['#default_value']['date_free']) ? $element['#default_value']['date_free'] : $date_free_value;
-        dpm($element['#default_value']);
       }
       else {
         // Means we are reading a string and we are parsing it depending on the format into
