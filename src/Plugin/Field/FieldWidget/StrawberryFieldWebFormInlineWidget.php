@@ -463,7 +463,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         $form_state->setError(
           $element,
           $this->t(
-            "Please complete all steps. You can not Save this @bundle_label without completing the required Form.",
+            "There is a problem. Either you did not complete all steps or maybe your Webform is not correctly configured. You can not Save this @bundle_label without completing the required Form.",
             [
               '@bundle_label' => $form_state->get('strawberryfield_webform_bundle_label')
             ]
