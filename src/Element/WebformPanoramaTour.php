@@ -817,19 +817,25 @@ class WebformPanoramaTour extends WebformCompositeBase {
         );
         // Now the fun part. Since this autocomplete is not part of the process
         // chain we never get the value transformed into id.
-        // So. we do it directly
-        $nodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput(
-          $nodeid
-        );
-        $url = \Drupal\Core\Url::fromRoute(
-          'entity.node.canonical',
-          ['node' => $nodeid],
-          []
-        );
-        $url = $url->toString();
-        $hotspot->type = 'info';
-
-        $hotspot->URL = $url;
+        // So. we do need to check if it needs to be done directly
+        if (!is_numeric($nodeid)) {
+          $nodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput(
+            $nodeid
+          );
+        }
+        if (is_numeric($nodeid) && (int)$nodeid == $nodeid) {
+          $url = \Drupal\Core\Url::fromRoute(
+            'entity.node.canonical',
+            ['node' => $nodeid],
+            []
+          );
+          $url = $url->toString();
+          $hotspot->type = 'info';
+          $hotspot->URL = $url;
+        } else {
+          $form_state->setRebuild(TRUE);
+          return;
+        }
       }
 
       if ($hotspot->type == 'scene') {
