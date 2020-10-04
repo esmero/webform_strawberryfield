@@ -231,12 +231,9 @@ function webform_strawberryfield_theme() {
       'template' => 'webform_strawberryfield-inlinefieldwidget',
       'base hook' => 'webform'
     ],
-    [
-    'webform_handler_strawberryField_webform_handler_summary' => [
-      'variables' => ['settings' => NULL, 'handler' => NULL],
+    'webform_handler_strawberryfieldharvester_summary' => [
+      'variables' => ['settings' => NULL, 'handler' => []],
       'template' => 'webform-handler-strawberryfield-webform-handler-summary',
-      'base hook' => 'webform_handler'
-      ]
     ]
   ];
   return $info;

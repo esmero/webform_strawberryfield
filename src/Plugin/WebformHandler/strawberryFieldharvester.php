@@ -151,7 +151,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
       $configuration = $this->getConfiguration();
       $settings = $configuration['settings'];
       return [
-        '#theme' => 'webform_handler_' . trim($this->pluginId) . '_summary',
+        '#theme' => 'webform_handler_strawberryfieldharvester_summary',
         '#settings' => $settings,
         '#handler' => $this,
       ] + parent::getSummary();
