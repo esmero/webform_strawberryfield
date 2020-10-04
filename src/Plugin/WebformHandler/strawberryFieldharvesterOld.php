@@ -23,20 +23,26 @@ use Drupal\file\FileUsage\FileUsageInterface;
 use Drupal\file\FileInterface;
 use Drupal\strawberryfield\Tools\Ocfl\OcflHelper;
 
+trigger_error('The Webformhandler " strawberryField_webform_handler is deprecated in Webform_strawberryfield 1.0.0-RC1 and will be removed before 1.0.0. Instead, use \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester.', E_USER_DEPRECATED);
+
 
 /**
  * Form submission handler when Webform is used as strawberyfield widget.
  *
  * @WebformHandler(
  *   id = " strawberryField_webform_handler",
- *   label = @Translation("A strawberryField harvester (DEPRECATED"),
+ *   label = @Translation("A strawberryField harvester (DEPRECATED)",
  *   category = @Translation("Form Handler"),
- *   description = @Translation("StrawberryField Harvester (DEPRECATED"),
+ *   description = @Translation("StrawberryField Harvester (DEPRECATED)",
  *   cardinality = \Drupal\webform\Plugin\WebformHandlerInterface::CARDINALITY_SINGLE,
  *   results = \Drupal\webform\Plugin\WebformHandlerInterface::RESULTS_PROCESSED,
  *   submission = \Drupal\webform\Plugin\WebformHandlerInterface::SUBMISSION_OPTIONAL,
  * )
+ *
+ * @deprecated in drupal:8.7.0 and is removed from drupal:9.0.0. Use
+ *   \Drupal\Core\Entity\EntityBase instead.
+ *
  */
-class strawberryFieldharvesterOld extends WebformHandlerBase {
+class strawberryFieldharvesterOld extends strawberryFieldharvester {
 
 }
