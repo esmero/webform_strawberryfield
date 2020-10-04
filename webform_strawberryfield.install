@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * Implements hook_uninstall().
+ */
+function webform_strawberryfield_uninstall() {
+  //@TODO do we need to remove our settings?
+}
+
+/**
+ * Change Handler with space to new one
+ */
+function webform_strawberryfield_update_8001() {
+  // Change Handler ID
+  $config_factory = \Drupal::configFactory();
+  foreach ($config_factory->listAll('webform.webform.') as $webform_config_name) {
+    $webform_config = $config_factory->getEditable($webform_config_name);
+    $data = $webform_config->getRawData();
+    $has_sbf_oldhandler = FALSE;
+    $has_sbf_newhandler = FALSE;
+    $handlers_to_remove = [];
+    foreach ($data['handlers'] as $key => &$handler) {
+      // Notice the space before strawberry...
+      // We can only have the handler once.
+      // So we need to also check for in case
+      if ($handler['id'] === 'strawberryField_webform_handler')  {
+        $has_sbf_newhandler = TRUE;
+        // Mark the fact we already have one so we can remove the old ones
+      }
+      if ($handler['id'] === ' strawberryField_webform_handler') {
+        $has_sbf_oldhandler = TRUE;
+        if (!$has_sbf_newhandler) {
+          // Only rename if this was not corrected manually
+          $handler['id'] = 'strawberryField_webform_handler';
+        } else {
+          // mark this or any other (we can have only one)
+          // For removal.
+          $handlers_to_remove[] = $key;
+        }
+      }
+    }
+    if ($has_sbf_oldhandler) {
+      foreach($handlers_to_remove as $keys) {
+        unset($data['handlers'][$keys]);
+      }
+      $webform_config->setData($data);
+      $webform_config->save();
+    }
+  }
+}

@@ -132,6 +132,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
   }
 
 
+
   /**
    * {@inheritdoc}
    */
@@ -143,14 +144,16 @@ class strawberryFieldharvester extends WebformHandlerBase {
     ];
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function getSummary() {
-    $configuration = $this->getConfiguration();
-    $settings = $configuration['settings'];
-    return [
+    /**
+     * {@inheritdoc}
+     */
+    public function getSummary() {
+      $configuration = $this->getConfiguration();
+      $settings = $configuration['settings'];
+      return [
+        '#theme' => 'webform_handler_' . trim($this->pluginId) . '_summary',
         '#settings' => $settings,
+        '#handler' => $this,
       ] + parent::getSummary();
   }
 

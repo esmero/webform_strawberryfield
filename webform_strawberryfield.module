@@ -232,8 +232,9 @@ function webform_strawberryfield_theme() {
       'base hook' => 'webform'
     ],
     [
-    'webform_handler_strawberryfield_webform_handler_summary' => [
+    'webform_handler_strawberryField_webform_handler_summary' => [
       'variables' => ['settings' => NULL, 'handler' => NULL],
+      'template' => 'webform-handler-strawberryfield-webform-handler-summary'
       ]
     ]
   ];

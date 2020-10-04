@@ -44,5 +44,8 @@ trigger_error('The Webformhandler " strawberryField_webform_handler is deprecate
  *
  */
 class strawberryFieldharvesterOld extends strawberryFieldharvester {
-
+  public function getSummary() {
+    // Broken/missing/deprecated webform handlers do not need a summary.
+     return [];
+  }
 }
