@@ -19,6 +19,7 @@ function webform_strawberryfield_update_8001() {
     $has_sbf_oldhandler = FALSE;
     $has_sbf_newhandler = FALSE;
     $handlers_to_remove = [];
+    $update_webforms = [];
     foreach ($data['handlers'] as $key => &$handler) {
       // Notice the space before strawberry...
       // We can only have the handler once.
@@ -28,6 +29,7 @@ function webform_strawberryfield_update_8001() {
         // Mark the fact we already have one so we can remove the old ones
       }
       if ($handler['id'] === ' strawberryField_webform_handler') {
+        $update_webforms[] = $webform_config_name;
         $has_sbf_oldhandler = TRUE;
         if (!$has_sbf_newhandler) {
           // Only rename if this was not corrected manually
@@ -47,4 +49,9 @@ function webform_strawberryfield_update_8001() {
       $webform_config->save();
     }
   }
+  if ($has_sbf_oldhandler) {
+    $message = \Drupal::translation()->translate('Updated Webform Strawberryfield handlers in webform configs: @ids', ['@ids' => implode(', ', array_unique($update_webforms))]);
+    return $message;
+  }
+
 }
