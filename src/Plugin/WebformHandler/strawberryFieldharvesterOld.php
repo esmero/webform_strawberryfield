@@ -31,9 +31,9 @@ trigger_error('The Webformhandler " strawberryField_webform_handler is deprecate
  *
  * @WebformHandler(
  *   id = " strawberryField_webform_handler",
- *   label = @Translation("A strawberryField harvester (DEPRECATED)",
+ *   label = @Translation("A strawberryField harvester (DEPRECATED)"),
  *   category = @Translation("Form Handler"),
- *   description = @Translation("StrawberryField Harvester (DEPRECATED)",
+ *   description = @Translation("StrawberryField Harvester (DEPRECATED)"),
  *   cardinality = \Drupal\webform\Plugin\WebformHandlerInterface::CARDINALITY_SINGLE,
  *   results = \Drupal\webform\Plugin\WebformHandlerInterface::RESULTS_PROCESSED,
  *   submission = \Drupal\webform\Plugin\WebformHandlerInterface::SUBMISSION_OPTIONAL,
