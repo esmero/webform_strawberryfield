@@ -85,54 +85,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
   protected $customWebformSettings = [];
 
   /**
-   * strawberryFieldharvester constructor.
-   *
-   * @param array $configuration
-   * @param $plugin_id
-   * @param $plugin_definition
-   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   * @param \Drupal\webform\WebformSubmissionConditionsValidatorInterface $conditions_validator
-   * @param \Drupal\webform\WebformTokenManagerInterface $token_manager
-   * @param \Drupal\Core\File\FileSystemInterface $file_system
-   * @param $file_usage
-   * @param \Drupal\Component\Transliteration\TransliterationInterface $transliteration
-   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
-   */
-  public function __construct(
-    array $configuration,
-    $plugin_id,
-    $plugin_definition,
-    LoggerChannelFactoryInterface $logger_factory,
-    ConfigFactoryInterface $config_factory,
-    EntityTypeManagerInterface $entity_type_manager,
-    WebformSubmissionConditionsValidatorInterface $conditions_validator,
-    WebformTokenManagerInterface $token_manager,
-    FileSystemInterface $file_system,
-    FileUsageInterface $file_usage,
-    TransliterationInterface $transliteration,
-    LanguageManagerInterface $language_manager
-  ) {
-    parent::__construct(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
-      $logger_factory,
-      $config_factory,
-      $entity_type_manager,
-      $conditions_validator
-    );
-    $this->entityTypeManager = $entity_type_manager;
-    $this->tokenManager = $token_manager;
-    $this->fileSystem = $file_system;
-    $this->fileUsage = $file_usage;
-    $this->transliteration = $transliteration;
-    $this->languageManager = $language_manager;
-  }
-
-
-  /**
    * {@inheritdoc}
    */
   public static function create(
@@ -141,21 +93,17 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $plugin_id,
     $plugin_definition
   ) {
-    return new static(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
-      $container->get('logger.factory'),
-      $container->get('config.factory'),
-      $container->get('entity_type.manager'),
-      $container->get('webform_submission.conditions_validator'),
-      $container->get('webform.token_manager'),
-      $container->get('file_system'),
-      // Soft depend on "file" module so this service might not be available.
-      $container->get('file.usage'),
-      $container->get('transliteration'),
-      $container->get('language_manager')
-    );
+    // Refactor to use parent's $instance instead of our own __constructor
+    // Required for Webform 6.x > || Drupal 9.x
+    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
+    $instance->entityTypeManager = $container->get('entity_type.manager');
+    $instance->tokenManager = $container->get('webform.token_manager');
+    $instance->fileSystem = $container->get('file_system');
+    // Soft depend on "file" module so this service might not be available.
+    $instance->fileUsage = $container->get('file.usage');
+    $instance->transliteration = $container->get('transliteration');
+    $instance->languageManager = $container->get('language_manager');
+    return $instance;
   }
 
   /**
