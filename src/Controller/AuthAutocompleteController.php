@@ -114,6 +114,8 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         break;
         case 'aat': $results = $this->getty($input, 'aat');
         break;
+        case 'viaf': $results = $this->viaf($input);
+        break;
       }
 
 
@@ -387,6 +389,58 @@ SPARQL;
       return [];
     }
   }
+
+  /**
+   * @param $input
+   *
+   * @return array
+   */
+  protected function viaf($input){
+    $input = urlencode($input);
+    $urlindex =  '&query=' . $input;
+    $baseurl = 'https://viaf.org/viaf/AutoSuggest?';
+    $remoteUrl = $baseurl.$urlindex;
+
+    $options['headers']=['Accept' => 'application/json'];
+    $body = $this->getRemoteJsonData($remoteUrl, $options);
+
+    $jsondata = [];
+    $results = [];
+    $jsondata = json_decode($body, TRUE);
+    $json_error = json_last_error();
+    if ($json_error == JSON_ERROR_NONE) {
+      //WIKIdata will give is an success key will always return at least one, the query string
+      if (count($jsondata) > 1) {
+        if (count($jsondata['result']) >= 1) {
+          foreach ($jsondata['result'] as $key => $item) {
+            $desc = (isset($item['nametype'])) ? '('.$item['nametype'].')':'';
+            $results[] = [
+              'value' =>  "https://viaf.org/viaf/".$item['viafid'],
+              'label' => $item['displayForm'].' '.$desc,
+              'desc' => $desc,
+            ];
+          }
+        }
+      }
+      else {
+        $results[] = [
+          'value' => NULL,
+          'label' => 'Sorry no Match from VIAF'
+        ];
+      }
+      return  $results;
+    }
+    $this->messenger->addError(
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+        [
+          '@url' => $remoteUrl,
+          '@jsonerror' => $json_error
+        ]
+      )
+    );
+    return [];
+  }
+
 
   /**
    * @param $remoteUrl

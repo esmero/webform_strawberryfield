@@ -12,20 +12,26 @@
         return;
     }
 
-    function selectHandlerDual(event, ui) {
-        var terms = Drupal.autocomplete.splitValues(event.target.value);
+    /**
+     * Override of Drupal.autocomplete.splitValues to deal with metadata that contains ',' like names.
+     */
+    function autocompleteDoNotSplitValues(value) {
+        var result = [];
+        var quote = false;
+        var current = '';
+        var valueLength = value.length;
+        var character = void 0;
 
-        terms.pop();
+        for (var i = 0; i < valueLength; i++) {
+            character = value.charAt(i);
+            current += character;
+        }
+        if (value.length > 0) {
+            result.push($.trim(current));
+        }
 
-        terms.push(ui.item.value);
-
-        event.target.value = terms.join(', ');
-
-        return false;
+        return result;
     }
-
-
-
 
     var autocomplete = {};
 
@@ -59,6 +65,63 @@
     };
 
     /**
+     * Overrides  Drupal.autocomplete.options.search for no splitting of terms
+     *
+     * This is the only function where even is present, means we can decide per instance
+     * and not on a global basis if splitting is needed or not.
+     */
+    Drupal.autocomplete.options.search = function searchHandler(event) {
+        var options = Drupal.autocomplete.options;
+
+        if (options.isComposing) {
+            return false;
+        }
+        // Check if the element has a data-source-strawberry-autocomplete-key, if so,put a flag in the class
+        // Why not per instance? All the methods we need to override are totally unaware of the attachment
+        // or DOM element they are connected.
+        if (typeof $(event.target).data('source-strawberry-autocomplete-key') !== 'undefined') {
+            Drupal.autocomplete.options.sbf = true;
+        }
+        else {
+            Drupal.autocomplete.options.sbf = false
+        }
+
+        var term = Drupal.autocomplete.extractLastTerm(event.target.value);
+
+        if (term.length > 0 && options.firstCharacterBlacklist.indexOf(term[0]) !== -1) {
+            return false;
+        }
+
+        return term.length >= options.minLength;
+    }
+
+    var originalAutocompleteSplitValues = Drupal.autocomplete.splitValues;
+    var originalextractLastTerm = Drupal.autocomplete.extractLastTerm;
+
+    Drupal.autocomplete.splitValues = function autocompleteSplitValues(value) {
+        console.log('our own splitValues');
+        // If global class flag set, use our own.
+        // Global is only way i found here. I have no context of the element here
+        // But also, since humans can only use one mouse at the time
+        // and flag gets set during the search/input. It works same as
+        // options.isComposing global
+        if (Drupal.autocomplete.options.sbf) {
+            return autocompleteDoNotSplitValues(value);
+        } else {
+            return originalAutocompleteSplitValues(value);
+        }
+    }
+
+    Drupal.autocomplete.extractLastTerm = function extractLastTerm(terms) {
+        console.log('our own extractLastTerm');
+        if (Drupal.autocomplete.options.sbf) {
+            return autocompleteDoNotSplitValues(terms).pop()
+        } else {
+            return originalextractLastTerm(terms);
+        }
+    }
+
+    /**
      * Attaches our custom autocomplete settings to all affected fields.
      *
      * @type {Drupal~behavior}
@@ -81,14 +144,17 @@
 
                     $element.addClass('strawberry-autocomplete-auth');
                     var elementSettings = autocomplete.getSettings(this, settings);
+
                     if (elementSettings['delay']) {
                         uiAutocomplete.options['delay'] = elementSettings['delay'];
                     }
                     if (elementSettings['min_length']) {
                         uiAutocomplete.options['minLength'] = elementSettings['min_length'];
                     }
+
                     // Override the "select" callback of the jQuery UI autocomplete.
                     var oldSelect = uiAutocomplete.options.select;
+
                     uiAutocomplete.options.select = function (event, ui) {
                         // Invert value/label. Put label inside autocomplete, value in the next uri input
                         // This piece helps users disambiguate if the handler gives us a description too.
@@ -99,7 +165,7 @@
                         var tempvalue = ui.item.value.trim();
                         ui.item.value = ui.item.label.trim();
                         ui.item.label = tempvalue.trim();
-                        console.log(tempvalue);
+
                         //$(event.target).parent('.form-type-textfield').next('div.form-type-url').children('input[data-strawberry-autocomplete-value]').val(ui.item.label);
                         var targetname = $(event.target).attr('name');
                         // Where to put the value
@@ -107,13 +173,11 @@
                         // This element's name last key
                         var targetdest = $(event.target).data('target-strawberry-autocomplete-key');
 
-
                         var stripped = targetname.substring(0, targetname.indexOf('['+targetsource+']'));
 
                         targetname = stripped + '['+targetdest+']';
                         var targetname_hidden = stripped + '[_hidden_]['+targetdest+']';
-                        console.log(targetname);
-                        console.log(targetname_hidden);
+
                         if ($("input[name='"+ targetname +"']").length > 0) {
                             $("input[name='" + targetname + "']").val(ui.item.label);
                         }
@@ -129,6 +193,7 @@
                             //this.closest("form").submit();
                             //submit form.
                         }
+
                         // Executes pre-existing select handler
                         var ret = oldSelect.apply(this, arguments);
                         return ret;

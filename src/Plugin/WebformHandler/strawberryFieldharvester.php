@@ -28,7 +28,7 @@ use Drupal\strawberryfield\Tools\Ocfl\OcflHelper;
  * Form submission handler when Webform is used as strawberyfield widget.
  *
  * @WebformHandler(
- *   id = " strawberryField_webform_handler",
+ *   id = "strawberryField_webform_handler",
  *   label = @Translation("A strawberryField harvester"),
  *   category = @Translation("Form Handler"),
  *   description = @Translation("StrawberryField Harvester"),
@@ -85,54 +85,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
   protected $customWebformSettings = [];
 
   /**
-   * strawberryFieldharvester constructor.
-   *
-   * @param array $configuration
-   * @param $plugin_id
-   * @param $plugin_definition
-   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   * @param \Drupal\webform\WebformSubmissionConditionsValidatorInterface $conditions_validator
-   * @param \Drupal\webform\WebformTokenManagerInterface $token_manager
-   * @param \Drupal\Core\File\FileSystemInterface $file_system
-   * @param $file_usage
-   * @param \Drupal\Component\Transliteration\TransliterationInterface $transliteration
-   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
-   */
-  public function __construct(
-    array $configuration,
-    $plugin_id,
-    $plugin_definition,
-    LoggerChannelFactoryInterface $logger_factory,
-    ConfigFactoryInterface $config_factory,
-    EntityTypeManagerInterface $entity_type_manager,
-    WebformSubmissionConditionsValidatorInterface $conditions_validator,
-    WebformTokenManagerInterface $token_manager,
-    FileSystemInterface $file_system,
-    FileUsageInterface $file_usage,
-    TransliterationInterface $transliteration,
-    LanguageManagerInterface $language_manager
-  ) {
-    parent::__construct(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
-      $logger_factory,
-      $config_factory,
-      $entity_type_manager,
-      $conditions_validator
-    );
-    $this->entityTypeManager = $entity_type_manager;
-    $this->tokenManager = $token_manager;
-    $this->fileSystem = $file_system;
-    $this->fileUsage = $file_usage;
-    $this->transliteration = $transliteration;
-    $this->languageManager = $language_manager;
-  }
-
-
-  /**
    * {@inheritdoc}
    */
   public static function create(
@@ -141,21 +93,17 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $plugin_id,
     $plugin_definition
   ) {
-    return new static(
-      $configuration,
-      $plugin_id,
-      $plugin_definition,
-      $container->get('logger.factory'),
-      $container->get('config.factory'),
-      $container->get('entity_type.manager'),
-      $container->get('webform_submission.conditions_validator'),
-      $container->get('webform.token_manager'),
-      $container->get('file_system'),
-      // Soft depend on "file" module so this service might not be available.
-      $container->get('file.usage'),
-      $container->get('transliteration'),
-      $container->get('language_manager')
-    );
+    // Refactor to use parent's $instance instead of our own __constructor
+    // Required for Webform 6.x > || Drupal 9.x
+    $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
+    $instance->entityTypeManager = $container->get('entity_type.manager');
+    $instance->tokenManager = $container->get('webform.token_manager');
+    $instance->fileSystem = $container->get('file_system');
+    // Soft depend on "file" module so this service might not be available.
+    $instance->fileUsage = $container->get('file.usage');
+    $instance->transliteration = $container->get('transliteration');
+    $instance->languageManager = $container->get('language_manager');
+    return $instance;
   }
 
   /**
@@ -184,6 +132,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
   }
 
 
+
   /**
    * {@inheritdoc}
    */
@@ -195,14 +144,16 @@ class strawberryFieldharvester extends WebformHandlerBase {
     ];
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function getSummary() {
-    $configuration = $this->getConfiguration();
-    $settings = $configuration['settings'];
-    return [
+    /**
+     * {@inheritdoc}
+     */
+    public function getSummary() {
+      $configuration = $this->getConfiguration();
+      $settings = $configuration['settings'];
+      return [
+        '#theme' => 'webform_handler_strawberryfieldharvester_summary',
         '#settings' => $settings,
+        '#handler' => $this,
       ] + parent::getSummary();
   }
 
@@ -508,6 +459,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     // Because this is acting as an alter
     // But never ever touches the Webform settings.
     $settings = $this->customWebformSettings + $settings;
+
     parent::overrideSettings(
       $settings,
       $webform_submission
@@ -523,6 +475,19 @@ class strawberryFieldharvester extends WebformHandlerBase {
     }
     parent::preCreate($values);
   }
+
+  public function postCreate(WebformSubmissionInterface $webform_submission) {
+    //using our custom original data array to set setOriginalData;
+    $data = $this->webformSubmission->getData();
+      if (empty($this->webformSubmission->getOriginalData()) &&
+        isset($data['strawberry_field_stored_values'])) {
+         $this->webformSubmission->setOriginalData($data['strawberry_field_stored_values']);
+      }
+    parent::postCreate(
+      $webform_submission
+    ); // TODO: Change the autogenerated stub
+  }
+
 
   /**
    * Gets valid upload stream wrapper schemes.
@@ -546,6 +511,91 @@ class strawberryFieldharvester extends WebformHandlerBase {
     else {
       return 'private';
     }
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @throws \Exception
+   */
+  public function alterForm(array &$form, FormStateInterface $form_state, WebformSubmissionInterface $webform_submission) {
+
+
+    // Log the current page.
+    $current_page = $webform_submission->getCurrentPage();
+    $webform = $webform_submission->getWebform();
+    // Get navigation webform settings.
+    // Actions to perform if forward navigation is enabled and there are pages.
+    if ($webform->hasWizardPages()) {
+      $validations = [
+        '::validateForm',
+        '::draft',
+      ];
+      // Allow forward access to all but the confirmation page.
+      foreach ($form_state->get('pages') as $page_key => $page) {
+        // Allow user to access all but the confirmation page.
+        if ($page_key != 'webform_confirmation') {
+          $form['pages'][$page_key]['#access'] = TRUE;
+          $form['pages'][$page_key]['#validate'] = $validations;
+        }
+      }
+      // Set our loggers to the draft update if it is set.
+      if (isset($form['actions']['draft'])) {
+        // Add a logger to the next validators.
+        $form['actions']['draft']['#validate'] = $validations;
+      }
+      // Set our loggers to the previous update if it is set.
+      if (isset($form['actions']['wizard_prev'])) {
+        // Add a logger to the next validators.
+        $form['actions']['wizard_prev']['#validate'] = $validations;
+      }
+      // Add a custom validator to the final submit.
+      //$form['actions']['submit']['#validate'][] = 'webformnavigation_submission_validation';
+      // Log the page visit.
+      // $visited = $this->webformNavigationHelper->hasVisitedPage($webform_submission, $current_page);
+      // Log the page if it has not been visited before.
+      //if (!$visited) {
+      // $this->webformNavigationHelper->logPageVisit($webform_submission, $current_page);
+      // }
+      elseif ($current_page != 'webform_confirmation') {
+        // Display any errors.
+      }
+    }
+  }
+
+  /**
+   * Webform submission handler to autosave when there are validation errors.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   */
+  public function autosave(array &$form, FormStateInterface $form_state) {
+    if ($form_state->hasAnyErrors()) {
+      if ($this->draftEnabled() && $this->getWebformSetting('draft_auto_save') && !$this->entity->isCompleted()) {
+        $form_state->set('in_draft', TRUE);
+
+        $this->submitForm($form, $form_state);
+        $this->save($form, $form_state);
+        $this->rebuild($form, $form_state);
+      }
+    }
+  }
+
+  /**
+   * Webform submission handler for the 'draft' action.
+   *
+   * @param array $form
+   *   An associative array containing the structure of the form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   */
+  public function draft(array &$form, FormStateInterface $form_state) {
+    $form_state->clearErrors();
+    $form_state->set('in_draft', TRUE);
+    $form_state->set('draft_saved', TRUE);
+    $this->entity->validate();
   }
 
 }
