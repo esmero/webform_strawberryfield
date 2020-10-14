@@ -174,6 +174,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
       'operation' => NULL,
       'ado_settings' => [],
       'ado_crud_enabled' => FALSE,
+      'states' => NULL
     ];
   }
 
