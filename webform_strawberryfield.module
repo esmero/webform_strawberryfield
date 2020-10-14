@@ -535,12 +535,10 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
  * Implements hook_entity_operation_alter().
  */
 function webform_strawberryfield_entity_operation_alter(array &$operations, EntityInterface $entity) {
-  dpm($entity->getEntityTypeId());
   if ($entity->getEntityTypeId() == 'webform_submission') {
     /** @var \Drupal\webform\WebformInterface $webform */
     $webform = $entity->getWebform();
     if (\Drupal::service('router.route_provider')->getRouteByName("webform_strawberryfield.webform_submission.ingestentities_form")) {
-      dpm(Url::fromRoute("webform_strawberryfield.webform_submission.ingestentities_form", ['webform' => $webform->id(), 'webform_submission' => $entity->id()]));
       $operations['ingest_ado'] = [
         'title' => t('Create ADO'),
         'url' => Url::fromRoute("webform_strawberryfield.webform_submission.ingestentities_form", ['webform' => $webform->id(), 'webform_submission' => $entity->id()]),

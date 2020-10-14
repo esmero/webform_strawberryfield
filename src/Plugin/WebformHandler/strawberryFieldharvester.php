@@ -5,29 +5,17 @@ namespace Drupal\webform_strawberryfield\Plugin\WebformHandler;
 use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Component\Utility\NestedArray;
-use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\TempStore\TempStoreException;
 use Drupal\webform\Plugin\WebformElement\WebformManagedFileBase;
 use Drupal\webform\Plugin\WebformElementEntityReferenceInterface;
 use Drupal\webform\Plugin\WebformHandlerBase;
 use Drupal\webform\webformSubmissionInterface;
-use Drupal\webform\Plugin\WebformElementManagerInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\webform\WebformSubmissionConditionsValidatorInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\File\FileSystemInterface;
-use Drupal\webform\WebformTokenManagerInterface;
-use Drupal\Component\Transliteration\TransliterationInterface;
-use Drupal\Core\Language\LanguageManagerInterface;
-use Drupal\file\FileUsage\FileUsageInterface;
-use Drupal\file\FileInterface;
 use Drupal\strawberryfield\Tools\Ocfl\OcflHelper;
 use Drupal\webform\Element\WebformOtherBase;
 use Drupal\Core\Field\BaseFieldDefinition;
-
 
 
 /**
@@ -453,9 +441,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
    *   An associative array containing entity reference details element.
    */
   public static function ajaxCallbackEntity(array $form, FormStateInterface $form_state) {
-    dpm($form);
     $to_return = NestedArray::getValue($form, ['settings', 'ado_settings']);
-    dpm($to_return);
     return is_array($to_return) ? $to_return : [];
   }
 
@@ -469,7 +455,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
   )
   {
     parent::submitConfigurationForm($form, $form_state);
-    error_log(var_export($form_state->getValues(), true));
     $this->applyFormStateToConfiguration($form_state);
 
     // Cleanup states.
@@ -478,8 +463,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     // Cleanup entity values.
     // $this->configuration['ado_settings'] = array_map('array_filter', $this->configuration['ado_settings']);
     // $this->configuration['ado_settings'] = array_filter($this->configuration['ado_settings']);
-    error_log('well it was submitted');
-    error_log(var_export($this->configuration, true));
+
   }
 
   /**
@@ -512,6 +496,18 @@ class strawberryFieldharvester extends WebformHandlerBase {
         $processedcleanvaluesforfield
       );
     }
+    // This is more expensive. Entity References?
+    $anyelement = $webform_submission->getWebform()->getElementsInitializedAndFlattened();
+    foreach ($anyelement as $elementkey => $element) {
+      $element_plugin = $this->webformElementManager->getElementInstance($element);
+      if ($element_plugin instanceof WebformElementEntityReferenceInterface && !($element_plugin instanceof WebformManagedFileBase)) {
+        $original_entity_reference_element = $webform_submission->getWebform()->getElement(
+          $elementkey
+        );
+        $entity_mapping_structure['entity:node'][] = $original_entity_reference_element['#webform_key'];
+      }
+    }
+
     // Check also which elements carry entity references around
     // @see https://www.drupal.org/project/webform/issues/3067958
     if (isset($entity_mapping_structure['entity:node'])) {
@@ -810,7 +806,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
    * @throws \Exception
    */
   public function alterForm(array &$form, FormStateInterface $form_state, WebformSubmissionInterface $webform_submission) {
-    // Log the current page.
+    // Log the current page. WIP. This should allow back and forth. But
+    // We need to store Draft in a PRIVATE STORE.
     $current_page = $webform_submission->getCurrentPage();
     $webform = $webform_submission->getWebform();
     // Get navigation webform settings.
@@ -838,14 +835,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
         // Add a logger to the next validators.
         $form['actions']['wizard_prev']['#validate'] = $validations;
       }
-      // Add a custom validator to the final submit.
-      //$form['actions']['submit']['#validate'][] = 'webformnavigation_submission_validation';
-      // Log the page visit.
-      // $visited = $this->webformNavigationHelper->hasVisitedPage($webform_submission, $current_page);
-      // Log the page if it has not been visited before.
-      //if (!$visited) {
-      // $this->webformNavigationHelper->logPageVisit($webform_submission, $current_page);
-      // }
+
       elseif ($current_page != 'webform_confirmation') {
         // Display any errors.
       }
@@ -866,21 +856,13 @@ class strawberryFieldharvester extends WebformHandlerBase {
         $form_state->set('in_draft', TRUE);
 
         $this->submitForm($form, $form_state);
+        // DO NOT SAVE For now
+        // CONFLICTS with ENTITY IDS
+        // LET's deal with this using a privateStore?
         //$this->save($form, $form_state);
         $this->rebuild($form, $form_state);
       }
     }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function publishAdo(WebformSubmissionInterface $webform_submission) {
-
-    $current_langcode = $this->languageManager->getCurrentLanguage()->getId();
-    dpm('Submitted!');
-    dpm($webform_submission->getData());
-
   }
 
   /**
@@ -1032,7 +1014,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
    */
   public function postSave(WebformSubmissionInterface $webform_submission, $update = TRUE)
   {
-    if ($this->isWidgetDriven() && $this->currentUser->isAnonymous()) {
+    if ($this->isWidgetDriven() || $this->currentUser->isAnonymous()) {
       // WE do not allow Anonymous Users to Create ADOs at all.
       return;
       // Do not act here. Widget Driven means we are ingesting using NODE/Entity form SBF widget
@@ -1074,14 +1056,16 @@ class strawberryFieldharvester extends WebformHandlerBase {
         $values = $webform_submission->getData();
         $mappings = array_filter($this->configuration['ado_settings']['sbf_fields']);
         if (count($mappings)) {
+          //@TODO Kinda feel the flipping here is not working that fine?
+
           $mappings = array_flip($mappings);
+
           foreach($mappings as $sbf_field => $list_of_webform_keys) {
             $jsonarray = $this->calculateSBFJSON($values, $webform_submission);
-            $jsonvalue =  json_encode($jsonarray, JSON_PRETTY_PRINT);
-            $data[$sbf_field] = $jsonvalue;
+            $jsonvalue = json_encode($jsonarray, JSON_PRETTY_PRINT);
+            $data[$sbf_field] = ['value' => $jsonvalue];
           }
         }
-        dpm($data);
         try {
           $entity_id = FALSE;
           if ($this->configuration['operation'] != '_default') {
@@ -1189,11 +1173,11 @@ class strawberryFieldharvester extends WebformHandlerBase {
     // Check which elements carry files around
     $allelements = $webform_submission->getWebform()->getElementsManagedFiles();
     $anyelement = $webform_submission->getWebform()->getElementsInitializedAndFlattened();
-    foreach ($anyelement as $element) {
+    foreach ($anyelement as $elementkey => $element) {
       $element_plugin = $this->webformElementManager->getElementInstance($element);
       if ($element_plugin instanceof WebformElementEntityReferenceInterface && !($element_plugin instanceof WebformManagedFileBase)) {
         $original_entity_reference_element = $webform_submission->getWebform()->getElement(
-          $element
+          $elementkey
         );
         $entity_mapping_structure['entity:node'][] = $original_entity_reference_element['#webform_key'];
       }
