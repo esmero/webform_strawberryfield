@@ -547,3 +547,29 @@ function webform_strawberryfield_entity_operation_alter(array &$operations, Enti
     }
   }
 }
+
+/**
+ * Implements hook_format_strawberryfield_twigcontext_alter().
+ */
+function webform_strawberryfield_format_strawberryfield_twigcontext_alter(array &$context) {
+  // This will inject into the context of any of our webform operations
+  // The elements of the webform used to ingest! so we can
+  // Get stuff like #description, #title, etc.
+  $context['data_webform_elements'] = FALSE;
+  $data = $context['data'];
+  if (isset($data['strawberry_field_widget_id']) && !empty($data['strawberry_field_widget_id'])) {
+    try {
+      /* @var $webform \Drupal\webform\Entity\Webform */
+      $webform = \Drupal::entityTypeManager()
+        ->getStorage('webform')
+        ->load($data['strawberry_field_widget_id']);
+      if ($webform) {
+        $elements = $webform->getElementsDecodedAndFlattened();
+        $context['data_webform_elements'] = $elements;
+      }
+    } catch (\Exception $e) {
+      $context['data_webform_elements'] = FALSE;
+    }
+  }
+}
+
