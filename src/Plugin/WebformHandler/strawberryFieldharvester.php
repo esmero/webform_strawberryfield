@@ -174,7 +174,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
       'operation' => NULL,
       'ado_settings' => [],
       'ado_crud_enabled' => FALSE,
-      'states' => NULL
+      'states' => NULL,
+      'ado_prepopulate_enabled' => FALSE,
     ];
   }
 
@@ -248,6 +249,15 @@ class strawberryFieldharvester extends WebformHandlerBase {
         'ado_crud_enabled',
       ],
     ];
+    $form['ado_prepopulate_enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow this Webform Element data to be propulated by an ADO via a ?do=UUID argument'),
+      '#default_value' => $this->configuration['ado_prepopulate_enabled'],
+      '#parents' => [
+        'settings',
+        'ado_prepopulate_enabled',
+      ],
+    ];
 
     // Define #ajax callback.
     $ajax = [
@@ -295,7 +305,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
       '#type' => 'container',
       '#attributes' => ['id' => 'webform-handler-ajax-container'],
       '#access' => $this->configuration['ado_crud_enabled']? TRUE: FALSE,
-
     ];
 
     $current_bundle = isset($this->configuration['ado_settings']['bundles']) ? $this->configuration['ado_settings']['bundles'] : NULL;
