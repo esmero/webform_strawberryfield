@@ -383,7 +383,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $form['ado_settings']['container']['entity_revision'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Create new revision'),
-      '#default_value' => $this->configuration['ado_settings']['entity_revision'],
+      '#default_value' => isset($this->configuration['ado_settings']['entity_revision'])?  $this->configuration['ado_settings']['entity_revision'] : FALSE,
       '#access' => FALSE,
       '#parents' => [
         'settings',
