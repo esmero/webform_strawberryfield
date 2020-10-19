@@ -433,7 +433,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ],
           '#button_type' => 'default',
           '#visible' => 'true',
-          '#limit_validation_errors' => FALSE,
+          '#limit_validation_errors' => [$element['#parents']],
           '#attributes' => [
             'class' => ['btn-warning']
           ],
@@ -670,7 +670,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $button = $form_state->getTriggeringElement();
     $element = NestedArray::getValue(
       $form,
-      array_slice($button['#array_parents'], 0, -2)
+      array_slice($button['#array_parents'], 0, -1)
     );
     $response = new AjaxResponse();
     $data_selector = $element['#attributes']['data-drupal-selector'];
@@ -1049,18 +1049,15 @@ class WebformPanoramaTour extends WebformCompositeBase {
   ) {
     $button = $form_state->getTriggeringElement();
     $hot_spot_values_parents = array_slice($button['#parents'], 0, -1);
-
     $element_name = $hot_spot_values_parents[0];
-    if ($form_state->getValue([$element_name, 'scene'])) {
+    if ($form_state->getValue([$element_name, 'currentscene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
-      $current_scene = $form_state->getValue([$element_name, 'scene']);
+      $current_scene = $form_state->getValue([$element_name, 'currentscene']);
       $scene_key = 0;
       $existing_objects = [];
       foreach ($allscenes as $key => &$scene) {
-        if ($scene['scene'] == $form_state->getValue(
-            [$element_name, 'scene']
-          )) {
+        if ($scene['scene'] == $current_scene) {
           $scene_key = $key;
           break;
         }
@@ -1118,7 +1115,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
   }
 
   /**
-   * Submit Handler for Setting the Scene Orientation.
+   * Submit Handler for deleting a Scene Orientation.
    *
    * @param array $form
    * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -1127,12 +1124,10 @@ class WebformPanoramaTour extends WebformCompositeBase {
     array &$form,
     FormStateInterface $form_state
   ) {
-
     $button = $form_state->getTriggeringElement();
     $hot_spot_values_parents = array_slice($button['#parents'], 0, -1);
-
     $element_name = $hot_spot_values_parents[0];
-    if ($form_state->getValue([$element_name, 'scene'])) {
+    if ($form_state->getValue([$element_name, 'currentscene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
       $current_scene = $form_state->getValue([$element_name, 'scene']);
@@ -1157,15 +1152,15 @@ class WebformPanoramaTour extends WebformCompositeBase {
         });
       }
       $form_state->set($all_scenes_key, $allscenes);
-      $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
+      $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
       if (!empty($allscenes)) {
         $firstscene = reset($allscenes);
         $firstsceneid = $firstscene['scene'];
-        $form_state->setValue([$element_name, 'scene'],$firstsceneid);
+        $form_state->setValue([$element_name, 'currentscene'], $firstsceneid);
       } else {
-        $form_state->setValue([$element_name, 'scene'],NULL);
+        $form_state->setValue([$element_name, 'currentscene'], NULL);
       }
-
+      error_log('Scene was removed');
       \Drupal::messenger()->addMessage(t('The Scene was removed'));
     }
     // This is strange but needed.
