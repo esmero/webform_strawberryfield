@@ -588,7 +588,7 @@ function webform_strawberryfield_webform_submission_form_alter(array &$form, For
   //Should we block specifically this ('$request->isXmlHttpRequest()');
   // From triggering?
   if (\Drupal::request()->getMethod() == "POST") {
-    return ;
+
     // Basically do not deal with POST/AJAX here.
     // Only process the first time we load a webform/Webform Node
   }
@@ -666,10 +666,10 @@ function webform_strawberryfield_webform_submission_form_alter(array &$form, For
                 ARRAY_FILTER_USE_KEY
               );
 
-
               webform_strawberryfield_recursive_set_default_value($form['elements'], $fullvalues_clean, 1);
+              $old_values = $form_state->getValues();
               $webform_submission->setOriginalData($fullvalues_clean);
-              $webform_submission->setData($fullvalues_clean);
+              $form_state->setValues($old_values + $fullvalues_clean);
 
               if (!empty($fullvalues)) {
                 // Only populate one entry if many SBFs are around
