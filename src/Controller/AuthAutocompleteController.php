@@ -136,6 +136,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     //@TODO make the following whitelist a constant since we use it in
     // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
     if (!in_array($vocab, [
+      'relators',
       'subjects',
       'names',
       'genreForms',
@@ -160,6 +161,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     // So happens that some are Vocabularies and some Authorities
     // So So we need to subclassify
     $endpoint = [
+      'relators' => 'vocabulary',
       'subjects' => 'authorities',
       'names' => 'authorities',
       'genreForms' => 'authorities',
