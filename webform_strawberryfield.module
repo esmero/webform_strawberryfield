@@ -398,8 +398,9 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
       );
       $url = $publicurl->toString();
       // Extract EXIF and show it to the user!
-      /** @var \Drupal\Core\File\FileSystem $file_system */
-      $scheme = \Drupal::service('file_system')->uriScheme($uri);
+
+      $scheme = \Drupal::service('stream_wrapper_manager')->getScheme($uri);
+
       $templocation = NULL;
       // If the file isn't stored locally make a temporary copy.
       if (!isset(
