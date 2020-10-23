@@ -176,7 +176,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $element['select_button'] = [
       '#title' => 'Select Scene',
       '#type' => 'submit',
-      '#value' => t('Select Scene'),
+      '#value' => t('Add Scene'),
       '#name' => $element['#name'] . '_select_button',
       '#submit' => [[get_called_class(), 'selectSceneSubmit']],
       '#ajax' => [
