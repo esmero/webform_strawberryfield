@@ -102,6 +102,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     // Just in case someone wants to trick us
     // This is already disabled on the Config Form for the Element
     unset($element['#multiple']);
+
     $element_name = $element['#name'];
 
     $all_scenes = [];
@@ -129,8 +130,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $element['allscenes']['#default_value'] = json_encode($all_scenes,true);
     $form_state->setValue([$element['#name'],'allscenes'],json_encode($all_scenes,TRUE));
 
-    $currentscene = $form_state->getValue([$element['#name'], 'currentscene']);
-
+    $currentscene = $form_state->getValue([$element_name, 'currentscene']);
+    error_log('building the main form');
     $sceneid = NULL;
 
     if (!$currentscene && !empty($all_scenes)) {
@@ -139,7 +140,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     } else {
       $sceneid = $currentscene;
-      $form_state->setValue([$element_name, 'scene'],$sceneid);
+      $form_state->setValue([$element_name, 'scene'], $sceneid);
     }
     $hotspot_list = [];
 
@@ -675,8 +676,15 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $form,
       array_slice($button['#array_parents'], 0, -1)
     );
+    $element_name = $element['#name'];
     $response = new AjaxResponse();
     $data_selector = $element['#attributes']['data-drupal-selector'];
+    // We also need to clear any visible Hotspots in case
+    // There is a loaded Panorama already in place
+    if ($form_state->getValue([$element_name, 'scene'])) {
+      $current_scene = $form_state->getValue([$element_name, 'scene']);
+      static::updateJsSettings($form_state, $current_scene, $element_name, $response);
+    }
     $response->addCommand(
       new ReplaceCommand(
         '[data-drupal-selector="' . $data_selector . '"]',
@@ -710,6 +718,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     array $form,
     FormStateInterface $form_state
   ) {
+    error_log('changeSceneCallBack called');
     $button = $form_state->getTriggeringElement();
     $element = NestedArray::getValue(
       $form,
@@ -722,10 +731,13 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     // Now update the JS settings
     if ($form_state->getValue([$element_name, 'scene'])) {
-      $all_scenes_key = $element_name . '-allscenes';
+      $current_scene = $form_state->getValue([$element_name, 'scene']);
+      static::updateJsSettings($form_state, $current_scene, $element_name, $response);
+
+      /*$all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
       // Only here scene applies, since it is passed via the autocomplete
-      $current_scene = $form_state->getValue([$element_name, 'scene']);
+
       $existing_objects = [];
       foreach ($allscenes as $key => &$scene) {
         if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
@@ -754,7 +766,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       // And merge = FALSE clears even my brain settings...
       $response->addCommand(new SettingsCommand($settingsclear, TRUE));
       $response->addCommand(new SettingsCommand($settings, TRUE));
-
+*/
     }
     // And now replace the container
     $response->addCommand(
@@ -765,6 +777,48 @@ class WebformPanoramaTour extends WebformCompositeBase {
     );
     return $response;
   }
+
+  /** This function updates via JS/Settings the Visible Hotspots
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   * @param string $current_scene
+   * @param string $element_name
+   * @param \Drupal\Core\Ajax\AjaxResponse $response
+   */
+  function updateJsSettings(FormStateInterface $form_state, string $current_scene, string $element_name, AjaxResponse $response) {
+    // Now update the JS settings
+    $all_scenes_key = $element_name . '-allscenes';
+    $allscenes = $form_state->get($all_scenes_key);
+    // Only here scene applies, since it is passed via the autocomplete
+    $existing_objects = [];
+    foreach ($allscenes as $key => &$scene) {
+      if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
+        $existing_objects = $scene['hotspots'];
+        break;
+      }
+    }
+
+    $settingsclear = [
+      'webform_strawberryfield' => [
+        'WebformPanoramaTour' => [
+          $element_name . '-hotspots' =>
+            NULL
+        ],
+      ]
+    ];
+    $settings = [
+      'webform_strawberryfield' => [
+        'WebformPanoramaTour' => [
+          $element_name . '-hotspots' =>
+            $existing_objects
+        ],
+      ]
+    ];
+    // Why twice? well because merge is deep merge. Gosh JS!
+    // And merge = FALSE clears even my brain settings...
+    $response->addCommand(new SettingsCommand($settingsclear, TRUE));
+    $response->addCommand(new SettingsCommand($settings, TRUE));
+  }
+
 
   /**
    * Submit Handler for adding a Hotspot.
@@ -864,7 +918,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
       $allscenes[$scene_key]['hotspots'] = $existing_objects;
       $form_state->set($all_scenes_key, $allscenes);
-      $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
+      $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
 
 
     } else {
@@ -1136,26 +1190,27 @@ class WebformPanoramaTour extends WebformCompositeBase {
     if ($form_state->getValue([$element_name, 'currentscene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
-      $current_scene = $form_state->getValue([$element_name, 'scene']);
+      $current_scene = $form_state->getValue([$element_name, 'currentscene']);
       $scene_key = 0;
-      $existing_objects = [];
+
       foreach ($allscenes as $key => &$scene) {
-        if ($scene['scene'] == $form_state->getValue(
-            [$element_name, 'scene']
-          )) {
+        if ($scene['scene'] == $current_scene) {
           $scene_key = $key;
           break;
         }
       }
+      // $scene key here is numeric, not the NODE ID.
       unset($allscenes[$scene_key]);
       // which will reorder keys
       $allscenes = array_merge($allscenes);
       // remove any hotspot pointing to this scene
-      foreach ($allscenes as &$scene) {
-        $scene['hotspots'] = array_filter($scene['hotspots'], function($e) use($scene_key) {
+      foreach ($allscenes as $key => $scene) {
+        $allscenes[$key]['hotspots'] = array_filter($scene['hotspots'], function($e) use($current_scene) {
           $e = (array) $e;
-          return (!isset($e["sceneId"]) || $e["sceneId"]!=$scene_key);
+          return (!isset($e["sceneId"]) || $e["sceneId"]!= (string) $current_scene);
         });
+        // which will reorder keys of the hotspots
+        $allscenes[$key]['hotspots'] = array_merge($allscenes[$key]['hotspots']);
       }
       $form_state->set($all_scenes_key, $allscenes);
       $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
@@ -1167,7 +1222,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $form_state->setValue([$element_name, 'currentscene'], NULL);
       }
       error_log('Scene was removed');
-      \Drupal::messenger()->addMessage(t('The Scene was removed'));
     }
     // This is strange but needed.
     // If we are creating a new  panorama, addhotspot submit button
@@ -1210,6 +1264,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $response->addCommand(new SettingsCommand($settingsclear, TRUE));
 
     // Now update the JS settings
+    error_log('deleting scene');
     if ($form_state->getValue([$element_name, 'scene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
@@ -1246,7 +1301,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     return $response;
   }
-
 
   /**
    * Validates a composite element.
