@@ -733,40 +733,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     if ($form_state->getValue([$element_name, 'scene'])) {
       $current_scene = $form_state->getValue([$element_name, 'scene']);
       static::updateJsSettings($form_state, $current_scene, $element_name, $response);
-
-      /*$all_scenes_key = $element_name . '-allscenes';
-      $allscenes = $form_state->get($all_scenes_key);
-      // Only here scene applies, since it is passed via the autocomplete
-
-      $existing_objects = [];
-      foreach ($allscenes as $key => &$scene) {
-        if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
-          $existing_objects = $scene['hotspots'];
-          break;
-        }
-      }
-
-      $settingsclear = [
-        'webform_strawberryfield' => [
-          'WebformPanoramaTour' => [
-            $element_name . '-hotspots' =>
-              NULL
-          ],
-        ]
-      ];
-      $settings = [
-        'webform_strawberryfield' => [
-          'WebformPanoramaTour' => [
-            $element_name . '-hotspots' =>
-              $existing_objects
-          ],
-        ]
-      ];
-      // Why twice? well because merge is deep merge. Gosh JS!
-      // And merge = FALSE clears even my brain settings...
-      $response->addCommand(new SettingsCommand($settingsclear, TRUE));
-      $response->addCommand(new SettingsCommand($settings, TRUE));
-*/
     }
     // And now replace the container
     $response->addCommand(
@@ -784,7 +750,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
    * @param string $element_name
    * @param \Drupal\Core\Ajax\AjaxResponse $response
    */
-  function updateJsSettings(FormStateInterface $form_state, string $current_scene, string $element_name, AjaxResponse $response) {
+  public static function updateJsSettings(FormStateInterface $form_state, string $current_scene, string $element_name, AjaxResponse $response) {
     // Now update the JS settings
     $all_scenes_key = $element_name . '-allscenes';
     $allscenes = $form_state->get($all_scenes_key);
