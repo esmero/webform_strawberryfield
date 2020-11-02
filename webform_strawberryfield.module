@@ -562,6 +562,7 @@ function webform_strawberryfield_format_strawberryfield_twigcontext_alter(array 
   // Get stuff like #description, #title, etc.
   $context['data_webform_elements'] = FALSE;
   $data = $context['data'];
+  // Should we cover the option of having an array/ multiple webforms?
   if (isset($data['strawberry_field_widget_id']) && !empty($data['strawberry_field_widget_id'])) {
     try {
       /* @var $webform \Drupal\webform\Entity\Webform */
@@ -585,14 +586,6 @@ function webform_strawberryfield_format_strawberryfield_twigcontext_alter(array 
  * Pre populates a Webform with a SBF source if conditions are great.
  */
 function webform_strawberryfield_webform_submission_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
-
-  //Should we block specifically this ('$request->isXmlHttpRequest()');
-  // From triggering?
-  if (\Drupal::request()->getMethod() == "POST") {
-
-    // Basically do not deal with POST/AJAX here.
-    // Only process the first time we load a webform/Webform Node
-  }
 
   $hash = \Drupal::request()->query->get('do', NULL);
 
@@ -651,7 +644,7 @@ function webform_strawberryfield_webform_submission_form_alter(array &$form, For
               // So. Also we may want to check which ones have default data
               // And we may want to filter those out
               // Tokens/preprocessed logic should always win.
-              $existing_elements = $webform->getElementsInitializedFlattenedAndHasValue('create');
+              $existing_elements = $webform->getElementsInitializedFlattenedAndHasValue('view');
 
               $fullvalues = $itemfield->provideDecoded(TRUE);
               // Remove any ADO/NODE specific elements
@@ -704,7 +697,9 @@ function webform_strawberryfield_recursive_set_default_value(&$form_elements, ar
         // @TODO If the Webform element has the same key but can not contain the value is something we need
         // to check that!
         // Would not hurt to check if the user has access too?
-        $form_elements[$key]['#default_value'] = $values_to_set[$form_elements[$key]['#webform_key']];
+        if (!isset($form_elements[$key]['#default_value'])) {
+          $form_elements[$key]['#default_value'] = $values_to_set[$form_elements[$key]['#webform_key']];
+        }
       }
     }
   }
