@@ -152,11 +152,10 @@ class WebformMetadataDate extends FormElement {
     // The date formatting/options
     $element['date_type'] = [
       '#type' => 'radios',
-      '#title' => 'Date Type',
       '#default_value' => $type,
       '#options' => [
-        'date_point' => t('Valid ISO 8601 Date'),
-        'date_range' => t('Valid ISO 8601 Range'),
+        'date_point' => t('Date'),
+        'date_range' => t('Date Range'),
         'date_free' => t('Freeform Date (e.g Circa Spring of 1977)'),
       ]
     ];
