@@ -133,6 +133,10 @@ class WebformMetadataFile extends WebformManagedFileBase {
       return $jsonarray;
     }
     $uri = $file->getFileUri();
+    $mime = $file->getMimeType();
+    if ($mime != 'application/xml') {
+      return $jsonarray;
+    }
     $data = file_get_contents($uri);
     $internalErrors = libxml_use_internal_errors(TRUE);
     libxml_clear_errors();
@@ -188,7 +192,6 @@ class WebformMetadataFile extends WebformManagedFileBase {
         'format' => 'xml'
       ];
     }
-
     return $jsonarray;
   }
 

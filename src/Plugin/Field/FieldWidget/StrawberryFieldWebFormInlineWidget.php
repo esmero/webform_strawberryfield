@@ -392,7 +392,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
 
-    if (empty($current_value['creation_method'])){
+    if (!isset($current_value['creation_method']) || empty($current_value['creation_method'])){
       $current_value['creation_method'] = $my_webform_machinename;
     }
 
