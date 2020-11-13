@@ -152,6 +152,7 @@ class WebformMetadataDate extends FormElement {
     // The date formatting/options
     $element['date_type'] = [
       '#type' => 'radios',
+      '#title' => $element['#title'],
       '#default_value' => $type,
       '#options' => [
         'date_point' => t('Date'),
@@ -174,7 +175,7 @@ class WebformMetadataDate extends FormElement {
 
 
     $element['date_to']['#title'] = t('To Date');
-    $element['date_from']['#title'] = t('From Date');
+    $element['date_from']['#title'] = t('Date');
 
     // pass #date attributes to sub elements before calling ::buildElement
 
