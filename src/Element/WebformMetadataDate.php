@@ -152,7 +152,7 @@ class WebformMetadataDate extends FormElement {
     // The date formatting/options
     $element['date_type'] = [
       '#type' => 'radios',
-      '#title' => $element['#title'],
+      '#title' => $element_shared_properties['#title'],
       '#default_value' => $type,
       '#options' => [
         'date_point' => t('Date'),
