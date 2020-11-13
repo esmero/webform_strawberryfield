@@ -148,11 +148,12 @@ class WebformMetadataDate extends FormElement {
         }
       }
     }
-
+    $title_opt = explode(':', $element['#title']);
+    $title_opt = isset($title_opt[0]) ? $title_opt[0] : $title_opt;
     // The date formatting/options
     $element['date_type'] = [
       '#type' => 'radios',
-      '#title' => $element_shared_properties['#title'],
+      '#title' => $title_opt,
       '#default_value' => $type,
       '#options' => [
         'date_point' => t('Date'),
