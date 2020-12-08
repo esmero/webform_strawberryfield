@@ -112,7 +112,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         break;
         case 'wikidata': $results = $this->wikidata($input);
         break;
-        case 'aat': $results = $this->getty($input, 'aat');
+        case 'aat': $results = $this->getty($input, 'aat', $vocab);
         break;
         case 'viaf': $results = $this->viaf($input);
         break;
@@ -274,9 +274,35 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @param $input
    * @param string $vocab
    *
+   * @param string $mode
+   *    Can be either 'subjects' for fuzzy or exact for 1:1 preflabel
+   *
    * @return array
    */
-  protected function getty($input, $vocab = 'aat') {
+  protected function getty($input, $vocab = 'aat', $mode = 'subjects') {
+
+    if (!in_array($mode, [
+      'subjects',
+      'exact'
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@mode mode for aat autocomplete is not in in our whitelist.',
+          [
+            '@mode' => $mode,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Query Mode {$mode} in AAT Query",
+        'desc' => NULL
+      ];
+      return $results;
+    }
+
+
+
     // Split in pieces
 
     // Limit the size here: max 64 chars.
@@ -292,12 +318,19 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     $input_parts = explode(' ', $input);
     $clean_input = array_diff($input_parts, $this::STOPWORDS_EN );
     if (!empty($clean_input)) {
-      $search = strtolower(implode(' ', $clean_input));
+
       // @see http://vocab.getty.edu/queries#Case-insensitive_Full_Text_Search_Query
       // Build the SPARQL query
-      $query = <<<SPARQL
+      if ($mode == "subjects") {
+        $toremove = ['-','.','(',')','|'.'+','$','#','@','*'];
+        $search = str_replace($toremove,' ', $clean_input);
+        $search = array_map('trim', $search);
+        $search = array_filter($search);
+        $search = array_map(function($value) { return strtolower($value).'*'; }, $search);
+        $search = implode(' AND ', $search);
+        $query = <<<SPARQL
       SELECT ?S ?T ?P ?Note {
-        ?S a skos:Concept; luc:term !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/> ;
+        ?S a skos:Concept; luc:text !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/> ;
            gvp:prefLabelGVP [xl:literalForm ?T].
         optional {?S gvp:parentStringAbbrev ?P}
         optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
@@ -305,18 +338,29 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         LIMIT 10
 SPARQL;
 
+
+      }
+      else {
+        $search = strtolower(implode(' ', $clean_input));
+        $query = <<<SPARQL
+        select distinct ?S ?T ?P ?Note {
+          ?S skos:inScheme <http://vocab.getty.edu/!vocab/> ;
+          gvp:prefLabelGVP/xl:literalForm !searchterm@en .
+          optional {?S gvp:parentStringAbbrev ?P}
+          optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
+        }
+        LIMIT 1
+SPARQL;
+      }
+      $search = '"' . $search . '"';
       $query = preg_replace('!\s+!', ' ', $query);
       // use Drupal\Component\Render\FormattableMarkup; has no pass through option
       // Anymore, so use native PHP.
       // If we have more than one word we will use extra single quote to make
       // a closer to exact match.
       // @TODO ask if people want always fuzzy?
-      if (count($clean_input) > 1) {
-        $search = '\'"' . $search . '"\'';
-      }
-      else {
-        $search = '"' . $search . '"';
-      }
+
+
       $query =strtr(trim($query), [
         '!searchterm' => $search,
         '!vocab' => $vocab
