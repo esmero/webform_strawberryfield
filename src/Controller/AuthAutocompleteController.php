@@ -86,7 +86,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     return new static(
       $container->get('http_client')
 
-      );
+    );
   }
 
   /**
@@ -107,15 +107,19 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     //@TODO if so, we can query the plugins and show in the webform builder options
     // Get the typed string from the URL, if it exists.
     if ($input = $request->query->get('q')) {
-      switch($auth_type) {
-        case 'loc':  $results = $this->loc($input, $vocab, $rdftype);
-        break;
-        case 'wikidata': $results = $this->wikidata($input);
-        break;
-        case 'aat': $results = $this->getty($input, 'aat', $vocab);
-        break;
-        case 'viaf': $results = $this->viaf($input);
-        break;
+      switch ($auth_type) {
+        case 'loc':
+          $results = $this->loc($input, $vocab, $rdftype);
+          break;
+        case 'wikidata':
+          $results = $this->wikidata($input);
+          break;
+        case 'aat':
+          $results = $this->getty($input, 'aat', $vocab);
+          break;
+        case 'viaf':
+          $results = $this->viaf($input);
+          break;
       }
 
 
@@ -132,7 +136,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    *
    * @return array
    */
-  protected function loc($input, $vocab, $rdftype){
+  protected function loc($input, $vocab, $rdftype) {
     //@TODO make the following whitelist a constant since we use it in
     // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
     if (!in_array($vocab, [
@@ -154,7 +158,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       );
       $results[] = [
         'value' => NULL,
-        'label' => "Wrong Vocabulary {$vocab} in LoC Query"
+        'label' => "Wrong Vocabulary {$vocab} in LoC Query",
       ];
       return $results;
     }
@@ -165,7 +169,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       'subjects' => 'authorities',
       'names' => 'authorities',
       'genreForms' => 'authorities',
-      'graphicMaterials'  => 'vocabulary',
+      'graphicMaterials' => 'vocabulary',
       'geographicAreas' => 'vocabulary',
       'rdftype' => '',
     ];
@@ -173,15 +177,16 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
     $input = urlencode($input);
 
-    if ($vocab == 'rdftype')  {
-      $urlindex =  "/suggest/?q=" . $input . "&rdftype=".$rdftype;
-    } else {
-      $urlindex =  "/{$path}/{$vocab}/suggest/?q=" . $input;
+    if ($vocab == 'rdftype') {
+      $urlindex = "/suggest/?q=" . $input . "&rdftype=" . $rdftype;
+    }
+    else {
+      $urlindex = "/{$path}/{$vocab}/suggest/?q=" . $input;
     }
 
     $baseurl = 'https://id.loc.gov';
-    $remoteUrl = $baseurl.$urlindex;
-    $options['headers']=['Accept' => 'application/json'];
+    $remoteUrl = $baseurl . $urlindex;
+    $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
     $jsondata = [];
@@ -194,23 +199,23 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         foreach ($jsondata[1] as $key => $label) {
           $results[] = [
             'value' => $jsondata[3][$key],
-            'label' => $label
+            'label' => $label,
           ];
         }
       }
       else {
-          $results[] = [
-            'value' => NULL,
-            'label' => "Sorry no match from LoC {$vocab} {$path}"
-          ];
-        }
-      return  $results;
+        $results[] = [
+          'value' => NULL,
+          'label' => "Sorry no match from LoC {$vocab} {$path}",
+        ];
+      }
+      return $results;
     }
     $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
-          '@jsonerror' => $json_error
+          '@jsonerror' => $json_error,
         ]
       )
     );
@@ -223,13 +228,13 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    *
    * @return array
    */
-  protected function wikidata($input){
+  protected function wikidata($input) {
     $input = urlencode($input);
-    $urlindex =  '&language=en&format=json&search=' . $input;
+    $urlindex = '&language=en&format=json&search=' . $input;
     $baseurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities';
-    $remoteUrl = $baseurl.$urlindex;
+    $remoteUrl = $baseurl . $urlindex;
 
-    $options['headers']=['Accept' => 'application/json'];
+    $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
     $jsondata = [];
@@ -241,10 +246,11 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       if (count($jsondata) > 1) {
         if ($jsondata['success'] == 1) {
           foreach ($jsondata['search'] as $key => $item) {
-            $desc = (isset($item['description'])) ? '('.$item['description'].')':'';
+            $desc = (isset($item['description'])) ? '(' . $item['description'] . ')' : NULL;
             $results[] = [
+              $label = empty($desc) ? $item['label'] : $item['label'] . ' ' . $desc,
               'value' => $item['concepturi'],
-              'label' => $item['label'].' '.$desc,
+              'label' => $label,
               'desc' => $desc,
             ];
           }
@@ -253,16 +259,16 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       else {
         $results[] = [
           'value' => NULL,
-          'label' => 'Sorry no Match from Wikidata Subject Headings'
+          'label' => 'Sorry no Match from Wikidata Subject Headings',
         ];
       }
-      return  $results;
+      return $results;
     }
     $this->messenger->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
-          '@jsonerror' => $json_error
+          '@jsonerror' => $json_error,
         ]
       )
     );
@@ -283,7 +289,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
     if (!in_array($mode, [
       'subjects',
-      'exact'
+      'exact',
     ])) {
       // Drop before tryin to hit non existing vocab
       $this->messenger()->addError(
@@ -296,11 +302,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       $results[] = [
         'value' => NULL,
         'label' => "Wrong Query Mode {$mode} in AAT Query",
-        'desc' => NULL
+        'desc' => NULL,
       ];
       return $results;
     }
-
 
 
     // Split in pieces
@@ -308,25 +313,28 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     // Limit the size here: max 64 chars.
     $input = trim($input);
     if (strlen($input) > 64) {
-     return $results[] = [
-      'value' => NULL,
-      'label' => "Sorry query is too long! Try with less characters",
-      'desc' => NULL,
-    ];
+      return $results[] = [
+        'value' => NULL,
+        'label' => "Sorry query is too long! Try with less characters",
+        'desc' => NULL,
+      ];
 
     }
     $input_parts = explode(' ', $input);
-    $clean_input = array_diff($input_parts, $this::STOPWORDS_EN );
+    $clean_input = array_diff($input_parts, $this::STOPWORDS_EN);
     if (!empty($clean_input)) {
 
       // @see http://vocab.getty.edu/queries#Case-insensitive_Full_Text_Search_Query
       // Build the SPARQL query
       if ($mode == "subjects") {
-        $toremove = ['-','.','(',')','|'.'+','$','#','@','*'];
-        $search = str_replace($toremove,' ', $clean_input);
+        $toremove = ['-', '.', '(', ')', '|' . '+', '$', '#', '@', '*'];
+        $search = str_replace($toremove, ' ', $clean_input);
         $search = array_map('trim', $search);
         $search = array_filter($search);
-        $search = array_map(function($value) { return strtolower($value).'*'; }, $search);
+        $original_search = $search;
+        $search = array_map(function ($value) {
+          return strtolower($value) . '*';
+        }, $search);
         $search = implode(' AND ', $search);
         $query = <<<SPARQL
       SELECT ?S ?T ?P ?Note {
@@ -341,7 +349,9 @@ SPARQL;
 
       }
       else {
-        $search = strtolower(implode(' ', $clean_input));
+        $search = array_map('trim', $clean_input);
+        $search = strtolower(implode(' ', $search));
+        $original_search = $search;
         $query = <<<SPARQL
         select distinct ?S ?T ?P ?Note {
           ?S skos:inScheme <http://vocab.getty.edu/!vocab/> ;
@@ -361,13 +371,13 @@ SPARQL;
       // @TODO ask if people want always fuzzy?
 
 
-      $query =strtr(trim($query), [
+      $query = strtr(trim($query), [
         '!searchterm' => $search,
-        '!vocab' => $vocab
+        '!vocab' => $vocab,
       ]);
 
       $baseurl = 'http://vocab.getty.edu/sparql.json';
-      $options = ['query' => ['query' => $query ]];
+      $options = ['query' => ['query' => $query]];
       $url = Url::fromUri($baseurl, $options);
       $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
       $options['headers'] = ['Accept' => 'application/sparql-results+json'];
@@ -403,32 +413,34 @@ SPARQL;
       $json_error = json_last_error();
       if ($json_error == JSON_ERROR_NONE) {
         if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
-            foreach ($jsondata['results']['bindings'] as $key => $item) {
-              $term = isset($item['T']['value']) ? $item['T']['value'] : '';
-              $parent = isset($item['P']['value']) ? ' | Parent of: '. $item['P']['value'] : '';
-              $note = isset($item['Note']['value']) ?  ' | ('. $item['Note']['value'] .')': '';
-              $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
-              $results[] = [
-                'value' => $uri,
-                'label' => $term . $parent . $note,
-                'desc' => $parent . $note,
-              ];
-            }
+          foreach ($jsondata['results']['bindings'] as $key => $item) {
+            // We reapply original search because i had no luck with SPARQL binding the search for exact
+            // So we have no T
+            $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search;
+            $parent = isset($item['P']['value']) ? ' | Parent of: ' . $item['P']['value'] : '';
+            $note = isset($item['Note']['value']) ? ' | (' . $item['Note']['value'] . ')' : '';
+            $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
+            $results[] = [
+              'value' => $uri,
+              'label' => $term . $parent . $note,
+              'desc' => $parent . $note,
+            ];
           }
+        }
         else {
           $results[] = [
             'value' => NULL,
-            'label' => 'Sorry no Match from Getty '. $vocab. ' Vocabulary',
+            'label' => 'Sorry no Match from Getty ' . $vocab . ' Vocabulary',
             'desc' => NULL,
           ];
         }
-        return  $results;
+        return $results;
       }
       $this->messenger->addError(
         $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
           [
             '@url' => $remoteUrl,
-            '@jsonerror' => $json_error
+            '@jsonerror' => $json_error,
           ]
         )
       );
@@ -441,13 +453,13 @@ SPARQL;
    *
    * @return array
    */
-  protected function viaf($input){
+  protected function viaf($input) {
     $input = urlencode($input);
-    $urlindex =  '&query=' . $input;
+    $urlindex = '&query=' . $input;
     $baseurl = 'https://viaf.org/viaf/AutoSuggest?';
-    $remoteUrl = $baseurl.$urlindex;
+    $remoteUrl = $baseurl . $urlindex;
 
-    $options['headers']=['Accept' => 'application/json'];
+    $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
     $jsondata = [];
@@ -459,10 +471,11 @@ SPARQL;
       if (count($jsondata) > 1) {
         if (count($jsondata['result']) >= 1) {
           foreach ($jsondata['result'] as $key => $item) {
-            $desc = (isset($item['nametype'])) ? '('.$item['nametype'].')':'';
+            $desc = (isset($item['nametype'])) ? '(' . $item['nametype'] . ')' : NULL;
             $results[] = [
-              'value' =>  "https://viaf.org/viaf/".$item['viafid'],
-              'label' => $item['displayForm'].' '.$desc,
+              $label = empty($desc) ? $item['displayForm'] : $item['displayForm'] . ' ' . $desc,
+              'value' => "https://viaf.org/viaf/" . $item['viafid'],
+              'label' => $label,
               'desc' => $desc,
             ];
           }
@@ -471,16 +484,16 @@ SPARQL;
       else {
         $results[] = [
           'value' => NULL,
-          'label' => 'Sorry no Match from VIAF'
+          'label' => 'Sorry no Match from VIAF',
         ];
       }
-      return  $results;
+      return $results;
     }
     $this->messenger->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
-          '@jsonerror' => $json_error
+          '@jsonerror' => $json_error,
         ]
       )
     );
@@ -496,14 +509,14 @@ SPARQL;
    */
   protected function getRemoteJsonData($remoteUrl, $options) {
     // This is expensive, reason why we process and store in cache
-    if (empty($remoteUrl)){
+    if (empty($remoteUrl)) {
       // No need to alarm. all good. If not URL just return.
       return [];
     }
     if (!UrlHelper::isValid($remoteUrl, $absolute = TRUE)) {
       $this->messenger()->addError(
         $this->t('We can not fetch Data from @$remoteUrl, check your URL',
-          ['@$remoteUrl' =>  $remoteUrl]
+          ['@$remoteUrl' => $remoteUrl]
         )
       );
       return [];
@@ -512,27 +525,26 @@ SPARQL;
 
     try {
       $request = $this->httpClient->get($remoteUrl, $options);
-    }
-    catch(ClientException $exception) {
+    } catch (ClientException $exception) {
       $responseMessage = $exception->getMessage();
       $this->messenger()->addError(
         $this->t('We tried to contact @url but we could not. <br> The WEB says: @response. <br> Check that URL!',
           [
             '@url' => $remoteUrl,
-            '@response' => $responseMessage
+            '@response' => $responseMessage,
           ]
         )
       );
       return [];
-    }
-    catch (ServerException $exception) {
+    } catch (ServerException $exception) {
       $responseMessage = $exception->getMessage();
-      $this->loggerFactory->get('webform_strawberryfield')->error('We tried to contact @url but we could not. <br> The Remote server says: @response. <br> Check your query',
+      $this->loggerFactory->get('webform_strawberryfield')
+        ->error('We tried to contact @url but we could not. <br> The Remote server says: @response. <br> Check your query',
           [
             '@url' => $remoteUrl,
-            '@response' => $responseMessage
+            '@response' => $responseMessage,
           ]
-      );
+        );
       return [];
     }
     $body = $request->getBody()->getContents();
