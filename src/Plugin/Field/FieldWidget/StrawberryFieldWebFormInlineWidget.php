@@ -208,6 +208,11 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     }
 
     $my_webform = \Drupal\webform\Entity\Webform::load($my_webform_machinename);
+    // Deals with any existing confirmation messages.
+    $confirmation_message = $my_webform->getSetting('confirmation_message', FALSE);
+    $confirmation_message = !empty($confirmation_message) && strlen(trim($confirmation_message)) > 0 ? $confirmation_message : $this->t(
+      'Thanks, you are all set! Please Save the content to persist the changes.');
+
 
     if ($my_webform == null) {
       // Well someone dropped the ball here
@@ -328,9 +333,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           'wizard_progress_link' => TRUE,
           'submission_user_duplicate' => TRUE,
           'submission_log' => FALSE,
-          'confirmation_message' => $this->t(
-            'Thanks, you are all set! Please Save the content to persist the changes.'
-          ),
+          'confirmation_message' => $confirmation_message
         ],
       ];
       $element['strawberry_webform_inline']['#parents'] = $parents;
@@ -389,7 +392,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
 
-    if (empty($current_value['creation_method'])){
+    if (!isset($current_value['creation_method']) || empty($current_value['creation_method'])){
       $current_value['creation_method'] = $my_webform_machinename;
     }
 

@@ -151,7 +151,11 @@ class StrawberryRunnerModalController extends ControllerBase
             $data['data'] = $data_defaults + json_decode($stored_value,true);
         }
 
-        // Lets make sure this puppy never redirects
+      $confirmation_message = $webform->getSetting('confirmation_message', FALSE);
+      $confirmation_message = !empty($confirmation_message) && strlen(trim($confirmation_message)) > 0 ? $confirmation_message : $this->t(
+        'Thanks, you are all set! Please Save the content to persist the changes.');
+
+      // Lets make sure this puppy never redirects
         // And also we need to reset some defaults here
         // @see \Drupal\webform\Entity\Webform::getDefaultSettings
         // @TODO autofill needs to be a setting that is respected
@@ -171,8 +175,8 @@ class StrawberryRunnerModalController extends ControllerBase
             'confirmation_exclude_token' => TRUE,
             'wizard_progress_link' => TRUE,
             'submission_user_duplicate' => TRUE,
-            'confirmation_message' => $this->t(
-            'Thanks, you are all set! Please Save the content to persist the changes.')
+            'submission_log' => FALSE,
+            'confirmation_message' => $confirmation_message
         ];
 
 

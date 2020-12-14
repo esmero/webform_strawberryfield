@@ -31,3 +31,18 @@ webform_strawberryfield.nominatim:
     _permission: 'access content'
     _csrf_token: 'TRUE'
     count: '\d+'
+# Adds a 'Create Node from' Submission
+# This allows normal Webform Submissions to become fully qualified ADOs
+webform_strawberryfield.webform_submission.ingestentities_form:
+  path: '/admin/structure/webform/manage/{webform}/submission/{webform_submission}/makeado'
+  parameters:
+    webform:
+      type: 'entity:webform'
+    webform_submission:
+      type: 'entity:webform_submission'
+  defaults:
+    _form: '\Drupal\webform_strawberryfield\Form\WebformSubmissionToADO'
+    _title_callback: '\Drupal\webform\Controller\WebformSubmissionViewController::title'
+  requirements:
+    _entity_access: 'webform_submission.update'
+    _custom_access: '\Drupal\webform_strawberryfield\Access\WebformStrawberryfieldHandlerAccess::checkIngestEntityAccess'

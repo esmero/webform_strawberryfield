@@ -13,6 +13,13 @@ use Drupal\format_strawberryfield\Tools\IiifHelper;
 use Drupal\Core\StreamWrapper\StreamWrapperInterface;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\image\Entity\ImageStyle;
+use Drupal\webform\WebformSubmissionInterface;
+use Drupal\Component\Render\FormattableMarkup;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester;
+use Ramsey\Uuid\Uuid;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Drupal\Core\Render\Element;
 
 /**
  * Alters a webform to help with embbeding in a node crud context.
@@ -347,7 +354,7 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
       // Deal with Drupal 8.8.x only now
       $iiifidentifier = urlencode(
         \Drupal::service('stream_wrapper_manager')->getTarget(
-            $file->getFileUri()
+          $file->getFileUri()
         )
       );
 
@@ -391,8 +398,9 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
       );
       $url = $publicurl->toString();
       // Extract EXIF and show it to the user!
-      /** @var \Drupal\Core\File\FileSystem $file_system */
-      $scheme = \Drupal::service('file_system')->uriScheme($uri);
+
+      $scheme = \Drupal::service('stream_wrapper_manager')->getScheme($uri);
+
       $templocation = NULL;
       // If the file isn't stored locally make a temporary copy.
       if (!isset(
@@ -528,3 +536,172 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
     }
   }
 }
+/**
+ * Implements hook_entity_operation_alter().
+ */
+function webform_strawberryfield_entity_operation_alter(array &$operations, EntityInterface $entity) {
+  if ($entity->getEntityTypeId() == 'webform_submission') {
+    /** @var \Drupal\webform\WebformInterface $webform */
+    $webform = $entity->getWebform();
+    if (\Drupal::service('router.route_provider')->getRouteByName("webform_strawberryfield.webform_submission.ingestentities_form")) {
+      $operations['ingest_ado'] = [
+        'title' => t('Create ADO'),
+        'url' => Url::fromRoute("webform_strawberryfield.webform_submission.ingestentities_form", ['webform' => $webform->id(), 'webform_submission' => $entity->id()]),
+        'weight' => 50,
+      ];
+    }
+  }
+}
+
+/**
+ * Implements hook_format_strawberryfield_twigcontext_alter().
+ */
+function webform_strawberryfield_format_strawberryfield_twigcontext_alter(array &$context) {
+  // This will inject into the context of any of our webform operations
+  // The elements of the webform used to ingest! so we can
+  // Get stuff like #description, #title, etc.
+  $context['data_webform_elements'] = FALSE;
+  $data = $context['data'];
+  // Should we cover the option of having an array/ multiple webforms?
+  if (isset($data['strawberry_field_widget_id']) && !empty($data['strawberry_field_widget_id'])) {
+    try {
+      /* @var $webform \Drupal\webform\Entity\Webform */
+      $webform = \Drupal::entityTypeManager()
+        ->getStorage('webform')
+        ->load($data['strawberry_field_widget_id']);
+      if ($webform) {
+        $elements = $webform->getElementsDecodedAndFlattened();
+        $context['data_webform_elements'] = $elements;
+      }
+    } catch (\Exception $e) {
+      $context['data_webform_elements'] = FALSE;
+    }
+  }
+}
+
+
+/**
+ * Implements hook_webform_submission_form_alter().
+ *
+ * Pre populates a Webform with a SBF source if conditions are great.
+ */
+function webform_strawberryfield_webform_submission_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+
+  $hash = \Drupal::request()->query->get('do', NULL);
+
+  if ($hash == NULL || !Uuid::isValid($hash)) {
+    return;
+  }
+  /* @var $submission_form \Drupal\webform\WebformSubmissionForm */
+  $submission_form = $form_state->getFormObject();
+
+  $qualifies = FALSE;
+  /* @var $webform_submission \Drupal\webform\Entity\WebformSubmission */
+  $webform_submission = $submission_form->getEntity();
+  $webform = $webform_submission->getWebform();
+
+  foreach ($webform->getHandlers() as $id => $webform_handler) {
+    if (($webform_handler instanceof strawberryFieldharvester) && $webform_handler->isEnabled()) {
+      $configuration = $webform_handler->getConfiguration();
+      if ($configuration['settings']['ado_prepopulate_enabled']) {
+        $qualifies = TRUE;
+      }
+    }
+  }
+
+  if ($qualifies && !empty($form['#webform_id'])) {
+    // Check access first
+    try {
+      //@var $entities \Drupal\Core\Entity\ContentEntityInterface[] */
+      $entities = \Drupal::entityTypeManager()
+        ->getStorage('node')
+        ->loadByProperties(['uuid' => $hash]);
+      // IF this does not work, either the entity is new! or it does not exist at all.
+    } catch (\Exception $e) {
+      // NO fuzz, just go your way
+      return;
+    }
+    if ($entities) {
+      foreach ($entities as $entity) {
+        // Means there was an entity stored! hu!
+        // if you are following this you will know this foreach
+        // makes little sense because we will either get a single one or none
+        // but! makes sense anyway, shorter than checking if there, and if so
+        // getting the first!
+        //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
+        $source_entity = $entity;
+        if (!$source_entity->access('view')) {
+          throw new AccessDeniedHttpException('Sorry, seems like you (pretty sure) are not allowed to see this, do this or to be here at all!');
+        }
+        if (($sbf_fields = \Drupal::service('strawberryfield.utility')
+          ->bearsStrawberryfield($entity))) {
+          foreach ($sbf_fields as $field_name) {
+            /* @var $field \Drupal\Core\Field\FieldItemInterface */
+            $field = $entity->get($field_name);
+            /* @var \Drupal\strawberryfield\Field\StrawberryFieldItemList $field */
+            foreach ($field->getIterator() as $delta => $itemfield) {
+              /** @var $itemfield \Drupal\strawberryfield\Plugin\Field\FieldType\StrawberryFieldItem */
+              // So. Also we may want to check which ones have default data
+              // And we may want to filter those out
+              // Tokens/preprocessed logic should always win.
+              $existing_elements = $webform->getElementsInitializedFlattenedAndHasValue('view');
+
+              $fullvalues = $itemfield->provideDecoded(TRUE);
+              // Remove any ADO/NODE specific elements
+              // Basically anything we have added in our enrichment diet/plan
+              // Identified by keys that contain a colon.
+              // Or that the user can not create because of 'create' operation being
+              // not allowed for it.
+              $fullvalues_clean = array_filter(
+                $fullvalues,
+                function ($key) use ($existing_elements) {
+                  return (strpos($key,':') === FALSE) && isset($existing_elements[$key]);
+                },
+                ARRAY_FILTER_USE_KEY
+              );
+
+              webform_strawberryfield_recursive_set_default_value($form['elements'], $fullvalues_clean, 1);
+              $old_values = $form_state->getValues();
+              $webform_submission->setOriginalData($fullvalues_clean);
+              $form_state->setValues($old_values + $fullvalues_clean);
+
+              if (!empty($fullvalues)) {
+                // Only populate one entry if many SBFs are around
+                // @TODO. Add configs to this so admins can choose which CMODEL
+                // and which Content
+                break 2;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function webform_strawberryfield_recursive_set_default_value(&$form_elements, array $values_to_set, $level = 1){
+  if (!is_array($form_elements)) {
+    return;
+  }
+  $valid_form_elements = Element::children($form_elements);
+  foreach($valid_form_elements as $key){
+    $subkeys = Element::children($form_elements[$key]);
+    if(is_array($subkeys) && !empty($subkeys)){
+      //We need to loop through it.
+      webform_strawberryfield_recursive_set_default_value($form_elements[$key], $values_to_set, $level + 1);
+    }
+    else{
+      if (isset($form_elements[$key]['#webform_key']) && isset($values_to_set[$form_elements[$key]['#webform_key']])){
+        // A Match. Means we have it in our Values to set
+        // This is a little bit of a blind thing
+        // @TODO If the Webform element has the same key but can not contain the value is something we need
+        // to check that!
+        // Would not hurt to check if the user has access too?
+        if (!isset($form_elements[$key]['#default_value'])) {
+          $form_elements[$key]['#default_value'] = $values_to_set[$form_elements[$key]['#webform_key']];
+        }
+      }
+    }
+  }
+}
+
