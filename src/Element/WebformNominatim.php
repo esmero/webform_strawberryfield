@@ -139,7 +139,8 @@ class WebformNominatim extends WebformLocationBase {
       ],
       '#description' => 'https://operations.osmfoundation.org/policies/nominatim/',
     ];
-    $trigger_name = $form_state->getTriggeringElement()['#name'];
+    $triggering_element = $form_state->getTriggeringElement();
+    $trigger_name = isset($triggering_element) && isset($triggering_element['#name'])? $triggering_element['#name'] : NULL;
     
     // Only act on our own submits
     if ($trigger_name == $element['#name'] . '_select_button' ||
