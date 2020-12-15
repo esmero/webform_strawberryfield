@@ -34,3 +34,14 @@ field.widget.settings.webform_entity_reference_autocomplete:
     default_data:
       type: boolean
       label: 'Default Data'
+
+webform.handler.a_strawberryfield_harvester:
+  type: mapping
+  label: 'A Strawberryfield harvester/seeder Webform handler. The piece of resistance between fixed schemas and JSON'
+  mapping:
+    submission_url:
+      type: string
+      label: 'A remote URL endpoint where in the future you can double submit/log your data'
+    upload_scheme:
+      type: string
+      label: 'The default upload scheme for file uploads managed by this webform handler. Suggested is S3'
