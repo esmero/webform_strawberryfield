@@ -2,8 +2,6 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\WebformHandler;
 
-use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
-use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\TempStore\TempStoreException;
@@ -483,9 +481,10 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
     $values = $webform_submission->getData();
     $cleanvalues = $values;
-    $processedcleanvalues = [];
+
     // Helper structure to keep elements that map to entities around
     $entity_mapping_structure = isset($cleanvalues['ap:entitymapping']) ? $cleanvalues['ap:entitymapping'] : [];
+
     // Check which elements carry files around
     $allelements = $webform_submission->getWebform()->getElementsManagedFiles();
     foreach ($allelements as $element) {
@@ -495,17 +494,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
       // Track what fields map to file entities.
       $entity_mapping_structure['entity:file'][] = $originalelement['#webform_key'];
       // Process each managed files field.
-      $processedcleanvaluesforfield = $this->processFileField(
-        $originalelement,
-        $webform_submission,
-        $cleanvalues
-      );
-      // Merge since different fields can contribute to same as:filetype structure.
-      $processedcleanvalues = array_merge_recursive(
-        $processedcleanvalues,
-        $processedcleanvaluesforfield
-      );
     }
+
     // This is more expensive. Entity References?
     $anyelement = $webform_submission->getWebform()->getElementsInitializedAndFlattened();
     foreach ($anyelement as $elementkey => $element) {
@@ -533,14 +523,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
         array_unique($entity_mapping_structure['entity:file'],
           SORT_STRING
         ));
-    }
-    // Distribute all processed AS values for each field into its final JSON
-    // Structure, e.g as:image, as:application, as:documents, etc.
-    foreach ($processedcleanvalues as $askey => $info) {
-      //@TODO ensure non managed files inside structure are preserved.
-      //Could come from another URL only field or added manually by some
-      // Advanced user.
-      $cleanvalues[$askey] = $info;
     }
     $cleanvalues['ap:entitymapping'] = $entity_mapping_structure;
 
@@ -664,61 +646,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
   }
 
   /**
-   * Process temp files and give them SBF structure
-   *
-   * @param array $element
-   *   An associative array containing the file webform element.
-   * @param \Drupal\webform\webformSubmissionInterface $webform_submission
-   * @param $cleanvalues
-   *
-   * @return array
-   *   Associative array keyed by AS type with binary info.
-   */
-  public function processFileField(
-    array $element,
-    WebformSubmissionInterface $webform_submission,
-    $cleanvalues
-  ) {
-
-    $key = $element['#webform_key'];
-    $type = $element['#type'];
-    // Equivalent of getting original data from an node entity
-    $original_data = $webform_submission->getOriginalData();
-    $processedAsValues = [];
-
-    $value = isset($cleanvalues[$key]) ? $cleanvalues[$key] : [];
-    $fids = (is_array($value)) ? $value : [$value];
-
-    $original_value = isset($original_data[$key]) ? $original_data[$key] : [];
-    $original_fids = (is_array(
-      $original_value
-    )) ? $original_value : [$original_value];
-
-    // Delete the old file uploads?
-    // @TODO build some cleanup logic here. Could be moved to attached field hook.
-    // Issue with this approach is that it is 100% webform dependant
-    // Won't apply in the same way if using direct JSON input and node save.
-
-    $delete_fids = array_diff($original_fids, $fids);
-
-    // @TODO what do we do with removed files?
-    // Idea. Check the fileUsage. If there is still some other than this one
-    // don't remove.
-    // @see \Drupal\webform\Plugin\WebformElement\WebformManagedFileBase::deleteFiles
-
-    // Exit if there is no fids.
-    if (empty($fids)) {
-      return $processedAsValues;
-    }
-
-    /* @see \Drupal\strawberryfield\StrawberryfieldFilePersisterService */
-    $processedAsValues = \Drupal::service('strawberryfield.file_persister')
-      ->generateAsFileStructure($fids, $key, $cleanvalues);
-    return $processedAsValues;
-
-  }
-
-  /**
    * {@inheritdoc}
    */
   public function confirmForm(
@@ -797,7 +724,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     if (isset($element['#uri_scheme'])) {
       return $element['#uri_scheme'];
     }
-    $scheme_options = \Drupal\webform\Plugin\WebformElement\WebformManagedFileBase::getVisibleStreamWrappers(
+    $scheme_options = WebformManagedFileBase::getVisibleStreamWrappers(
     );
     if (isset($scheme_options['private'])) {
       return 'private';
@@ -962,7 +889,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
       if (!empty($field_schema['columns'])) {
         $field_properties = array_intersect_key($field_properties, $field_schema['columns']);
       }
-
 
       if (!empty($field_properties)) {
         $form[$field_name] = [
@@ -1177,7 +1103,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
   public function calculateSbfJson(array $values, WebformSubmissionInterface $webform_submission) {
 
     $cleanvalues = $values;
-    $processedcleanvalues = [];
     // Helper structure to keep elements that map to entities around
     $entity_mapping_structure = isset($cleanvalues['ap:entitymapping']) ? $cleanvalues['ap:entitymapping'] : [];
     // Check which elements carry files around
@@ -1199,17 +1124,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
       );
       // Track what fields map to file entities.
       $entity_mapping_structure['entity:file'][] = $originalelement['#webform_key'];
-      // Process each managed files field.
-      $processedcleanvaluesforfield = $this->processFileField(
-        $originalelement,
-        $webform_submission,
-        $cleanvalues
-      );
-      // Merge since different fields can contribute to same as:filetype structure.
-      $processedcleanvalues = array_merge_recursive(
-        $processedcleanvalues,
-        $processedcleanvaluesforfield
-      );
     }
     // Check also which elements carry entity references around
     // @see https://www.drupal.org/project/webform/issues/3067958
@@ -1227,14 +1141,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
           SORT_STRING
         ));
     }
-    // Distribute all processed AS values for each field into its final JSON
-    // Structure, e.g as:image, as:application, as:documents, etc.
-    foreach ($processedcleanvalues as $askey => $info) {
-      //@TODO ensure non managed files inside structure are preserved.
-      //Could come from another URL only field or added manually by some
-      // Advanced user.
-      $cleanvalues[$askey] = $info;
-    }
+
     $cleanvalues["ap:entitymapping"] = $entity_mapping_structure;
     $cleanvalues["strawberry_field_widget_id"] = $this->getWebform()->id();
     return $cleanvalues;
