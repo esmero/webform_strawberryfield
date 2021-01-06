@@ -149,6 +149,20 @@ class StrawberryRunnerModalController extends ControllerBase
         }
         else {
             $data['data'] = $data_defaults + json_decode($stored_value,true);
+          // In case the saved data is "single valued" for a key
+          // But the corresponding webform element is not
+          // we cast to it multi valued so it can be read/updated
+          /* @var \Drupal\webform\WebformInterface $webform */
+          $webform_elements  = $webform->getElementsInitializedFlattenedAndHasValue();
+          $elements_in_data = array_intersect_key($webform_elements, $data['data']);
+          if (is_array($elements_in_data) && count($elements_in_data)>0) {
+            foreach($elements_in_data as $key => $elements_in_datum) {
+              if (isset($elements_in_datum['#webform_multiple']) &&
+                $elements_in_datum['#webform_multiple']!== FALSE) {
+                $data['data'][$key] = (array) $data['data'][$key];
+              }
+            }
+          }
         }
 
       $confirmation_message = $webform->getSetting('confirmation_message', FALSE);
