@@ -1,0 +1,15 @@
+{#
+/**
+ * @file
+ * Our theme implementation for a summary of a webform settings handler.
+ *
+ * Available variables:
+ * - settings: The current configuration for this debug handler.
+ * - handler: The settings handler.
+ *
+ * @ingroup themeable
+ */
+#}
+{% for key, setting in settings %}
+  <b>{{ key }}:</b> {{ setting }}<br />
+{% endfor %}

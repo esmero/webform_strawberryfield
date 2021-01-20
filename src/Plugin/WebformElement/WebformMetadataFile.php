@@ -14,6 +14,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 use Drupal\file\FileInterface;
 use Drupal\strawberryfield\Tools\JsonSimpleXMLElementDecorator;
+use Drupal\strawberryfield\Tools\SimpleXMLtoArray;
 
 /**
  * Provides a 'file element that can import into the submission/ process other formats' element.
@@ -38,7 +39,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
 
     $properties = parent::getDefaultProperties() + [
         'jsonkey' => 'imported_metadata',
-        'keepxml' => TRUE,
+        'keepfile' => TRUE,
       ] + parent::getDefaultProperties();
     return $properties;
 
@@ -48,18 +49,32 @@ class WebformMetadataFile extends WebformManagedFileBase {
     array &$element,
     WebformSubmissionInterface $webform_submission = NULL
   ) {
-
     // @TODO explore this method to act on submitted data v/s element behavior
-
+    // This only acts on upload
+    // But once uploaded we need a way of doing it again.
+    // Kids: this method is used by other subclasses. So always
+    // Remember it needs to stay generic handling also existing keys
     parent::prepare($element,$webform_submission );
+
     $value = $this->getValue($element, $webform_submission, []);
     $file = $this->getFile($element, $value, []);
     $data = $webform_submission->getData();
+    $needs_import = FALSE;
     if ($file) {
-      if (!isset($data['ap:importeddata']['dr:uuid']) ||
-       $data['ap:importeddata']['dr:uuid'] != $file->uuid()) {
-        $imported_xml = $this->processXML($file);
-        $data = array_merge($data, $imported_xml);
+      $needs_import = TRUE;
+      if (isset($data['ap:importeddata'][$this->getKey($element)]['dr:uuid'])) {
+          if ($data['ap:importeddata'][$this->getKey($element)]['dr:uuid'] == $file->uuid()) {
+            $needs_import = FALSE;
+          }
+        }
+      if ($needs_import) {
+        $imported_data['ap:importeddata'][$this->getKey($element)] = $this->processFileContent($file);
+        if (isset($data['ap:importeddata']) && is_array($data['ap:importeddata'])) {
+          $newimporteddata = array_merge($data['ap:importeddata'], $imported_data['ap:importeddata']);
+        } else {
+          $newimporteddata = $imported_data['ap:importeddata'];
+        }
+        $data['ap:importeddata'] = $newimporteddata;
         $webform_submission->setData($data);
       }
     }
@@ -77,29 +92,28 @@ class WebformMetadataFile extends WebformManagedFileBase {
       '#description' => $this->t('JSON key to be used <em>names</em>'),
       '#default_value' => 'subjects',
     ];
-    $form['keepxml'] = [
+    $form['keepfile'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Keep imported XML after persisting?'),
-      '#description' => $this->t('If the imported XML should be kept as inline data or should be purged on save.'),
+      '#description' => $this->t('If the imported File should be kept as inline data or should be purged on save.'),
       '#default_value' => 'subjects',
     ];
-
     return $form;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function postSave(array &$element, WebformSubmissionInterface $webform_submission, $update = TRUE) {
+  public function preSave(array &$element, WebformSubmissionInterface $webform_submission, $update = TRUE) {
     // Get current value and original value for this element.
 
-    parent::postSave($element, $webform_submission, $update);
+    parent::preSave($element, $webform_submission, $update);
     $key = $element['#webform_key'];
-    $data = $webform_submission->getData();
-    $data['imported_xml_data'] = ['holi' => 'buh'];
-    $webform_submission->setData($data);
+    // $data = $webform_submission->getData();
+    // $webform_submission->setData($data);
     $value = $this->getValue($element, $webform_submission, []);
     $files = $this->getFiles($element, $value, []);
+
     /* idea: we could remove the parsed JSON once its not needed anymore */
     // Why? Because we can always reparse it
     // Because we maybe just want to copy values into the purer simpler raw
@@ -112,12 +126,17 @@ class WebformMetadataFile extends WebformManagedFileBase {
    *
    * @return array
    */
-  protected function processXML(FileInterface $file) {
+  protected function processFileContent(FileInterface $file) {
     $jsonarray = [];
+    $xmljsonarray = [];
     if (!$file) {
       return $jsonarray;
     }
     $uri = $file->getFileUri();
+    $mime = $file->getMimeType();
+    if ($mime != 'application/xml') {
+      return $jsonarray;
+    }
     $data = file_get_contents($uri);
     $internalErrors = libxml_use_internal_errors(TRUE);
     libxml_clear_errors();
@@ -150,19 +169,29 @@ class WebformMetadataFile extends WebformManagedFileBase {
       // Root key is
       $rootkey = $simplexml->getName();
       $md5 = md5_file($uri);
-      $xmltojson = new JsonSimpleXMLElementDecorator($simplexml, TRUE, TRUE, 5);
-      // Destination key
+      /*
+      Not longer using the decorator here since we want to push
+      consistently (shape) structured data, plus a few less CPU cycles
+      $xmltojson = new JsonSimpleXMLElementDecorator($simplexml, TRUE, TRUE, 50);
+
       $xmljsonstring = json_encode($xmltojson, JSON_PRETTY_PRINT);
       $xmljsonarray =  json_decode($xmljsonstring, TRUE);
-      $jsonarray['ap:importeddata'] = [
+      */
+      $SimpleXMLtoArray = new SimpleXMLtoArray($simplexml);
+      $xmljsonarray = $SimpleXMLtoArray->xmlToArray();
+      // We are casting everything to associative.
+      // Do we want that?
+
+      $jsonarray = [
         'dr:uuid' => $file->uuid(),
         'checksum' => $md5,
         'crypHashFunc' =>  'md5',
         'standard' => $rootkey,
+        'webform_element_type' => $this->pluginDefinition['id'],
         'content' => $xmljsonarray,
+        'format' => 'xml'
       ];
     }
-
     return $jsonarray;
   }
 
@@ -173,7 +202,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
    *
    * @return array An array of errors
    */
-  protected function getXmlErrors($internalErrors)
+  private function getXmlErrors($internalErrors)
   {
     $errors = [];
     foreach (libxml_get_errors() as $error) {

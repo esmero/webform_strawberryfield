@@ -206,8 +206,12 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     if (empty($my_webform_machinename)) {
       $my_webform_machinename = 'webform_strawberry_default';
     }
-
+    /* @var \Drupal\webform\WebformInterface $my_webform */
     $my_webform = \Drupal\webform\Entity\Webform::load($my_webform_machinename);
+    // Deals with any existing confirmation messages.
+    $confirmation_message = $my_webform->getSetting('confirmation_message', FALSE);
+    $confirmation_message = !empty($confirmation_message) && strlen(trim($confirmation_message)) > 0 ? $confirmation_message : $this->t(
+      'Thanks, you are all set! Please Save the content to persist the changes.');
 
     if ($my_webform == null) {
       // Well someone dropped the ball here
@@ -299,7 +303,24 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     }
     else {
       $data['data'] = $data_defaults + json_decode($stored_value,true);
+
+      // In case the saved data is "single valued" for a key
+      // But the corresponding webform element is not
+      // we cast to it multi valued so it can be read/updated
+      /* @var \Drupal\webform\WebformInterface $my_webform */
+      $webform_elements  = $my_webform->getElementsInitializedFlattenedAndHasValue();
+      $elements_in_data = array_intersect_key($webform_elements, $data['data']);
+      if (is_array($elements_in_data) && count($elements_in_data)>0) {
+        foreach($elements_in_data as $key => $elements_in_datum) {
+          if (isset($elements_in_datum['#webform_multiple']) &&
+            $elements_in_datum['#webform_multiple']!== FALSE) {
+            //@TODO should we log this operation for admins?
+            $data['data'][$key] = (array) $data['data'][$key];
+          }
+        }
+      }
     }
+
 
     // @see \Drupal\webform_strawberryfield\Element\WebformCustom element.
     // @TODO expose #override options in the widget config.
@@ -328,9 +349,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           'wizard_progress_link' => TRUE,
           'submission_user_duplicate' => TRUE,
           'submission_log' => FALSE,
-          'confirmation_message' => $this->t(
-            'Thanks, you are all set! Please Save the content to persist the changes.'
-          ),
+          'confirmation_message' => $confirmation_message
         ],
       ];
       $element['strawberry_webform_inline']['#parents'] = $parents;
@@ -389,7 +408,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
 
-    if (empty($current_value['creation_method'])){
+    if (!isset($current_value['creation_method']) || empty($current_value['creation_method'])){
       $current_value['creation_method'] = $my_webform_machinename;
     }
 
@@ -463,7 +482,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         $form_state->setError(
           $element,
           $this->t(
-            "Please complete all steps. You can not Save this @bundle_label without completing the required Form.",
+            "There is a problem. Either you did not complete all steps or maybe your Webform is not correctly configured. You can not Save this @bundle_label without completing the required Form.",
             [
               '@bundle_label' => $form_state->get('strawberryfield_webform_bundle_label')
             ]

@@ -28,22 +28,22 @@ class WebformPanoramaTour extends WebformCompositeBase {
   public function getInfo() {
     // @TODO allow user to set which View is used to populate Panoramas
     // Allow user to select which view mode is used to render inline panoramas
-      $class = get_class($this);
-      $info = [
-        '#input' => TRUE,
-        '#access' => TRUE,
-        '#process' => [
-          [$class, 'processWebformComposite'],
-          [$class, 'processAjaxForm'],
-        ],
-        '#pre_render' => [
-          [$class, 'preRenderWebformPanoramaTourElement'],
-        ],
-        '#title_display' => 'invisible',
-        '#required' => FALSE,
-        '#flexbox' => TRUE,
-        '#theme' => 'webform_metadata_panoramatour',
-      ];
+    $class = get_class($this);
+    $info = [
+      '#input' => TRUE,
+      '#access' => TRUE,
+      '#process' => [
+        [$class, 'processWebformComposite'],
+        [$class, 'processAjaxForm'],
+      ],
+      '#pre_render' => [
+        [$class, 'preRenderWebformPanoramaTourElement'],
+      ],
+      '#title_display' => 'invisible',
+      '#required' => FALSE,
+      '#flexbox' => TRUE,
+      '#theme' => 'webform_metadata_panoramatour',
+    ];
 
     return $info;
   }
@@ -66,10 +66,13 @@ class WebformPanoramaTour extends WebformCompositeBase {
    * should not assume that the buttons can't be "clicked" just because they are
    * not displayed.
    *
+   * @param array $element
+   *
+   * @return array
    * @see \Drupal\file\Element\ManagedFile::processManagedFile()
    * @see \Drupal\Core\Form\FormBuilderInterface::doBuildForm()
    */
-  public static function preRenderWebformPanoramaTourElement($element) {
+  public static function preRenderWebformPanoramaTourElement(array $element) {
     return $element;
   }
 
@@ -99,6 +102,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     // Just in case someone wants to trick us
     // This is already disabled on the Config Form for the Element
     unset($element['#multiple']);
+
     $element_name = $element['#name'];
 
     $all_scenes = [];
@@ -126,8 +130,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $element['allscenes']['#default_value'] = json_encode($all_scenes,true);
     $form_state->setValue([$element['#name'],'allscenes'],json_encode($all_scenes,TRUE));
 
-    $currentscene = $form_state->getValue([$element['#name'], 'currentscene']);
-
+    $currentscene = $form_state->getValue([$element_name, 'currentscene']);
+    error_log('building the main form');
     $sceneid = NULL;
 
     if (!$currentscene && !empty($all_scenes)) {
@@ -136,7 +140,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     } else {
       $sceneid = $currentscene;
-      $form_state->setValue([$element_name, 'scene'],$sceneid);
+      $form_state->setValue([$element_name, 'scene'], $sceneid);
     }
     $hotspot_list = [];
 
@@ -172,7 +176,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $element['select_button'] = [
       '#title' => 'Select Scene',
       '#type' => 'submit',
-      '#value' => t('Select Scene'),
+      '#value' => t('Add Scene'),
       '#name' => $element['#name'] . '_select_button',
       '#submit' => [[get_called_class(), 'selectSceneSubmit']],
       '#ajax' => [
@@ -252,15 +256,15 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
           $element['currentscene']['#weight'] = 2;
           $element['currentscene'] =  [
-          '#title' => t('Editing Scene'),
-          '#type' => 'select',
-          '#options' => $options,
-          '#default_value' => (string) $node->id(),
-          '#ajax' => [
-            'callback' => [get_called_class(), 'changeSceneCallBack'],
-            'event' => 'change',
+            '#title' => t('Editing Scene'),
+            '#type' => 'select',
+            '#options' => $options,
+            '#default_value' => (string) $node->id(),
+            '#ajax' => [
+              'callback' => [get_called_class(), 'changeSceneCallBack'],
+              'event' => 'change',
             ],
-          '#submit' => [[get_called_class(), 'changeSceneSubmit']],
+            '#submit' => [[get_called_class(), 'changeSceneSubmit']],
           ];
         }
 
@@ -340,9 +344,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
             'data-drupal-loaded-node' => $nodeid,
             'data-drupal-hotspot-property' => 'url',
           ],
-         '#states' => [
-          'visible' => [
-            ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => array('value' => 'url'),
+          '#states' => [
+            'visible' => [
+              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => array('value' => 'url'),
             ],
           ]
         ];
@@ -433,7 +437,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ],
           '#button_type' => 'default',
           '#visible' => 'true',
-          '#limit_validation_errors' => FALSE,
+          '#limit_validation_errors' => [$element['#parents']],
           '#attributes' => [
             'class' => ['btn-warning']
           ],
@@ -487,19 +491,19 @@ class WebformPanoramaTour extends WebformCompositeBase {
                 '#type' => 'html_tag',
                 '#tag' => 'p',
                 '#value' => $hotspot->yaw . "," . $hotspot->pitch,
-                ],
+              ],
               'type' => [
                 '#type' => 'html_tag',
                 '#tag' => 'p',
                 '#value' => $hotspot->type,
-                ],
+              ],
               'label' =>  [
                 '#type' => 'html_tag',
                 '#tag' => 'p',
                 '#value' => isset($hotspot->text) ? $hotspot->text ." ". $hotspot->id." " : t('no name'),
-                ],
+              ],
               'operations' => $delete_hot_spot_button
-              ];
+            ];
           }
 
           $element['hotspots_temp']['added_hotspots'] = [
@@ -670,10 +674,17 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $button = $form_state->getTriggeringElement();
     $element = NestedArray::getValue(
       $form,
-      array_slice($button['#array_parents'], 0, -2)
+      array_slice($button['#array_parents'], 0, -1)
     );
+    $element_name = $element['#name'];
     $response = new AjaxResponse();
     $data_selector = $element['#attributes']['data-drupal-selector'];
+    // We also need to clear any visible Hotspots in case
+    // There is a loaded Panorama already in place
+    if ($form_state->getValue([$element_name, 'scene'])) {
+      $current_scene = $form_state->getValue([$element_name, 'scene']);
+      static::updateJsSettings($form_state, $current_scene, $element_name, $response);
+    }
     $response->addCommand(
       new ReplaceCommand(
         '[data-drupal-selector="' . $data_selector . '"]',
@@ -707,6 +718,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     array $form,
     FormStateInterface $form_state
   ) {
+    error_log('changeSceneCallBack called');
     $button = $form_state->getTriggeringElement();
     $element = NestedArray::getValue(
       $form,
@@ -719,38 +731,8 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     // Now update the JS settings
     if ($form_state->getValue([$element_name, 'scene'])) {
-      $all_scenes_key = $element_name . '-allscenes';
-      $allscenes = $form_state->get($all_scenes_key);
       $current_scene = $form_state->getValue([$element_name, 'scene']);
-      $existing_objects = [];
-      foreach ($allscenes as $key => &$scene) {
-        if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
-          $existing_objects = $scene['hotspots'];
-          break;
-        }
-      }
-
-      $settingsclear = [
-        'webform_strawberryfield' => [
-          'WebformPanoramaTour' => [
-            $element_name . '-hotspots' =>
-              NULL
-          ],
-        ]
-      ];
-      $settings = [
-        'webform_strawberryfield' => [
-          'WebformPanoramaTour' => [
-            $element_name . '-hotspots' =>
-              $existing_objects
-          ],
-        ]
-      ];
-      // Why twice? well because merge is deep merge. Gosh JS!
-      // And merge = FALSE clears even my brain settings...
-      $response->addCommand(new SettingsCommand($settingsclear, TRUE));
-      $response->addCommand(new SettingsCommand($settings, TRUE));
-
+      static::updateJsSettings($form_state, $current_scene, $element_name, $response);
     }
     // And now replace the container
     $response->addCommand(
@@ -761,6 +743,48 @@ class WebformPanoramaTour extends WebformCompositeBase {
     );
     return $response;
   }
+
+  /** This function updates via JS/Settings the Visible Hotspots
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   * @param string $current_scene
+   * @param string $element_name
+   * @param \Drupal\Core\Ajax\AjaxResponse $response
+   */
+  public static function updateJsSettings(FormStateInterface $form_state, string $current_scene, string $element_name, AjaxResponse $response) {
+    // Now update the JS settings
+    $all_scenes_key = $element_name . '-allscenes';
+    $allscenes = $form_state->get($all_scenes_key);
+    // Only here scene applies, since it is passed via the autocomplete
+    $existing_objects = [];
+    foreach ($allscenes as $key => &$scene) {
+      if (isset($scene['scene']) && $scene['scene'] == $current_scene) {
+        $existing_objects = $scene['hotspots'];
+        break;
+      }
+    }
+
+    $settingsclear = [
+      'webform_strawberryfield' => [
+        'WebformPanoramaTour' => [
+          $element_name . '-hotspots' =>
+            NULL
+        ],
+      ]
+    ];
+    $settings = [
+      'webform_strawberryfield' => [
+        'WebformPanoramaTour' => [
+          $element_name . '-hotspots' =>
+            $existing_objects
+        ],
+      ]
+    ];
+    // Why twice? well because merge is deep merge. Gosh JS!
+    // And merge = FALSE clears even my brain settings...
+    $response->addCommand(new SettingsCommand($settingsclear, TRUE));
+    $response->addCommand(new SettingsCommand($settings, TRUE));
+  }
+
 
   /**
    * Submit Handler for adding a Hotspot.
@@ -787,7 +811,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $existing_objects = [];
       foreach ($allscenes as $key => &$scene) {
         if (isset($scene['scene']) && $scene['scene'] == $current_scene
-          ) {
+        ) {
           $scene_key = (int) $key;
           $existing_objects = $scene['hotspots'];
           break;
@@ -817,19 +841,25 @@ class WebformPanoramaTour extends WebformCompositeBase {
         );
         // Now the fun part. Since this autocomplete is not part of the process
         // chain we never get the value transformed into id.
-        // So. we do it directly
-        $nodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput(
-          $nodeid
-        );
-        $url = \Drupal\Core\Url::fromRoute(
-          'entity.node.canonical',
-          ['node' => $nodeid],
-          []
-        );
-        $url = $url->toString();
-        $hotspot->type = 'info';
-
-        $hotspot->URL = $url;
+        // So. we do need to check if it needs to be done directly
+        if (!is_numeric($nodeid)) {
+          $nodeid = EntityAutocomplete::extractEntityIdFromAutocompleteInput(
+            $nodeid
+          );
+        }
+        if (is_numeric($nodeid) && (int)$nodeid == $nodeid) {
+          $url = \Drupal\Core\Url::fromRoute(
+            'entity.node.canonical',
+            ['node' => $nodeid],
+            []
+          );
+          $url = $url->toString();
+          $hotspot->type = 'info';
+          $hotspot->URL = $url;
+        } else {
+          $form_state->setRebuild(TRUE);
+          return;
+        }
       }
 
       if ($hotspot->type == 'scene') {
@@ -854,7 +884,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
       $allscenes[$scene_key]['hotspots'] = $existing_objects;
       $form_state->set($all_scenes_key, $allscenes);
-      $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
+      $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
 
 
     } else {
@@ -890,12 +920,11 @@ class WebformPanoramaTour extends WebformCompositeBase {
     if ($current_scene) {
       $allscenes = $form_state->getValue([$element_name, 'allscenes']);
       $allscenes = json_decode($allscenes, TRUE);
-      $current_scene = $form_state->getValue([$element_name, 'scene']);
       $scene_key = 0;
       $existing_objects = [];
-       foreach ($allscenes as $key => &$scene) {
+      foreach ($allscenes as $key => &$scene) {
         if ($scene['scene'] == $current_scene
-          ) {
+        ) {
           $scene_key = $key;
           $existing_objects = $scene['hotspots'];
         }
@@ -926,6 +955,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
    * Submit handler for the "deleteHotSpot" button.
    *
    * Adds Key and View Mode to the Table Drag  Table.
+   *
+   * @param array $form
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
    */
   public static function deleteHotSpot(array &$form, FormStateInterface $form_state) {
 
@@ -1021,7 +1053,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         )
       );
     }
-   $response->addCommand(
+    $response->addCommand(
       new ReplaceCommand(
         '[data-drupal-loaded-node-hotspot-table="' . $data_selector . '"]',
         $element['hotspots_temp']['added_hotspots']
@@ -1043,18 +1075,15 @@ class WebformPanoramaTour extends WebformCompositeBase {
   ) {
     $button = $form_state->getTriggeringElement();
     $hot_spot_values_parents = array_slice($button['#parents'], 0, -1);
-
     $element_name = $hot_spot_values_parents[0];
-    if ($form_state->getValue([$element_name, 'scene'])) {
+    if ($form_state->getValue([$element_name, 'currentscene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
-      $current_scene = $form_state->getValue([$element_name, 'scene']);
+      $current_scene = $form_state->getValue([$element_name, 'currentscene']);
       $scene_key = 0;
       $existing_objects = [];
       foreach ($allscenes as $key => &$scene) {
-        if ($scene['scene'] == $form_state->getValue(
-            [$element_name, 'scene']
-          )) {
+        if ($scene['scene'] == $current_scene) {
           $scene_key = $key;
           break;
         }
@@ -1068,7 +1097,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
         [$element_name, 'hotspots_temp', 'yaw']);
 
       $form_state->set($all_scenes_key, $allscenes);
-      $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
+      $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
     }
 
     // This is strange but needed.
@@ -1112,7 +1141,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
   }
 
   /**
-   * Submit Handler for Setting the Scene Orientation.
+   * Submit Handler for deleting a Scene Orientation.
    *
    * @param array $form
    * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -1121,46 +1150,44 @@ class WebformPanoramaTour extends WebformCompositeBase {
     array &$form,
     FormStateInterface $form_state
   ) {
-
     $button = $form_state->getTriggeringElement();
     $hot_spot_values_parents = array_slice($button['#parents'], 0, -1);
-
     $element_name = $hot_spot_values_parents[0];
-    if ($form_state->getValue([$element_name, 'scene'])) {
+    if ($form_state->getValue([$element_name, 'currentscene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
-      $current_scene = $form_state->getValue([$element_name, 'scene']);
+      $current_scene = $form_state->getValue([$element_name, 'currentscene']);
       $scene_key = 0;
-      $existing_objects = [];
+
       foreach ($allscenes as $key => &$scene) {
-        if ($scene['scene'] == $form_state->getValue(
-            [$element_name, 'scene']
-          )) {
+        if ($scene['scene'] == $current_scene) {
           $scene_key = $key;
           break;
         }
       }
+      // $scene key here is numeric, not the NODE ID.
       unset($allscenes[$scene_key]);
       // which will reorder keys
       $allscenes = array_merge($allscenes);
       // remove any hotspot pointing to this scene
-      foreach ($allscenes as &$scene) {
-        $scene['hotspots'] = array_filter($scene['hotspots'], function($e) use($scene_key) {
+      foreach ($allscenes as $key => $scene) {
+        $allscenes[$key]['hotspots'] = array_filter($scene['hotspots'], function($e) use($current_scene) {
           $e = (array) $e;
-          return (!isset($e["sceneId"]) || $e["sceneId"]!=$scene_key);
+          return (!isset($e["sceneId"]) || $e["sceneId"]!= (string) $current_scene);
         });
+        // which will reorder keys of the hotspots
+        $allscenes[$key]['hotspots'] = array_merge($allscenes[$key]['hotspots']);
       }
       $form_state->set($all_scenes_key, $allscenes);
-      $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
+      $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
       if (!empty($allscenes)) {
         $firstscene = reset($allscenes);
         $firstsceneid = $firstscene['scene'];
-        $form_state->setValue([$element_name, 'scene'],$firstsceneid);
+        $form_state->setValue([$element_name, 'currentscene'], $firstsceneid);
       } else {
-        $form_state->setValue([$element_name, 'scene'],NULL);
+        $form_state->setValue([$element_name, 'currentscene'], NULL);
       }
-
-      \Drupal::messenger()->addMessage(t('The Scene was removed'));
+      error_log('Scene was removed');
     }
     // This is strange but needed.
     // If we are creating a new  panorama, addhotspot submit button
@@ -1203,6 +1230,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $response->addCommand(new SettingsCommand($settingsclear, TRUE));
 
     // Now update the JS settings
+    error_log('deleting scene');
     if ($form_state->getValue([$element_name, 'scene'])) {
       $all_scenes_key = $element_name . '-allscenes';
       $allscenes = $form_state->get($all_scenes_key);
@@ -1240,9 +1268,12 @@ class WebformPanoramaTour extends WebformCompositeBase {
     return $response;
   }
 
-
   /**
    * Validates a composite element.
+   *
+   * @param $element
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   * @param $complete_form
    */
   public static function validateWebformComposite(&$element, FormStateInterface $form_state, &$complete_form) {
     // IMPORTANT: Must get values from the $form_states since sub-elements

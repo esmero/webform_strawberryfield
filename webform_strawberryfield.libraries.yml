@@ -32,3 +32,11 @@ scenebuilder_pannellum_strawberry:
     - core/drupalSettings
     - format_strawberryfield/pannellum
     - format_strawberryfield/iiif_pannellum_strawberry
+webform_strawberryfield.element.metadatadate:
+  version: VERSION
+  js:
+    js/webform_strawberryfield.element.metadatadate.js: {}
+  dependencies:
+    - core/drupal.date
+    - core/drupalSettings
+

@@ -1,0 +1,5 @@
+entity.node.webform_submission.ingestentities_form:
+  title: 'Create ADO'
+  route_name: webform_strawberryfield.webform_submission.ingestentities_form
+  base_route: entity.node.webform_submission.canonical
+  weight: 40

@@ -19,9 +19,9 @@ class WebformLoC extends WebformCompositeBase {
   public function getInfo() {
 
     $info =  parent::getInfo() + [
-      '#vocab' => '',
-      '#rdftype' => ''
-        ];
+      '#vocab' => 'subjects',
+      '#rdftype' => 'FullName'
+    ];
     return $info;
   }
 
@@ -74,9 +74,12 @@ class WebformLoC extends WebformCompositeBase {
     // is *never* called because it actually converts the 'WebformComposite' element into a
     // \Drupal\webform\Element\WebformMultiple calling ::processWebformMultiple element
     // So basically whatever i do here gets skipped if multiple elements are allowed.
-    $element = parent::processWebformComposite($element, $form_state, $complete_form);
+    // Solution is acting here instead:
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC::prepareMultipleWrapper
     $vocab = 'subjects';
     $rdftype = 'thing';
+
+    $element = parent::processWebformComposite($element, $form_state, $complete_form);
     if (isset($element['#vocab'])) {
       $vocab = $element['#vocab'];
     }
@@ -85,6 +88,7 @@ class WebformLoC extends WebformCompositeBase {
     }
     $element['label']["#autocomplete_route_parameters"] =
       ['auth_type' => 'loc', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
+
     return $element;
   }
 

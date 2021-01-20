@@ -149,9 +149,27 @@ class StrawberryRunnerModalController extends ControllerBase
         }
         else {
             $data['data'] = $data_defaults + json_decode($stored_value,true);
+          // In case the saved data is "single valued" for a key
+          // But the corresponding webform element is not
+          // we cast to it multi valued so it can be read/updated
+          /* @var \Drupal\webform\WebformInterface $webform */
+          $webform_elements  = $webform->getElementsInitializedFlattenedAndHasValue();
+          $elements_in_data = array_intersect_key($webform_elements, $data['data']);
+          if (is_array($elements_in_data) && count($elements_in_data)>0) {
+            foreach($elements_in_data as $key => $elements_in_datum) {
+              if (isset($elements_in_datum['#webform_multiple']) &&
+                $elements_in_datum['#webform_multiple']!== FALSE) {
+                $data['data'][$key] = (array) $data['data'][$key];
+              }
+            }
+          }
         }
 
-        // Lets make sure this puppy never redirects
+      $confirmation_message = $webform->getSetting('confirmation_message', FALSE);
+      $confirmation_message = !empty($confirmation_message) && strlen(trim($confirmation_message)) > 0 ? $confirmation_message : $this->t(
+        'Thanks, you are all set! Please Save the content to persist the changes.');
+
+      // Lets make sure this puppy never redirects
         // And also we need to reset some defaults here
         // @see \Drupal\webform\Entity\Webform::getDefaultSettings
         // @TODO autofill needs to be a setting that is respected
@@ -171,8 +189,8 @@ class StrawberryRunnerModalController extends ControllerBase
             'confirmation_exclude_token' => TRUE,
             'wizard_progress_link' => TRUE,
             'submission_user_duplicate' => TRUE,
-            'confirmation_message' => $this->t(
-            'Thanks, you are all set! Please Save the content to persist the changes.')
+            'submission_log' => FALSE,
+            'confirmation_message' => $confirmation_message
         ];
 
 
