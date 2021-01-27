@@ -8,12 +8,18 @@ field.widget.settings.strawberryfield_webform_inline_widget:
     webform_id:
       type: string
       label: 'Webform ID'
+    render_always:
+      type: boolean
+      label: 'Always render inline'
+    hide_cancel:
+      type: boolean
+      label: 'Do not show the Cancel button once inline'
     rows:
       type: integer
       label: 'Rows'
 field.widget.settings.strawberryfield_webform_widget:
   type: config_object
-  label: 'Webform Inline Widget Schema'
+  label: 'Webform Widget Schema'
   mapping:
     placeholder:
       type: string
