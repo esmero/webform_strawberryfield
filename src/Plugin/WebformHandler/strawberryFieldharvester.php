@@ -8,6 +8,7 @@ use Drupal\Core\TempStore\TempStoreException;
 use Drupal\webform\Plugin\WebformElement\WebformManagedFileBase;
 use Drupal\webform\Plugin\WebformElementEntityReferenceInterface;
 use Drupal\webform\Plugin\WebformHandlerBase;
+use Drupal\webform\WebformInterface;
 use Drupal\webform\WebformSubmissionForm;
 use Drupal\webform\webformSubmissionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -479,7 +480,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
    * {@inheritdoc}
    */
   public function preSave(WebformSubmissionInterface $webform_submission) {
-
     $values = $webform_submission->getData();
     $cleanvalues = $values;
 
@@ -594,23 +594,23 @@ class strawberryFieldharvester extends WebformHandlerBase {
     WebformSubmissionInterface $webform_submission
   ) {
     $values = $webform_submission->getData();
-
-    if (isset($form_state->getTriggeringElement()['#name']) && $form_state->getTriggeringElement()['#name'] == 'op' && $form_state->get('in_draft')) {
-      $tempstore = \Drupal::service('tempstore.private')->get('archipel');
-      $previous_errors = $tempstore->get($values['strawberry_field_widget_state_id'].'-errors');
-      if (is_array($previous_errors)) {
-        foreach($previous_errors as $pagekey => $elements) {
-          if (count($elements)) {
-            foreach($elements as $name => $error) {
-              $form_state->setErrorByName('draft_errors', $error);
-              break 2;
-            }
-          }
+    // So we can now unset cached errors on this step. Only if triggered by next here.
+    // Wizar navigation has its own way.
+    if ((!isset($values['strawberry_field_widget_source_entity_id']) ||
+        $values['strawberry_field_widget_source_entity_id'] === NULL) &&
+      isset($values['strawberry_field_widget_state_id'])) {
+      if (isset($form_state->getTriggeringElement()['#name']) && $form_state->getTriggeringElement()['#name'] == 'op') {
+        $current_page = $webform_submission->getCurrentPage();
+        if (empty($form_state->getErrors()) && strlen($current_page) > 0) {
+          $tempstore = \Drupal::service('tempstore.private')->get('archipel');
+          $previous_errors = $tempstore->get($values['strawberry_field_widget_state_id'] . '-errors');
+          $previous_errors[$current_page] = [];
+          $tempstore->set($values['strawberry_field_widget_state_id'] . '-errors', $previous_errors);
         }
       }
     }
 
-    if ((!isset($values["strawberry_field_widget_state_id"]) || empty($values["strawberry_field_widget_state_id"])) && $this->IsWidgetDriven(
+    if ((!isset($values['strawberry_field_widget_state_id']) || empty($values['strawberry_field_widget_state_id'])) && $this->IsWidgetDriven(
       )) {
       $this->messenger()->addError(
         $this->t(
@@ -645,12 +645,37 @@ class strawberryFieldharvester extends WebformHandlerBase {
     WebformSubmissionInterface $webform_submission
   ) {
     $values = $webform_submission->getData();
-
-    if (isset($values["strawberry_field_widget_state_id"])) {
+    if (isset($values['strawberry_field_widget_state_id']) && $form_state->get('in_draft')) {
+      /* here we actually do the draft save */
       $this->setIsWidgetDriven(TRUE);
+      $values['strawberry_field_widget_id'] = $this->getWebform()->id();
+      $cleanvalues = json_encode($values, JSON_PRETTY_PRINT);
+      try {
+        /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
+        $tempstore = \Drupal::service('tempstore.private')->get('archipel');
+        $tempstore->set(
+          $values['strawberry_field_widget_state_id'],
+          $cleanvalues
+        );
+        $form_state->set('in_draft', TRUE);
+      } catch (TempStoreException $e) {
+        $this->messenger()->addError(
+          $this->t(
+            'Sorry, we have issues writing metadata to your session storage. Please reload this form and/or contact your system admin.'
+          )
+        );
+        $this->loggerFactory->get('archipelago')->error(
+          "Webform @webformid can not write to temp storage! with error @message. Attempted Metadata input was <pre><code>%data</code></pre>",
+          [
+            '@webformid' => $this->getWebform()->id(),
+            '%data' => print_r($values, TRUE),
+            '@error' => $e->getMessage(),
+          ]
+        );
+      }
     }
+
     // @TODO add a full-blown values cleaner
-    // @TODO add the webform name used to create this as additional KEY
     // @TODO make sure widget can read that too.
     // @If Widget != setup form, ask for User feedback
     // @TODO, i need to alter node submit handler to add also the
@@ -670,9 +695,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
     WebformSubmissionInterface $webform_submission
   ) {
     // We really want to avoid being redirected. This is how it is done.
-    //@TODO manage file upload if there is no submission save handler
-    //@ see \Drupal\webform\Plugin\WebformElement\WebformManagedFileBase::postSave
-
     $form_state->disableRedirect();
   }
 
@@ -768,12 +790,12 @@ class strawberryFieldharvester extends WebformHandlerBase {
     if ($webform->hasWizardPages()) {
       $validations = [
         '::validateForm',
-        [$this, 'sbfDraft'],
+        [$this, 'sbfDraftValidate'],
       ];
       // Allow forward access to all but the confirmation page.
       foreach ($form_state->get('pages') as $page_key => $page) {
-        // Allow user to access all but the confirmation page.
-        if ($page_key != 'webform_confirmation' && $page_key != 'webform_preview') {
+        // Allow user to access all but the confirmation page and preview pages.
+        if ($page_key != WebformInterface::PAGE_CONFIRMATION && $page_key != WebformInterface::PAGE_PREVIEW) {
           $form['pages'][$page_key]['#access'] = TRUE;
           $form['pages'][$page_key]['#validate'] = $validations;
         }
@@ -784,15 +806,45 @@ class strawberryFieldharvester extends WebformHandlerBase {
       if (isset($form['actions']['wizard_prev'])) {
         $form['actions']['wizard_prev']['#validate'] = $validations;
       }
-      if (isset($form['actions']['submit']) && $form['actions']['submit']['#access'] == TRUE) {
-        $form['pages'][$current_page]['draft_errors'] = [
-          '#type' => 'fieldset',
-          '#description' => 'info',
-          '#title' => 'Draft info'
-        ];
-      }
+      if (isset($form['actions']['submit']) && $form['actions']['submit']['#access'] === TRUE) {
+        // if we are on the last step or in the preview form we will have a final submit button.
+        // Instead of validating previous invisible steps and setting errors here
+        // we will block the submit button until all errors are cleared.
+        $values = $webform_submission->getData();
+        if ((!isset($values['strawberry_field_widget_source_entity_id']) ||
+            $values['strawberry_field_widget_source_entity_id'] === NULL) &&
+          isset($values['strawberry_field_widget_state_id'])
+        ) {
+          $tempstore = \Drupal::service('tempstore.private')->get('archipel');
+          $previous_errors = $tempstore->get($values['strawberry_field_widget_state_id'].'-errors');
+          // We need to checks for sanity, that all pages that have access == true, except the current one
+          // have been visited and that each one is empty. Current one will use the actual button as validator so
+          // no need to check.
+          $all_pages = $webform->getPages('default', $webform_submission);
+          unset($all_pages[WebformInterface::PAGE_CONFIRMATION]);
+          unset($all_pages[WebformInterface::PAGE_PREVIEW]);
+          unset($all_pages[$current_page]);
 
-    dpm($form['actions']);
+          $can_not = FALSE;
+          if (is_array($previous_errors)) {
+            foreach($all_pages as $pagekey => $pagekeyinfo) {
+              if (($pagekeyinfo['#access'] === TRUE) &&
+                isset($previous_errors[$pagekey]) &&
+                is_array($previous_errors[$pagekey]) &&
+                count($previous_errors[$pagekey]) > 0) {
+                $can_not = TRUE;
+                $this->messenger()->addWarning(t('You can not submit this form yet.'),FALSE);
+                $this->messenger()->addWarning(t('Please check the @steps step for missing or incorrect fields', [
+                  '@steps' => $pagekeyinfo['#title']
+                ]));
+              }
+            }
+            if ($can_not) {
+              $form['actions']['submit']['#disabled'] = TRUE;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -804,45 +856,38 @@ class strawberryFieldharvester extends WebformHandlerBase {
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The current state of the form.
    */
-  public function sbfDraft(array &$form, FormStateInterface $form_state) {
+  public function sbfDraftValidate(array &$form, FormStateInterface $form_state) {
 
+    if ($this->getWebformSubmission() == NULL) {
+      return;
+    }
     $values = $this->getWebformSubmission()->getData();
-    dpm($values);
-    dpm(isset($values['strawberry_field_widget_source_entity_id']));
-    dpm( $values['strawberry_field_widget_source_entity_id'] === NULL);
-    dpm( isset($values['strawberry_field_widget_state_id']));
     // Only allow saving of drafts if the user is creating a new entity
     if ((!isset($values['strawberry_field_widget_source_entity_id']) ||
-      $values['strawberry_field_widget_source_entity_id'] === NULL) &&
+        $values['strawberry_field_widget_source_entity_id'] === NULL) &&
       isset($values['strawberry_field_widget_state_id'])
     ) {
-      dpm('im here');
-      error_log('calling internal draft');
       $this->setIsWidgetDriven(TRUE);
-      /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
-      $tempstore = \Drupal::service('tempstore.private')->get('archipel');
-      $values["strawberry_field_widget_id"] = $this->getWebform()->id();
-      $cleanvalues = json_encode($values, JSON_PRETTY_PRINT);
-
+      $values['strawberry_field_widget_id'] = $this->getWebform()->id();
       try {
-        $tempstore->set(
-          $values['strawberry_field_widget_state_id'],
-          $cleanvalues
-        );
+        /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
+        $tempstore = \Drupal::service('tempstore.private')->get('archipel');
         $errors = $form_state->getErrors();
+
         $current_page = $this->getWebformSubmission()->getCurrentPage();
         $previous_errors = $tempstore->get($values['strawberry_field_widget_state_id'].'-errors');
+        $previous_errors = $previous_errors ? $previous_errors : [];
         $previous_errors[$current_page] = $errors;
         $tempstore->set(
           $values['strawberry_field_widget_state_id'].'-errors',
           $previous_errors
         );
-        dpm($previous_errors);
         $form_state->clearErrors();
         $form_state->set('in_draft', TRUE);
         $form_state->set('draft_saved', TRUE);
         $this->getWebformSubmission()->validate();
-      } catch (TempStoreException $e) {
+      }
+      catch (TempStoreException $e) {
         $this->messenger()->addError(
           $this->t(
             'Sorry, we have issues writing metadata to your session storage. Please reload this form and/or contact your system admin.'
@@ -859,29 +904,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
       }
     }
   }
-
-  /**
-   * Validates all pages within a submission.
-   *
-   * @param \Drupal\webform\WebformSubmissionInterface $webform_submission
-   *   A webform submission.
-   *
-   * @throws \Exception
-   */
-  public function validatePages(WebformSubmissionInterface $webform_submission) {
-    $webform = $webform_submission->getWebform();
-    $current_page = $webform_submission->getCurrentPage();
-    // Validate pages we have yet to visit.
-    foreach ($webform->getPages() as $key => $page) {
-      if ($key != 'webform_confirmation' && empty($page['#states'])) {
-        $webform_submission->setCurrentPage($key);
-        WebformSubmissionForm::submitWebformSubmission($webform_submission, TRUE);
-      }
-    }
-    $webform_submission->setCurrentPage($current_page);
-  }
-
-
 
 
   /**
