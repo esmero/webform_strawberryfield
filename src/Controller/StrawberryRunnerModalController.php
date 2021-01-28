@@ -173,28 +173,29 @@ class StrawberryRunnerModalController extends ControllerBase
         'Thanks, you are all set! Please Save the content to persist the changes.');
 
       // Lets make sure this puppy never redirects
-        // And also we need to reset some defaults here
-        // @see \Drupal\webform\Entity\Webform::getDefaultSettings
-        // @TODO autofill needs to be a setting that is respected
-        // But Kerri thought this could get in our way
-        // Need to thing about this.
-        // @TODO research option of using WebformInterface::CONFIRMATION_NONE
-        // @SEE https://www.drupal.org/node/2996780
-        // Does not work right now.
-        // See workaround at \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::preprocessConfirmation
-        $new_settings = [
-            'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
-            'confirmation_back' => TRUE,
-            'results_disabled' => TRUE,
-            'autofill' => FALSE,
-            'ajax' => TRUE,
-            'form_submit_once' => FALSE,
-            'confirmation_exclude_token' => TRUE,
-            'wizard_progress_link' => TRUE,
-            'submission_user_duplicate' => TRUE,
-            'submission_log' => FALSE,
-            'confirmation_message' => $confirmation_message
-        ];
+      // And also we need to reset some defaults here
+      // @see \Drupal\webform\Entity\Webform::getDefaultSettings
+      // @TODO autofill needs to be a setting that is respected
+      // But Kerri thought this could get in our way
+      // Need to thing about this.
+      // @TODO research option of using WebformInterface::CONFIRMATION_NONE
+      // @SEE https://www.drupal.org/node/2996780
+      // Does not work right now.
+      // See workaround at \Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester::preprocessConfirmation
+      $new_settings = [
+        'confirmation_type' => WebformInterface::CONFIRMATION_INLINE,
+        'confirmation_back' => TRUE,
+        'results_disabled' => TRUE,
+        'autofill' => FALSE,
+        'ajax' => TRUE,
+        'form_submit_once' => FALSE,
+        'confirmation_exclude_token' => TRUE,
+        'wizard_progress_link' => TRUE,
+        'submission_user_duplicate' => TRUE,
+        'submission_log' => FALSE,
+        'confirmation_message' => $confirmation_message,
+        'draft_saved_message' => t('Your progress was stored. You may return to this form later and it will restore the current values.')
+      ];
 
 
         // @todo make autofill v/s none a user setting.

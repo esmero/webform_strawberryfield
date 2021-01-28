@@ -365,7 +365,8 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           'wizard_progress_link' => TRUE,
           'submission_user_duplicate' => TRUE,
           'submission_log' => FALSE,
-          'confirmation_message' => $confirmation_message
+          'confirmation_message' => $confirmation_message,
+          'draft_saved_message' => t('Your progress was stored. You may return to this form later and it will restore the current values.')
         ],
       ];
       $element['strawberry_webform_inline']['#parents'] = $parents;
