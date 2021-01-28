@@ -277,10 +277,13 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
     $tempstoreId = $this_widget_id;
 
+
+
     /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
     // Which means an abandoned Metadata Sessions somewhere
-    // Someone saved 'metadata' during a form update and left for coffee
+    // Someone saved/drafted 'metadata' during a form session and left for coffee
     // WE can reuse!
+
     if (($tempstore->getMetadata($tempstoreId) != NULL) && $items->getEntity()->isNew()) {
       $json_string = $tempstore->get($tempstoreId);
       $json = json_decode($json_string, TRUE);
@@ -296,7 +299,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       ];
     }
 
-    // Autofill from a previus submision if current value is empty
+    // Autofill from a previous submision if current value is empty
     $webform_autofill = empty($savedvalue['value']) || $items->getEntity()->isNew();
     // If new this won't exist
     $stored_value = !empty($savedvalue['value']) ? $savedvalue['value']: "{}";
@@ -577,7 +580,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
 
     $activitystream->addActor(ActivityStream::ACTORTYPES['Service'], $actor_properties);
     return $activitystream->getAsBody()?:[];
-
   }
 
 }
