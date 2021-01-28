@@ -103,11 +103,14 @@ class StrawberryRunnerModalController extends ControllerBase
             // but! makes sense anyway, shorter than checking if there, and if so
             // getting the first!
             //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
-            $source_entity = $entity;
+            $vid = \Drupal::entityTypeManager()
+              ->getStorage($source_entity_type)
+              ->getLatestRevisionId($entity->id());
+
+            $source_entity = $vid ? \Drupal::entityTypeManager()->getStorage($source_entity_type)->loadRevision($vid) : $entity;
             if (!$source_entity->access('update')) {
                 throw new AccessDeniedHttpException('Sorry, seems like you can are not allowed to see this or to be here at all!');
             }
-
         }
 
         $data = array();
