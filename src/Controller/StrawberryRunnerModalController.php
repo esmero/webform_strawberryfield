@@ -194,7 +194,7 @@ class StrawberryRunnerModalController extends ControllerBase
         'submission_user_duplicate' => TRUE,
         'submission_log' => FALSE,
         'confirmation_message' => $confirmation_message,
-        'draft_saved_message' => t('Your progress was stored. You may return to this form later and it will restore the current values.')
+        'draft_saved_message' => t('Your progress was stored. You may return to this form before a week has passed and it will restore the current values.')
       ];
 
 
