@@ -121,8 +121,6 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
           $results = $this->viaf($input);
           break;
       }
-
-
     }
 
     return new JsonResponse($results);
@@ -264,7 +262,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       }
       return $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
@@ -436,7 +434,7 @@ SPARQL;
         }
         return $results;
       }
-      $this->messenger->addError(
+      $this->messenger()->addError(
         $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
           [
             '@url' => $remoteUrl,
@@ -489,7 +487,7 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
