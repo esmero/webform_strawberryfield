@@ -217,4 +217,34 @@ class WebformMetadataDate extends MetadataDateBase {
 
     return $form;
   }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function formatHtmlItemValue(array $element, WebformSubmissionInterface $webform_submission, array $options = []) {
+    return $this->formatTextItemValue($element, $webform_submission, $options);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function formatTextItemValue(array $element, WebformSubmissionInterface $webform_submission, array $options = []) {
+    $value = $this->getValue($element, $webform_submission, $options);
+    $lines = [];
+    if (!empty($value['date_from'])) {
+      $lines[] = $value['date_from'];
+    }
+     if (!empty($value['date_to'])) {
+       $lines[] = $value['date_to'];
+     }
+    if (!empty($value['date_free'])) {
+      $lines[] = $value['date_free'];
+    }
+    if (!empty($value['date_type'])) {
+      $lines[] = $value['date_type'];
+    }
+    return $lines;
+  }
+
+
 }

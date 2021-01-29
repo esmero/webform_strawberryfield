@@ -17,9 +17,10 @@ class WebformGetty extends WebformCompositeBase {
    * {@inheritdoc}
    */
   public function getInfo() {
-    //@TODO add an extra option to define auth_type.
-    //@TODO expose as an select option inside \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformGetty
-    $info = parent::getInfo();
+    $info =  parent::getInfo() + [
+        '#vocab' => 'aat',
+        '#matchtype' => 'fuzzy'
+      ];
     return $info;
   }
 
@@ -28,22 +29,30 @@ class WebformGetty extends WebformCompositeBase {
    */
   public static function getCompositeElements(array $element) {
     $elements = [];
+    $vocab = 'aat';
+    $matchtype = 'fuzzy';
+    if (isset($element['#vocab'])) {
+      $vocab = $element['#vocab'];
+    }
+    if (isset($element['#matchtype'])) {
+      $matchtype = $element['#matchtype'];
+    }
+
     $class = '\Drupal\webform_strawberryfield\Element\WebformGetty';
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('Getty Term Label'),
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
-      '#autocomplete_route_parameters' => array('auth_type' => 'aat', 'count' => 10),
+      '#autocomplete_route_parameters' => ['auth_type' => 'getty', 'vocab' => $vocab, 'rdftype'=> $matchtype ,'count' => 10],
       '#attributes' => [
         'data-source-strawberry-autocomplete-key' => 'label',
         'data-target-strawberry-autocomplete-key' => 'uri'
       ],
-
     ];
+
     $elements['uri'] = [
       '#type' => 'url',
       '#title' => t('Term URL'),
-      //'#title_display' => 'invisible',
       '#attributes' => ['data-strawberry-autocomplete-value' => TRUE]
     ];
     $elements['label']['#process'][] =  [$class, 'processAutocomplete'];
@@ -54,10 +63,31 @@ class WebformGetty extends WebformCompositeBase {
    * {@inheritdoc}
    */
   public static function processWebformComposite(&$element, FormStateInterface $form_state, &$complete_form) {
+    // @Disclaimer: This function is the worst and deceiving. Keeping it here
+    // So i never make this error again. Because of
+    // \Drupal\webform\Plugin\WebformElement\WebformCompositeBase::prepareMultipleWrapper
+    // Basically, in case of having multiple elements :: processWebformComposite
+    // is *never* called because it actually converts the 'WebformComposite' element into a
+    // \Drupal\webform\Element\WebformMultiple calling ::processWebformMultiple element
+    // So basically whatever i do here gets skipped if multiple elements are allowed.
+    // Solution is acting here instead:
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC::prepareMultipleWrapper
+    $vocab = 'aat';
+    $matchtype = 'fuzzy';
+
     $element = parent::processWebformComposite($element, $form_state, $complete_form);
+    if (isset($element['#vocab'])) {
+      $vocab = $element['#vocab'];
+    }
+    if (isset($element['#matchtype'])) {
+      $matchtype = $element['#matchtype'];
+    }
+
+    $element['label']["#autocomplete_route_parameters"] =
+      ['auth_type' => 'getty', 'vocab' => $vocab, 'rdftype'=> $matchtype ,'count' => 10];
+
     return $element;
   }
-
 
   /**
    * @param array $element
@@ -73,7 +103,7 @@ class WebformGetty extends WebformCompositeBase {
         'webform_strawberryfield_autocomplete' => [],
       ];
 
-    $element['#attributes']['data-strawberry-autocomplete'] = 'aat';
+    $element['#attributes']['data-strawberry-autocomplete'] = 'getty';
     return $element;
   }
 
