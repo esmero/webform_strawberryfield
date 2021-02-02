@@ -218,7 +218,7 @@ class WebformMetadataDate extends FormElement {
     $element['date_to']['#error_no_message'] = TRUE;
 
 
-    $element['date_to']['#title'] = t('To Date (ISO 8601)');
+    $element['date_to']['#title'] = t('End Date (ISO 8601)');
     $element['date_from']['#title'] = t('Start or Point Date (ISO 8601)');
 
     // pass #date attributes to sub elements before calling ::buildElement
