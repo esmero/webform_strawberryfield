@@ -15,6 +15,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\strawberryfield\Tools\Ocfl\OcflHelper;
 use Drupal\webform\Element\WebformOtherBase;
 use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\strawberryfield\EventSubscriber\StrawberryfieldEventPresaveSubscriberAsFileStructureGenerator;
 
 
 /**
@@ -495,6 +496,9 @@ class strawberryFieldharvester extends WebformHandlerBase {
       // Process each managed files field.
     }
 
+    // Constant Array of Entity Types we support.
+    $supported_entities = StrawberryfieldEventPresaveSubscriberAsFileStructureGenerator::SUPPORTED_CORE_ENTITIES;
+
     // This is more expensive. Entity References?
     $anyelement = $webform_submission->getWebform()
       ->getElementsInitializedAndFlattened();
@@ -502,29 +506,27 @@ class strawberryFieldharvester extends WebformHandlerBase {
       $element_plugin = $this->webformElementManager->getElementInstance($element);
       if ($element_plugin instanceof WebformElementEntityReferenceInterface && !($element_plugin instanceof WebformManagedFileBase)) {
         $original_entity_reference_element = $webform_submission->getWebform()
-          ->getElement(
-            $elementkey
-          );
-        $entity_mapping_structure['entity:node'][] = $original_entity_reference_element['#webform_key'];
+          ->getElement($elementkey);
+        if (isset($original_entity_reference_element['#target_type'])) {
+          $target = 'entity:'.$original_entity_reference_element['#target_type'];
+          if (in_array($target, $supported_entities)) {
+            $entity_mapping_structure[$target][] = $original_entity_reference_element['#webform_key'];
+          }
+        }
       }
     }
 
-    // Check also which elements carry entity references around
+    // Dealing with all entity references around. This de-dups.
     // @see https://www.drupal.org/project/webform/issues/3067958
-    if (isset($entity_mapping_structure['entity:node'])) {
-      //@TODO change this stub. Get every element that extends Drupal\webform\Plugin\WebformElementEntityReferenceInterface()
-      $entity_mapping_structure['entity:node'] = array_values(
-        array_unique($entity_mapping_structure['entity:node'],
-          SORT_STRING
-        ));
-    }
+    foreach ($supported_entities as $supported_entity)
+      if (isset($entity_mapping_structure[$supported_entity])) {
+        //@TODO change this stub. Get every element that extends Drupal\webform\Plugin\WebformElementEntityReferenceInterface()
+        $entity_mapping_structure[$supported_entity] = array_values(
+          array_unique($entity_mapping_structure[$supported_entity],
+            SORT_STRING
+          ));
+      }
 
-    if (isset($entity_mapping_structure['entity:file'])) {
-      $entity_mapping_structure['entity:file'] = array_values(
-        array_unique($entity_mapping_structure['entity:file'],
-          SORT_STRING
-        ));
-    }
     $cleanvalues['ap:entitymapping'] = $entity_mapping_structure;
 
     if (isset($values["strawberry_field_widget_state_id"])) {
