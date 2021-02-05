@@ -154,7 +154,7 @@ class WebformMetadataDate extends FormElement {
       '#options' => [
         'date_point' => t('Date'),
         'date_range' => t('Date Range'),
-        'date_free' => t('Freeform Date (e.g Circa Spring of 1977)'),
+        'date_free' => t('Free form Date (e.g Circa Spring of 1977)'),
       ]
     ];
     /* Just and idea? Since we need modal labels.
