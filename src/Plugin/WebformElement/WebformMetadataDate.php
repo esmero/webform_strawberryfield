@@ -328,7 +328,7 @@ class WebformMetadataDate extends MetadataDateBase {
     // Since this element generates empty entries because the date_type is actually a value
     // we will use this last moment to filter out those.
     $newvalue = [];
-    if ($element['#multiple']) {
+    if (isset($element['#multiple']) && $element['#multiple']) {
         foreach ($value as $item) {
           $filtered_value = array_filter($item);
           // Empty elements here will carry at least the date_type making them
