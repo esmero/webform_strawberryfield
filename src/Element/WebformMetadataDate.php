@@ -7,6 +7,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\webform\Utility\WebformElementHelper;
 use Drupal\webform\Element\WebformCompositeFormElementTrait;
 use Drupal\Component\Utility\NestedArray;
+use Drupal\webform_strawberryfield\Tools\EDTFUtils;
 
 /**
  * Provides a webform element requiring users to double-element and confirm an email address.
@@ -146,6 +147,22 @@ class WebformMetadataDate extends FormElement {
       }
     }
 
+    if(!empty($element['#edtf_validateme'])) {
+      $date_free_msg = t('EDTF formatted date');
+      $date_free_msg_add = [];
+      foreach(['intervals' => t('Intervals permitted'), 'sets' => t('Sets permited'), 'strict' => t('Valid calendar dates only')] as $field_suffix => $suffix_msg) {
+        $field_index = '#edtf_validate_option_' . $field_suffix;
+        if(!empty($element[$field_index])) {
+          $date_free_msg_add[] = $suffix_msg;
+        }
+      }
+      if(!empty($date_free_msg_add)) {
+        $date_free_msg .= ": " . implode('; ', $date_free_msg_add);
+      }
+    }
+    else {
+      $date_free_msg = t('Free form Date (e.g   Circa Spring of 1977)');
+    }
     // The date formatting/options
     $element['date_type'] = [
       '#type' => 'radios',
@@ -154,7 +171,7 @@ class WebformMetadataDate extends FormElement {
       '#options' => [
         'date_point' => t('Date'),
         'date_range' => t('Date Range'),
-        'date_free' => t('Free form Date (e.g Circa Spring of 1977)'),
+        'date_free' => $date_free_msg,
       ]
     ];
     /* Just and idea? Since we need modal labels.
@@ -380,6 +397,24 @@ class WebformMetadataDate extends FormElement {
           $element['#value'] = $value;
         }
         $form_state->setValueForElement($element, $element['#value']);
+      }
+    }
+
+    // Perform edtf validation on freeform date if so configured.
+    if(!empty($metadatadate_element['#edtf_validateme']) && !empty($element['#value']['date_free'])) {
+      $intervals = $metadatadate_element['#edtf_validate_option_intervals'] ?? FALSE;
+      $sets = $metadatadate_element['#edtf_validate_option_sets'] ?? FALSE;
+      $strict = $metadatadate_element['#edtf_validate_option_strict'] ?? FALSE;
+      $validation_errors = EDTFUtils::validate($element['#value']['date_free'], $intervals, $sets, $strict);
+      if (!empty($validation_errors)) {
+        // @TODO: Figure out how to get the error message to display for $element['date_free'] only.
+        // @TODO: If $form_state->setError($element['date_free'],...) is used, no error message appears.
+        $form_state->setError($element['date_free'],
+          t('The extended date time format string for the @name field is invalid. @messages',
+            [
+              '@name' => $element['#title'],
+              '@messages' => implode("\n", $validation_errors),
+            ]));
       }
     }
   }
