@@ -342,7 +342,7 @@ class WebformMetadataDate extends MetadataDateBase {
     else {
       $filtered_value = array_filter($value);
       if (count($filtered_value) > 1 ) {
-        $newvalue[] = $value;
+        $newvalue = $value;
       }
     }
     $webform_submission->setElementData($key,$newvalue);
