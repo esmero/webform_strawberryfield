@@ -66,7 +66,7 @@ class WebformMultiAgent extends WebformCompositeBase {
       '#options' => [
         'corporate' => 'Corporate',
         'personal' => 'Personal',
-        'family' => 'Family Names'
+        'family' => 'Family'
       ],
       '#default_value' => 'Personal'
     ];

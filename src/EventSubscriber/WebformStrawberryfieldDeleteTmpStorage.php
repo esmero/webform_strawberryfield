@@ -111,6 +111,8 @@ class WebformStrawberryfieldDeleteTmpStorage implements EventSubscriberInterface
       foreach ($field->getValue() as $delta => $value) {
         $keyid = $this->getTempStoreKeyName($fieldname, $delta, '');
         $tempstore->delete($keyid);
+        // Delete also any cached errors
+        $tempstore->delete($keyid.'-errors');
       }
     }
 

@@ -85,6 +85,8 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     return [
         'webform_id' => '',
         'placeholder' => '',
+        'render_always' => FALSE,
+        'hide_cancel' => FALSE,
       ] + parent::defaultSettings();
   }
 
@@ -108,6 +110,19 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       '#default_value' => $this->getSetting('placeholder'),
       '#description' => t('User friendly description of what this field will hold. E.g Metadata. Leave empty to use the Field\'s Label'),
     ];
+    $element['render_always'] = [
+      '#type' => 'checkbox',
+      '#title' => t('Always show the form expanded and inline.'),
+      '#default_value' => $this->getSetting('render_always'),
+      '#description' => t('When checked the Webform will display expanded and fully rendered both on new submissions and when editing existing ones. If not it will only show expanded for new ones.'),
+    ];
+    $element['hide_cancel'] = [
+      '#type' => 'checkbox',
+      '#title' => t('Hide the Cancel Edit button on inline webforms'),
+      '#default_value' => $this->getSetting('hide_cancel'),
+      '#description' => t('When checked there will be no way to return to the general Node edit form until the webform is submitted. Basically forcing the user to fill up the data or leave'),
+    ];
+
     return $element;
   }
 
@@ -116,7 +131,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
    */
   public function settingsSummary() {
     $summary = [];
-
     return $summary;
   }
 
@@ -263,10 +277,13 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
     $tempstoreId = $this_widget_id;
 
+
+
     /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
     // Which means an abandoned Metadata Sessions somewhere
-    // Someone saved 'metadata' during a form update and left for coffee
+    // Someone saved/drafted 'metadata' during a form session and left for coffee
     // WE can reuse!
+
     if (($tempstore->getMetadata($tempstoreId) != NULL) && $items->getEntity()->isNew()) {
       $json_string = $tempstore->get($tempstoreId);
       $json = json_decode($json_string, TRUE);
@@ -282,7 +299,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       ];
     }
 
-    // Autofill from a previus submision if current value is empty
+    // Autofill from a previous submision if current value is empty
     $webform_autofill = empty($savedvalue['value']) || $items->getEntity()->isNew();
     // If new this won't exist
     $stored_value = !empty($savedvalue['value']) ? $savedvalue['value']: "{}";
@@ -331,11 +348,10 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // IDEA: keep a draft version around in another temp storage
     // reload if empty, clean if correctly submitted
 
-    // @TODO make this a setting
-    // If the node is new show the inline form
-    // But if the Node exists, SBF is there, show the on-click widget
-    if ($items->getEntity()->isNew()) {
-
+    // If the node is new or render_always is present show the inline form
+    // But if the Node exists, SBF is there and setting is not render always
+    // show the on-click widget
+    if ($items->getEntity()->isNew() || $this->getSetting('render_always')) {
       $element['strawberry_webform_inline'] = [
         '#type' => 'webform_inline_fieldwidget',
         '#webform' => $my_webform_machinename,
@@ -349,7 +365,8 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           'wizard_progress_link' => TRUE,
           'submission_user_duplicate' => TRUE,
           'submission_log' => FALSE,
-          'confirmation_message' => $confirmation_message
+          'confirmation_message' => $confirmation_message,
+          'draft_saved_message' => t('Your progress was stored. You may return to this form before a week has passed and it will restore the current values.')
         ],
       ];
       $element['strawberry_webform_inline']['#parents'] = $parents;
@@ -361,17 +378,17 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       //@see \Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController
       // We need to assume nothing of this will ever work without AJAX/JS.
 
-      $webform_controller_url= Url::fromRoute('webform_strawberryfield.modal_webform',
+      $webform_controller_url = Url::fromRoute('webform_strawberryfield.modal_webform',
         [
-          'webform' =>  $my_webform_machinename,
+          'webform' => $my_webform_machinename,
           'source_entity_types' => "$entity_type:$bundle",
-          'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+          'state' => "$entity_uuid:$this_field_name:$delta:$this_widget_id",
           'modal' => FALSE
         ]
       );
-      $element['strawberry_webform_open_modal']  = [
+      $element['strawberry_webform_open_modal'] = [
         '#type' => 'link',
-        '#title' => $this->t('Edit @a', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+        '#title' => $this->t('Edit @a', ['@a' => $this->getSetting('placeholder') ?: $items->getName()]),
         '#url' => $webform_controller_url,
         '#attributes' => [
           'class' => [
@@ -382,26 +399,28 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           ],
         ],
       ];
-      $webform_controller_url_close= Url::fromRoute('webform_strawberryfield.close_modal_webform',
-        [
-          'state'=> "$entity_uuid:$this_field_name:$delta:$this_widget_id",
-          'modal' => FALSE,
-        ]
-      );
-      $element['strawberry_webform_close_modal'] = [
-        '#type' => 'link',
-        '#title' => $this->t('Cancel @a editing', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
-        '#url' => $webform_controller_url_close,
-        '#attributes' => [
-          'class' => [
-            'use-ajax',
-            'button',
-            'btn-warning',
-            'btn',
-            'js-hide'
+      if ($this->getSetting('hide_cancel') === FALSE || $this->getSetting('hide_cancel') == NULL) {
+        $webform_controller_url_close = Url::fromRoute('webform_strawberryfield.close_modal_webform',
+          [
+            'state' => "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+            'modal' => FALSE,
+          ]
+        );
+        $element['strawberry_webform_close_modal'] = [
+          '#type' => 'link',
+          '#title' => $this->t('Cancel @a editing', ['@a' => $this->getSetting('placeholder') ?: $items->getName()]),
+          '#url' => $webform_controller_url_close,
+          '#attributes' => [
+            'class' => [
+              'use-ajax',
+              'button',
+              'btn-warning',
+              'btn',
+              'js-hide'
+            ],
           ],
-        ],
-      ];
+        ];
+      }
     }
 
 
@@ -562,7 +581,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
 
     $activitystream->addActor(ActivityStream::ACTORTYPES['Service'], $actor_properties);
     return $activitystream->getAsBody()?:[];
-
   }
 
 }

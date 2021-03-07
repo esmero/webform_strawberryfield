@@ -212,9 +212,12 @@ function webform_strawberryfield_form_node_form_alter(&$form, FormStateInterface
   if (isset($form_state->getStorage()['webform_machine_name'])){
     $input = $form_state->getUserInput();
 
-    if ((!isset($input['_triggering_element_name'])) || (isset($input['_triggering_element_value']) && $input['_triggering_element_value']!='Save Metadata')) {
+    if ((!isset($input['_triggering_element_name'])) || (isset($input['_triggering_element_value']) && $input['_triggering_element_value'] != 'Save Metadata')) {
       foreach ($form['actions'] as $key => &$buttons) {
         if ($key == 'delete') {
+          $buttons['#access'] = FALSE;
+        }
+        elseif ($key == 'preview') {
           $buttons['#access'] = FALSE;
         }
       }
@@ -603,7 +606,7 @@ function webform_strawberryfield_webform_submission_form_alter(array &$form, For
   foreach ($webform->getHandlers() as $id => $webform_handler) {
     if (($webform_handler instanceof strawberryFieldharvester) && $webform_handler->isEnabled()) {
       $configuration = $webform_handler->getConfiguration();
-      if ($configuration['settings']['ado_prepopulate_enabled']) {
+      if (isset($configuration['settings']['ado_prepopulate_enabled']) && $configuration['settings']['ado_prepopulate_enabled']) {
         $qualifies = TRUE;
       }
     }
@@ -629,7 +632,11 @@ function webform_strawberryfield_webform_submission_form_alter(array &$form, For
         // but! makes sense anyway, shorter than checking if there, and if so
         // getting the first!
         //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
-        $source_entity = $entity;
+        $vid = \Drupal::entityTypeManager()
+          ->getStorage('node')
+          ->getLatestRevisionId($entity->id());
+        $source_entity = $vid ? \Drupal::entityTypeManager()->getStorage('node')->loadRevision($vid) : $entity;
+
         if (!$source_entity->access('view')) {
           throw new AccessDeniedHttpException('Sorry, seems like you (pretty sure) are not allowed to see this, do this or to be here at all!');
         }

@@ -114,16 +114,6 @@ abstract class MetadataDateBase extends WebformElementBase {
     // Add parent title to sub-elements to child elements which applies to
     // datetime and datelist elements.
     $child_keys = Element::children($element);
-    foreach ($child_keys as $child_key) {
-      if (isset($element[$child_key]['#title'])) {
-        $t_args = [
-          '@parent' => $element['#title'],
-          '@child' => $element[$child_key]['#title'],
-        ];
-        $element[$child_key]['#title'] = t('@parent: @child', $t_args);
-      }
-    }
-
     // Remove orphaned form label.
     if ($child_keys) {
       $element['#label_attributes']['webform-remove-for-attribute'] = TRUE;
@@ -132,57 +122,10 @@ abstract class MetadataDateBase extends WebformElementBase {
     return $element;
   }
 
-  /****************************************************************************/
-  // Display submission value methods.
-  /****************************************************************************/
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function formatTextItem(array $element, WebformSubmissionInterface $webform_submission, array $options = []) {
-    $value = $this->getValue($element, $webform_submission, $options);
-
-    $timestamp = strtotime($value);
-    if (empty($timestamp)) {
-      return $value;
-    }
-
-    $format = $this->getItemFormat($element);
-    if ($format === 'raw') {
-      return $value;
-    }
-    elseif (DateFormat::load($format)) {
-      return \Drupal::service('date.formatter')->format($timestamp, $format);
-    }
-    else {
-      return static::formatDate($format, $timestamp);
-    }
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function getItemDefaultFormat() {
-    return 'fallback';
+    return 'value';
   }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function getItemFormats() {
-    $formats = parent::getItemFormats();
-    $date_formats = DateFormat::loadMultiple();
-    foreach ($date_formats as $date_format) {
-      $formats[$date_format->id()] = $date_format->label();
-    }
-    // If a default format is defined update the fallback date formats label.
-    // @see \Drupal\webform\Plugin\WebformElementBase::getItemFormat
-    $default_format = $this->configFactory->get('webform.settings')->get('format.' . $this->getPluginId() . '.item');
-    if ($default_format && isset($date_formats[$default_format])) {
-      $formats['fallback'] = $this->t('Default date format (@label)', ['@label' => $date_formats[$default_format]->label()]);
-    }
-    return $formats;
-  }
 
   /****************************************************************************/
   // Export methods.
@@ -471,7 +414,8 @@ abstract class MetadataDateBase extends WebformElementBase {
    * @see \Drupal\Core\Render\Element\Number::validateNumber
    */
   public static function validateDate(&$element, FormStateInterface $form_state, &$complete_form) {
-
+    //@TOOD check if we are going to validate also at this level
+    // This code is stub and may be removed later.
     return;
 
     $value = $element['#value'];
@@ -572,7 +516,7 @@ abstract class MetadataDateBase extends WebformElementBase {
   public function getTestValues(array $element, WebformInterface $webform, array $options = []) {
     $format = DateFormat::load('html_datetime')->getPattern();
     if (!empty($element['#date_year_range'])) {
-      list($min, $max) = static::datetimeRangeYears($element['#date_year_range']);
+      [$min, $max] = static::datetimeRangeYears($element['#date_year_range']);
     }
     else {
       $min = !empty($element['#date_date_min']) ? strtotime($element['#date_date_min']) : strtotime('-10 years');
@@ -600,7 +544,7 @@ abstract class MetadataDateBase extends WebformElementBase {
   protected static function datetimeRangeYears($string, $date = NULL) {
     $datetime = new DrupalDateTime();
     $this_year = $datetime->format('Y');
-    list($min_year, $max_year) = explode(':', $string);
+    [$min_year, $max_year] = explode(':', $string);
 
     // Valid patterns would be -5:+5, 0:+1, 2008:2010.
     $plus_pattern = '@[\+|\-][0-9]{1,4}@';

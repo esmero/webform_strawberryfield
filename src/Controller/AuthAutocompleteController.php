@@ -115,14 +115,16 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
           $results = $this->wikidata($input);
           break;
         case 'aat':
-          $results = $this->getty($input, 'aat', $vocab);
+          // @TODO this will be deprecated in 1.1. legacy so old access can be kept
+          $results = $this->getty($input, 'aat', $rdftype);
+          break;
+        case 'getty':
+          $results = $this->getty($input, $vocab, $rdftype);
           break;
         case 'viaf':
           $results = $this->viaf($input);
           break;
       }
-
-
     }
 
     return new JsonResponse($results);
@@ -137,7 +139,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @return array
    */
   protected function loc($input, $vocab, $rdftype) {
-    //@TODO make the following whitelist a constant since we use it in
+    //@TODO make the following allowed list a constant since we use it in
     // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
     if (!in_array($vocab, [
       'relators',
@@ -150,7 +152,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     ])) {
       // Drop before tryin to hit non existing vocab
       $this->messenger()->addError(
-        $this->t('@vocab for LoC autocomplete is not in in our whitelist.',
+        $this->t('@vocab for LoC autocomplete is not in in our allowed list.',
           [
             '@vocab' => $vocab,
           ]
@@ -264,7 +266,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       }
       return $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
@@ -281,52 +283,49 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @param string $vocab
    *
    * @param string $mode
-   *    Can be either 'subjects' for fuzzy or exact for 1:1 preflabel
-   *
+   *    Can be either 'fuzzy' or 'subjects', exact for 1:1 preflalbe or combined
+   *    subjects will be deprecated in 1.1
    * @return array
    */
-  protected function getty($input, $vocab = 'aat', $mode = 'subjects') {
+  protected function getty($input, $vocab = 'aat', $mode = 'fuzzy') {
 
-    if (!in_array($mode, [
-      'subjects',
-      'exact',
-    ])) {
-      // Drop before tryin to hit non existing vocab
+    if (!in_array($mode, ['fuzzy', 'subjects', 'exact', 'terms'])) {
+      // Drop before trying to hit non existing vocab
       $this->messenger()->addError(
-        $this->t('@mode mode for aat autocomplete is not in in our whitelist.',
+        $this->t('@mode mode for @vocab Getty autocomplete is not in in our allowed list.',
           [
             '@mode' => $mode,
+            '@vocab' => $vocab,
           ]
         )
       );
       $results[] = [
         'value' => NULL,
-        'label' => "Wrong Query Mode {$mode} in AAT Query",
+        'label' => "Wrong Query Mode {$mode} in Getty {$vocab} Query",
         'desc' => NULL,
       ];
       return $results;
     }
 
 
-    // Split in pieces
-
-    // Limit the size here: max 64 chars.
     $input = trim($input);
+    $queries = [];
+    $results = [];
+    // Limit the size here: max 64 chars.
     if (strlen($input) > 64) {
       return $results[] = [
         'value' => NULL,
         'label' => "Sorry query is too long! Try with less characters",
         'desc' => NULL,
       ];
-
     }
+    //split in pieces
     $input_parts = explode(' ', $input);
     $clean_input = array_diff($input_parts, $this::STOPWORDS_EN);
     if (!empty($clean_input)) {
-
       // @see http://vocab.getty.edu/queries#Case-insensitive_Full_Text_Search_Query
       // Build the SPARQL query
-      if ($mode == "subjects") {
+      if (in_array($mode, ["subjects","fuzzy"])) {
         $toremove = ['-', '.', '(', ')', '|' . '+', '$', '#', '@', '*'];
         $search = str_replace($toremove, ' ', $clean_input);
         $search = array_map('trim', $search);
@@ -336,52 +335,101 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
           return strtolower($value) . '*';
         }, $search);
         $search = implode(' AND ', $search);
-        $query = <<<SPARQL
+        // Note to myself: removing order by asc(lcase(str(?T)))
+        $query_fuzzy = <<<SPARQL
       SELECT ?S ?T ?P ?Note {
         ?S a skos:Concept; luc:text !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/> ;
            gvp:prefLabelGVP [xl:literalForm ?T].
         optional {?S gvp:parentStringAbbrev ?P}
         optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
-        } order by asc(lcase(str(?T)))
-        LIMIT 10
+        }
+        LIMIT !number
 SPARQL;
-
-
+        $search = '"' . $search . '"';
+        $query_fuzzy = preg_replace('!\s+!', ' ', $query_fuzzy);
+        // use Drupal\Component\Render\FormattableMarkup; has no pass through option
+        // Anymore, so use native PHP.
+        // If we have more than one word we will use extra single quote to make
+        // a closer to exact match.
+        $queries[] = strtr(trim($query_fuzzy), [
+          '!searchterm' => $search,
+          '!vocab' => $vocab,
+          '!number' => 10
+        ]);
       }
-      else {
-        $search = array_map('trim', $clean_input);
-        $search = strtolower(implode(' ', $search));
-        $original_search = $search;
-        $query = <<<SPARQL
+      elseif ($mode == "exact") {
+        $search_exact = array_map('trim', $clean_input);
+        $search_exact = strtolower(implode(' ', $search_exact));
+        $original_search = $search_exact;
+        $query_exact = <<<SPARQL
         select distinct ?S ?T ?P ?Note {
           ?S skos:inScheme <http://vocab.getty.edu/!vocab/> ;
           gvp:prefLabelGVP/xl:literalForm !searchterm@en .
           optional {?S gvp:parentStringAbbrev ?P}
           optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
         }
-        LIMIT 1
+        LIMIT !number
 SPARQL;
+        $search_exact = '"' . $search_exact . '"';
+        $query_exact = preg_replace('!\s+!', ' ', $query_exact);
+        $queries[] = strtr(trim($query_exact), [
+          '!searchterm' => $search_exact,
+          '!vocab' => $vocab,
+          '!number' => 1
+        ]);
       }
-      $search = '"' . $search . '"';
-      $query = preg_replace('!\s+!', ' ', $query);
-      // use Drupal\Component\Render\FormattableMarkup; has no pass through option
-      // Anymore, so use native PHP.
-      // If we have more than one word we will use extra single quote to make
-      // a closer to exact match.
-      // @TODO ask if people want always fuzzy?
+      elseif ($mode == "terms") {
+        $toremove = ['-', '.', '(', ')', '|' . '+', '$', '#', '@', '*'];
+        $search_terms = str_replace($toremove, ' ', $clean_input);
+        $search_terms = array_map('trim', $search_terms);
+        $search_terms = array_filter($search_terms);
+        if (count($search_terms) > 0) {
+          $search_terms = strtolower(implode('* ', $search_terms));
+          $search_terms = $search_terms.'*'; //adds an extra * for the last term
+        }
+        $original_search = $search_terms;
+        $query_terms = <<<SPARQL
+        select distinct ?S ?T ?P ?Note {
+          ?S a gvp:Concept; luc:term !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/>.
+          ?S gvp:prefLabelGVP [xl:literalForm ?T]
+          optional {?S gvp:parentStringAbbrev ?P}
+          optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
+        }
+        LIMIT !number
+SPARQL;
+
+        /*
+         *   ?S a gvp:Concept; luc:term "actors* (performing artists)*"; skos:inScheme aat:.
+          ?S gvp:prefLabelGVP [xl:literalForm ?T]
+          optional {?S gvp:parentStringAbbrev ?P}
+          optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
+         *
+         */
+        $search_terms = '"' . $search_terms . '"';
+        $query_terms= preg_replace('!\s+!', ' ', $query_terms);
+        // use Drupal\Component\Render\FormattableMarkup; has no pass through option
+        // Anymore, so use native PHP.
+        // If we have more than one word we will use extra single quote to make
+        // a closer to exact match.
+        $queries[] = strtr(trim($query_terms), [
+          '!searchterm' => $search_terms,
+          '!vocab' => $vocab,
+          '!number' => 10
+        ]);
+      }
 
 
-      $query = strtr(trim($query), [
-        '!searchterm' => $search,
-        '!vocab' => $vocab,
-      ]);
-
+      $bodies = [];
       $baseurl = 'http://vocab.getty.edu/sparql.json';
-      $options = ['query' => ['query' => $query]];
-      $url = Url::fromUri($baseurl, $options);
-      $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
-      $options['headers'] = ['Accept' => 'application/sparql-results+json'];
-      $body = $this->getRemoteJsonData($remoteUrl, $options);
+      // I leave this as an array in case we want to combine modes in the future.
+      foreach($queries as $query) {
+        error_log($query);
+        $options = ['query' => ['query' => $query]];
+        $url = Url::fromUri($baseurl, $options);
+        $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
+        $options['headers'] = ['Accept' => 'application/sparql-results+json'];
+        $bodies[] = $this->getRemoteJsonData($remoteUrl, $options);
+      }
       // This is how a result here looks like
       /*
      "results" : {
@@ -408,44 +456,51 @@ SPARQL;
        */
 
 
-      $results = [];
-      $jsondata = json_decode($body, TRUE);
-      $json_error = json_last_error();
-      if ($json_error == JSON_ERROR_NONE) {
-        if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
-          foreach ($jsondata['results']['bindings'] as $key => $item) {
-            // We reapply original search because i had no luck with SPARQL binding the search for exact
-            // So we have no T
-            $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search;
-            $parent = isset($item['P']['value']) ? ' | Parent of: ' . $item['P']['value'] : '';
-            $note = isset($item['Note']['value']) ? ' | (' . $item['Note']['value'] . ')' : '';
-            $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
-            $results[] = [
-              'value' => $uri,
-              'label' => $term . $parent . $note,
-              'desc' => $parent . $note,
-            ];
+
+      $jsonfail = FALSE;
+      foreach($bodies as $body) {
+        $jsondata = json_decode($body, TRUE);
+        $json_error = json_last_error();
+        if ($json_error == JSON_ERROR_NONE) {
+          if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
+            foreach ($jsondata['results']['bindings'] as $key => $item) {
+              // We reapply original search because i had no luck with SPARQL binding the search for exact
+              // So we have no T
+              $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search;
+              $parent = isset($item['P']['value']) ? ' | Parent of: ' . $item['P']['value'] : '';
+              $note = isset($item['Note']['value']) ? ' | (' . $item['Note']['value'] . ')' : '';
+              $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
+              $results[] = [
+                'value' => $uri,
+                'label' => $term . $parent . $note,
+                'desc' => $parent . $note,
+              ];
+            }
           }
         }
         else {
-          $results[] = [
-            'value' => NULL,
-            'label' => 'Sorry no Match from Getty ' . $vocab . ' Vocabulary',
-            'desc' => NULL,
-          ];
+          $jsonfail = TRUE;
         }
-        return $results;
       }
-      $this->messenger->addError(
-        $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-          [
-            '@url' => $remoteUrl,
-            '@jsonerror' => $json_error,
-          ]
-        )
-      );
-      return [];
+      if (empty($results)) {
+        $results[] = [
+          'value' => NULL,
+          'label' => 'Sorry no Match from Getty ' . $vocab . ' Vocabulary',
+          'desc' => NULL,
+        ];
+      }
+      if ($jsonfail) {
+        $this->messenger()->addError(
+          $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+            [
+              '@url' => $remoteUrl,
+              '@jsonerror' => $json_error,
+            ]
+          )
+        );
+      }
     }
+    return $results;
   }
 
   /**
@@ -489,7 +544,7 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
