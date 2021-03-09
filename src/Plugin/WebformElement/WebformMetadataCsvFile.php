@@ -68,13 +68,12 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
       while (($csvdata = fgetcsv($handle, "2048", ",")) !== FALSE) {
         $index++;
         if ($index < 2) {
-          foreach($csvdata as $columnindex => $values) {
+          foreach($csvdata as $values) {
             // Because for each is always faster than map
-            $header = trim(preg_replace('/[^[:print:]]/', '', $values));
             // In case the cleaning up means we end with empty, we still add it
             // Because we need to maintain the column index to fetch the right
             // row/cell data.
-            $headers[] = $header;
+            $headers[] = trim(preg_replace('/[^[:print:]]/', '', $values));
           }
          if (!count($headers)) { break 1;}
         } else {
