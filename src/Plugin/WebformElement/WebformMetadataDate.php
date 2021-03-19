@@ -59,9 +59,6 @@ class WebformMetadataDate extends MetadataDateBase {
         'size' => '',
         'input_hide' => FALSE,
         'edtf_validateme' => FALSE,
-        'edtf_validate_option_intervals' => FALSE,
-        'edtf_validate_option_sets' => FALSE,
-        'edtf_validate_option_strict' => FALSE,
       ] + parent::defineDefaultProperties()
       + $this->defineDefaultMultipleProperties();
   }
@@ -124,43 +121,16 @@ class WebformMetadataDate extends MetadataDateBase {
       ),
       '#return_value' => TRUE,
     ];
-    $form['date']['edtf'] = [
-      '#type' => 'fieldset',
+    $form['date']['edtf_validateme'] = [
+      '#type' => 'checkbox',
       '#title' => $this->t('Validate freeform date as EDTF'),
       '#description' => $this->t(
-        'Options to validate the freeform date as extended date/time format date (EDTF)'
+        'Option to validate the freeform date as extended date/time format date (EDTF). See <a href="https://www.loc.gov/standards/datetime/">here</a>'
       ),
+      '#return_value' => TRUE,
       '#states' => [
         'visible' => [
           ':input[name="properties[showfreeformalways]"]' => ['checked' => TRUE],
-        ],
-      ],
-      'edtf_validateme' => [
-        '#type' => 'checkbox',
-        '#title' => $this->t('Validate as EDTF'),
-        '#return_value' => TRUE,
-      ],
-      'edtf_validate_options' => [
-        '#type' => 'container',
-        '#states' => [
-          'visible' => [
-            ':input[name="properties[edtf_validateme]"]' => ['checked' => TRUE],
-          ],
-        ],
-        'edtf_validate_option_intervals' => [
-          '#type' => 'checkbox',
-          '#title' => $this->t('Are interval expressions permitted?'),
-          '#return_value' => TRUE,
-        ],
-        'edtf_validate_option_sets' => [
-          '#type' => 'checkbox',
-          '#title' => $this->t('Are set expressions permitted?'),
-          '#return_value' => TRUE,
-        ],
-        'edtf_validate_option_strict' => [
-          '#type' => 'checkbox',
-          '#title' => $this->t('Are only valid calendar dates permitted?'),
-          '#return_value' => TRUE,
         ],
       ],
     ];
