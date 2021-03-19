@@ -507,11 +507,10 @@ class strawberryFieldharvester extends WebformHandlerBase {
       if ($element_plugin instanceof WebformElementEntityReferenceInterface && !($element_plugin instanceof WebformManagedFileBase)) {
         $original_entity_reference_element = $webform_submission->getWebform()
           ->getElement($elementkey);
-        if (isset($original_entity_reference_element['#target_type'])) {
-          $target = 'entity:'.$original_entity_reference_element['#target_type'];
-          if (in_array($target, $supported_entities)) {
-            $entity_mapping_structure[$target][] = $original_entity_reference_element['#webform_key'];
-          }
+        $target = $element_plugin->getTargetType($original_entity_reference_element);
+        $target = 'entity:' . $target;
+        if (in_array($target, $supported_entities)) {
+          $entity_mapping_structure[$target][] = $original_entity_reference_element['#webform_key'];
         }
       }
     }
