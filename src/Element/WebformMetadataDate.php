@@ -4,22 +4,17 @@ namespace Drupal\webform_strawberryfield\Element;
 
 use Drupal\Core\Render\Element\FormElement;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\webform\Utility\WebformElementHelper;
-use Drupal\webform\Element\WebformCompositeFormElementTrait;
 use Drupal\Component\Utility\NestedArray;
 use EDTF\EdtfFactory;
 
 /**
- * Provides a webform element requiring users to double-element and confirm an email address.
+ * Provides a webform element for Metadata aware Dates.
  *
- * Formats as a pair of email addresses fields, which do not validate unless
- * the two entered email addresses match.
+ * Allows Single Point, Ranges, Free Form as either unformatted or EDTF.
  *
  * @FormElement("webform_metadata_date")
  */
 class WebformMetadataDate extends FormElement {
-
-  use WebformCompositeFormElementTrait;
 
   /**
    * {@inheritdoc}
@@ -29,10 +24,7 @@ class WebformMetadataDate extends FormElement {
     $class = get_class($this);
     $info['#input'] = TRUE;
     $info['#size'] = 60;
-    $info['#pre_render'] = [
-        [$class, 'preRenderWebformCompositeFormElement'],
-      ];
-     $info['#required'] = FALSE;
+    $info['#required'] = FALSE;
       // Add validate callback.
     $info['#element_validate'] = [[$class, 'validateMetadataDates']];
     $info['#process'] = [[$class, 'processWebformMetadataDate']];
@@ -62,10 +54,8 @@ class WebformMetadataDate extends FormElement {
    * Expand date element into multiple inputs. .
    */
   public static function processWebformMetadataDate(&$element, FormStateInterface $form_state, &$complete_form) {
-
     $element['#tree'] = TRUE;
     $name_prefix = $element['#name'];
-
     // Get shared properties.
     $shared_properties = [
       '#size',
@@ -80,7 +70,7 @@ class WebformMetadataDate extends FormElement {
     // Also distribute general Attributes to each input
     $element_shared_properties = [
         '#type' => 'date',
-        '#webform_element' => TRUE,
+        //'#webform_element' => TRUE,
       ] + array_intersect_key($element, array_combine($shared_properties, $shared_properties));
     // Copy wrapper attributes to shared element attributes.
     if (isset($element['#wrapper_attributes'])
@@ -92,13 +82,13 @@ class WebformMetadataDate extends FormElement {
         }
       }
     }
-
     $date_from_properties = [
       '#title',
-      '#description',
+      '#description_display',
       '#help_title',
-      '#help',
       '#help_display',
+      '#title_display',
+      '#label_display',
     ];
 
     $date_from_value = NULL;
@@ -149,9 +139,11 @@ class WebformMetadataDate extends FormElement {
 
     if(!empty($element['#edtf_validateme'])) {
       $date_free_msg = t('EDTF formatted date');
+      $date_free_title = t('EDTF date');
     }
     else {
-      $date_free_msg = t('Free form Date (e.g   Circa Spring of 1977)');
+      $date_free_msg = t('Free form date (e.g Circa Summer of 1977)');
+      $date_free_title = t('Free form date');
     }
     // The date formatting/options
     $element['date_type'] = [
@@ -216,18 +208,13 @@ class WebformMetadataDate extends FormElement {
     $element['date_from'] = $element_shared_properties + array_intersect_key($element, array_combine($date_from_properties, $date_from_properties));
     $element['date_from']['#attributes']['class'][] = 'webform-date-from';
     $element['date_from']['#default_value'] = $date_from_value;
-    $element['date_from']['#error_no_message'] = TRUE;
-
     $element['date_to'] = $element_shared_properties;
 
     $element['date_to']['#attributes']['class'][] = 'webform-date-to';
     $element['date_to']['#default_value'] = $date_to_value;
-    $element['date_to']['#error_no_message'] = TRUE;
-
 
     $element['date_to']['#title'] = t('End Date (ISO 8601)');
     $element['date_from']['#title'] = t('Start or Point Date (ISO 8601)');
-
     // pass #date attributes to sub elements before calling ::buildElement
 
     $element['date_to']['#date_date_format'] = $element['#date_date_format'];
@@ -267,10 +254,9 @@ class WebformMetadataDate extends FormElement {
     $element['date_from']['#datepicker'] = TRUE;
     $element['date_to']['#datepicker'] = TRUE;
 
-    $element['date_free']['#title'] = t('Free form Date');
+    $element['date_free']['#title'] = $date_free_title;
     $element['date_free']['#attributes']['class'][] = 'webform-date-free';
     $element['date_free']['#default_value'] = $date_free_value;
-    $element['date_free']['#error_no_message'] = TRUE;
     $element['date_free']['#type'] = 'textfield';
     $element['date_free']['#webform_element'] = TRUE;
     $element['date_free']['#size'] =  isset($element['#size']) ? $element['#size'] : '60';
@@ -289,8 +275,6 @@ class WebformMetadataDate extends FormElement {
       ],
     ];
 
-
-
     if (!isset($element['#showfreeformalways']) || (isset($element['#showfreeformalways']) && $element['#showfreeformalways'] == FALSE )) {
       $element['date_free']['#states'] = [
         'invisible' => [
@@ -301,22 +285,12 @@ class WebformMetadataDate extends FormElement {
       ];
     }
 
-
     // Don't require the main element.
     $element['#required'] = FALSE;
-
-    // Hide title and description from being display.
-    //$element['#title_display'] = 'invisible';
-    //$element['#description_display'] = 'invisible';
 
     // Remove properties that are being applied to the sub elements.
     unset(
       $element['#maxlength'],
-      $element['#attributes'],
-      $element['#description'],
-      $element['#help'],
-      $element['#help_title'],
-      $element['#help_display']
     );
 
 
@@ -368,12 +342,6 @@ class WebformMetadataDate extends FormElement {
         $makeshift_element['#parents'] = $multi_item_parents;
         $form_state->setValueForElement($makeshift_element, NULL);
       }
-      /*$valuetoset = [
-        'date_free' => $metadatadate_element['date_free']['#value'],
-        'date_from' => $metadatadate_element['date_from']['#value'],
-        'date_to' => $metadatadate_element['date_to']['#value'],
-        'date_type' => $metadatadate_element['date_type']['#value'],
-        ]; */
     } else {
       if (!empty($element['#value'])) {
         $value = $form_state->getValue($element['#parents'], []);
@@ -394,9 +362,7 @@ class WebformMetadataDate extends FormElement {
     if(!empty($metadatadate_element['#edtf_validateme']) && !empty($element['#value']['date_free'])) {
       $validator = EdtfFactory::newValidator();
       if (!$validator->isValidEdtf($element['#value']['date_free'])) {
-        // @TODO: Figure out how to get the error message to display for $element['date_free'] only.
-        // @TODO: If $form_state->setError($element['date_free'],...) is used, no error message appears.
-        $form_state->setError($element,
+        $form_state->setError($element['date_free'],
           t('The extended date time format string for the @name field is invalid.',
             [
               '@name' => $element['#title'],
