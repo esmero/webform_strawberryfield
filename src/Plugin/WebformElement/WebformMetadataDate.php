@@ -58,6 +58,7 @@ class WebformMetadataDate extends MetadataDateBase {
         'step' => '',
         'size' => '',
         'input_hide' => FALSE,
+        'edtf_validateme' => FALSE,
       ] + parent::defineDefaultProperties()
       + $this->defineDefaultMultipleProperties();
   }
@@ -119,6 +120,19 @@ class WebformMetadataDate extends MetadataDateBase {
         'If checked both Point and Range modes will also allow a non validated free form input'
       ),
       '#return_value' => TRUE,
+    ];
+    $form['date']['edtf_validateme'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Validate freeform date as EDTF'),
+      '#description' => $this->t(
+        'Option to validate the freeform date as extended date/time format date (EDTF). See <a href="https://www.loc.gov/standards/datetime/">here</a>'
+      ),
+      '#return_value' => TRUE,
+      '#states' => [
+        'visible' => [
+          ':input[name="properties[showfreeformalways]"]' => ['checked' => TRUE],
+        ],
+      ],
     ];
     $form['date']['datepicker'] = [
       '#type' => 'checkbox',
