@@ -8,6 +8,9 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\Field\FieldWidget;
 
+use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\HtmlCommand;
 use Drupal\Core\Entity\EntityMalformedException;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
@@ -19,6 +22,7 @@ use Drupal\webform\WebformInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\strawberryfield\Semantic\ActivityStream;
+use Drupal\webform\Entity\Webform;
 
 /**
  * Plugin implementation of the 'strawberryfield_webform_inline_widget' widget.
@@ -32,8 +36,7 @@ use Drupal\strawberryfield\Semantic\ActivityStream;
  *   }
  * )
  */
-class StrawberryFieldWebFormInlineWidget extends WidgetBase implements ContainerFactoryPluginInterface
-{
+class StrawberryFieldWebFormInlineWidget extends WidgetBase implements ContainerFactoryPluginInterface {
 
   /**
    * @var \Drupal\Core\Session\AccountProxyInterface
@@ -65,6 +68,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
    * @param array $configuration
    * @param string $plugin_id
    * @param mixed $plugin_definition
+   *
    * @return \Drupal\Core\Plugin\ContainerFactoryPluginInterface|\Drupal\webform_strawberryfield\Plugin\Field\FieldWidget\StrawberryFieldWebFormWidget
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
@@ -98,10 +102,10 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $element['webform_id'] = [
       '#type' => 'entity_autocomplete',
       '#target_type' => 'webform',
-      '#default_value' => $this->getSetting('webform_id') ? \Drupal\webform\Entity\Webform::load($this->getSetting('webform_id')) : NULL,
+      '#default_value' => $this->getSetting('webform_id') ? Webform::load($this->getSetting('webform_id')) : NULL,
       '#validate_reference' => FALSE,
       '#maxlength' => 1024,
-      '#placeholder' => t('Select an existing Webform to be used as default input.')
+      '#placeholder' => t('Select an existing Webform to be used as default input.'),
     ];
 
     $element['placeholder'] = [
@@ -135,11 +139,12 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
   }
 
 
+
+
   /**
    * {@inheritdoc}
    */
-  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state)
-  {
+  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
 
     // Override the title from the incoming $element.
     if ($this->getSetting('placeholder') && !empty(trim($this->getSetting('placeholder')))) {
@@ -151,6 +156,8 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $entity_type = $items->getEntity()->getEntityTypeId();
     $bundle = $items->getEntity()->bundle();
     $bundle_label = $items->getEntity()->type->entity->label();
+    $this_field_name = $this->fieldDefinition->getName();
+
     // So does the current loaded entity, where this widget is shown
     // has an id? If it has means we are editing!
     // We can always check via $items->getEntity()->isNew()
@@ -164,7 +171,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Even if new or old, that entity has an uuid from the start on.
     // We will use that one to store the webform data around and reload when submitting.
     if ($items->getEntity()->isNew()) {
-      $form_state->set('strawberryfield_webform_isnew', true);
+      $form_state->set('strawberryfield_webform_isnew', TRUE);
       // Weird place but if still to be created there is no way i can keep a single value constant
       // Inside this form. All changes, or at least i can not find it yet!
       //@TODO smart people, ideas?
@@ -173,8 +180,9 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       // For a little little while...
       $entity_uuid = NULL;
       $entity_id = NULL;
-    } else {
-      $form_state->set('strawberryfield_webform_isnew', false);
+    }
+    else {
+      $form_state->set('strawberryfield_webform_isnew', FALSE);
       // This entity was born to be wild.
       $entity_uuid = $items->getEntity()->uuid();
       $entity_id = $items->getEntity()->id();
@@ -206,7 +214,8 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     if ($this_widget_id_saved) {
       $this_widget_id = $this_widget_id_saved;
       // If we already have a widgetid, keep using the same
-      $form_state->set('strawberryfield_webform_widget_id', $this_widget_id_saved);
+      $form_state->set('strawberryfield_webform_widget_id',
+        $this_widget_id_saved);
     }
     else {
       $form_state->set('strawberryfield_webform_widget_id', $this_widget_id);
@@ -220,18 +229,18 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     if (empty($my_webform_machinename)) {
       $my_webform_machinename = 'webform_strawberry_default';
     }
-    /* @var \Drupal\webform\WebformInterface $my_webform */
-    $my_webform = \Drupal\webform\Entity\Webform::load($my_webform_machinename);
+    /** @var \Drupal\webform\WebformInterface $my_webform */
+    $my_webform = Webform::load($my_webform_machinename);
     // Deals with any existing confirmation messages.
     $confirmation_message = $my_webform->getSetting('confirmation_message', FALSE);
     $confirmation_message = !empty($confirmation_message) && strlen(trim($confirmation_message)) > 0 ? $confirmation_message : $this->t(
       'Thanks, you are all set! Please Save the content to persist the changes.');
 
-    if ($my_webform == null) {
+    if ($my_webform == NULL) {
       // Well someone dropped the ball here
       // and removed our super default
       // or the original webform exists only in our hopes.
-      return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
+      return $this->_exceptionElement($items, $delta, $element, $form, $form_state);
     }
     $form_state->set('webform_machine_name', $my_webform_machinename);
     try {
@@ -239,8 +248,9 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         'webform_machine_name_url',
         $my_webform->toUrl()->setAbsolute()->toString()
       );
-    } catch (EntityMalformedException $e) {
-      return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
+    }
+    catch (EntityMalformedException $e) {
+      return $this->_exceptionElement($items, $delta, $element, $form, $form_state);
     }
 
     // This will be our temp storage id
@@ -251,86 +261,108 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $parents = array_merge($element['#field_parents'], [
       $items->getName(),
       $delta,
-      'strawberry_webform_inline'
+      'strawberry_webform_inline',
     ]);
     $limit_validation_errors = $parents;
 
     // We add 'data-drupal-selector' = 'strawberry_webform_widget'
     // To allow JS to react/jquery select on this.
-    $element += array(
+    $element += [
       '#type' => 'fieldset',
       '#attributes' => [
         'data-strawberryfield-selector' => [
-          'strawberry-webform-widget'
+          'strawberry-webform-widget',
         ],
       ],
-      '#title' => $this->getSetting('placeholder')?: $items->getName(),
+      '#title' => $this->getSetting('placeholder') ?: $items->getName(),
       '#collapsible' => FALSE,
       '#collapsed' => FALSE,
-      '#element_validate' => array(
-        array($this, 'validateWebform'),
-      ),
+      '#element_validate' => [
+        [$this, 'validateWebform'],
+      ],
       '#limit_validation_errors' => $limit_validation_errors,
-    );
+    ];
 
     $savedvalue = $items[$delta]->getValue();
+    /** @var  \Drupal\Core\TempStore\PrivateTempStore $tempstore */
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
     $tempstoreId = $this_widget_id;
 
-
-
-    /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
     // Which means an abandoned Metadata Sessions somewhere
     // Someone saved/drafted 'metadata' during a form session and left for coffee
     // WE can reuse!
 
-    if (($tempstore->getMetadata($tempstoreId) != NULL) && $items->getEntity()->isNew()) {
+    if (($tempstore->getMetadata($tempstoreId) != NULL) && $items->getEntity()
+        ->isNew()) {
+      $discard = $form_state->getUserInput()['_triggering_element_name'] ?? FALSE;
+      $discard = $discard == 'webform_strawberryfield_discard_session' ?? FALSE;
+
       $json_string = $tempstore->get($tempstoreId);
       $json = json_decode($json_string, TRUE);
       $json_error = json_last_error();
       if ($json_error == JSON_ERROR_NONE) {
         $savedvalue['value'] = $json_string;
-      }
-      $element['strawberry_webform_inline_message'] = [
+        $element['strawberry_webform_inline_message'] = [
           '#type' => 'item',
-          '#title' => $this
-            ->t('Resuming metadata session:'),
-          '#markup' =>  $this->t('We found and loaded a previous unfinished metadata session for you.')
-      ];
+          '#id' => 'ajax-value',
+          '#title' => $this->t('Resuming metadata session:'),
+          '#markup' => $this->t('We found and loaded a previous unfinished metadata session for you.'),
+        ];
+        $webform_controller_url_clear = Url::fromRoute('webform_strawberryfield.modal_webform',
+          [
+            'webform' => $my_webform_machinename,
+            'source_entity_types' => "$entity_type:$bundle",
+            'state' => "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+            'modal' => FALSE,
+            'clear_saved' => $tempstoreId,
+          ]
+        );
+        $element['strawberry_webform_discard_session'] = [
+          '#type' => 'link',
+          '#title' => $this->t('Discard Session'),
+          '#url' => $webform_controller_url_clear,
+          '#attributes' => [
+            'class' => [
+              'use-ajax',
+              'button',
+              'btn-primary',
+              'btn',
+            ],
+          ],
+        ];
+      }
     }
 
-    // Autofill from a previous submision if current value is empty
-    $webform_autofill = empty($savedvalue['value']) || $items->getEntity()->isNew();
     // If new this won't exist
-    $stored_value = !empty($savedvalue['value']) ? $savedvalue['value']: "{}";
+    $stored_value = !empty($savedvalue['value']) ? $savedvalue['value'] : "{}";
 
     $data_defaults = [
       'strawberry_field_widget_state_id' => $this_widget_id,
       'strawberry_field_widget_source_entity_uuid' => $entity_uuid,
       'strawberry_field_widget_source_entity_id' => $entity_id,
-      'strawberry_field_stored_values' => json_decode($stored_value,true)
+      'strawberry_field_stored_values' => json_decode($stored_value, TRUE),
     ];
 
     if (!isset($stored_value) || empty($stored_value)) {
       // No data
-      $data['data'] = $data_defaults  +
+      $data['data'] = $data_defaults +
         [
-          'label' => 'New metadata'
+          'label' => 'New ADO',
         ];
     }
     else {
-      $data['data'] = $data_defaults + json_decode($stored_value,true);
+      $data['data'] = $data_defaults + json_decode($stored_value, TRUE);
 
       // In case the saved data is "single valued" for a key
       // But the corresponding webform element is not
       // we cast to it multi valued so it can be read/updated
       /* @var \Drupal\webform\WebformInterface $my_webform */
-      $webform_elements  = $my_webform->getElementsInitializedFlattenedAndHasValue();
+      $webform_elements = $my_webform->getElementsInitializedFlattenedAndHasValue();
       $elements_in_data = array_intersect_key($webform_elements, $data['data']);
-      if (is_array($elements_in_data) && count($elements_in_data)>0) {
-        foreach($elements_in_data as $key => $elements_in_datum) {
+      if (is_array($elements_in_data) && count($elements_in_data) > 0) {
+        foreach ($elements_in_data as $key => $elements_in_datum) {
           if (isset($elements_in_datum['#webform_multiple']) &&
-            $elements_in_datum['#webform_multiple']!== FALSE) {
+            $elements_in_datum['#webform_multiple'] !== FALSE) {
             //@TODO should we log this operation for admins?
             $data['data'][$key] = (array) $data['data'][$key];
           }
@@ -340,14 +372,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
 
 
     // @see \Drupal\webform_strawberryfield\Element\WebformCustom element.
-    // @TODO expose #override options in the widget config.
-    // @see \Drupal\webform\Entity\Webform::getDefaultSettings for all settings
-
-    // @TODO 'autofill' => $webform_autofill can potentially override
-    // anny passed data. WE need to deal with that manually
-    // IDEA: keep a draft version around in another temp storage
-    // reload if empty, clean if correctly submitted
-
     // If the node is new or render_always is present show the inline form
     // But if the Node exists, SBF is there and setting is not render always
     // show the on-click widget
@@ -366,7 +390,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           'submission_user_duplicate' => TRUE,
           'submission_log' => FALSE,
           'confirmation_message' => $confirmation_message,
-          'draft_saved_message' => t('Your progress was stored. You may return to this form before a week has passed and it will restore the current values.')
+          'draft_saved_message' => t('Your progress was stored. You may return to this form before a week has passed and it will restore the current values.'),
         ],
       ];
       $element['strawberry_webform_inline']['#parents'] = $parents;
@@ -374,64 +398,63 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     else {
 
       // Webform controller wrapper URL
-      $this_field_name = $this->fieldDefinition->getName();
-      //@see \Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController
+      // @see \Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController
       // We need to assume nothing of this will ever work without AJAX/JS.
-
       $webform_controller_url = Url::fromRoute('webform_strawberryfield.modal_webform',
         [
           'webform' => $my_webform_machinename,
           'source_entity_types' => "$entity_type:$bundle",
           'state' => "$entity_uuid:$this_field_name:$delta:$this_widget_id",
-          'modal' => FALSE
+          'modal' => FALSE,
         ]
       );
       $element['strawberry_webform_open_modal'] = [
         '#type' => 'link',
-        '#title' => $this->t('Edit @a', ['@a' => $this->getSetting('placeholder') ?: $items->getName()]),
+        '#title' => $this->t('Edit @a',
+          ['@a' => $this->getSetting('placeholder') ?: $items->getName()]),
         '#url' => $webform_controller_url,
         '#attributes' => [
           'class' => [
             'use-ajax',
             'button',
             'btn-primary',
-            'btn'
+            'btn',
           ],
         ],
       ];
-      if ($this->getSetting('hide_cancel') === FALSE || $this->getSetting('hide_cancel') == NULL) {
-        $webform_controller_url_close = Url::fromRoute('webform_strawberryfield.close_modal_webform',
-          [
-            'state' => "$entity_uuid:$this_field_name:$delta:$this_widget_id",
-            'modal' => FALSE,
-          ]
-        );
-        $element['strawberry_webform_close_modal'] = [
-          '#type' => 'link',
-          '#title' => $this->t('Cancel @a editing', ['@a' => $this->getSetting('placeholder') ?: $items->getName()]),
-          '#url' => $webform_controller_url_close,
-          '#attributes' => [
-            'class' => [
-              'use-ajax',
-              'button',
-              'btn-warning',
-              'btn',
-              'js-hide'
-            ],
-          ],
-        ];
-      }
     }
-
+    if ($this->getSetting('hide_cancel') === FALSE || $this->getSetting('hide_cancel') == NULL) {
+      $webform_controller_url_close = Url::fromRoute('webform_strawberryfield.close_modal_webform',
+        [
+          'state' => "$entity_uuid:$this_field_name:$delta:$this_widget_id",
+          'modal' => FALSE,
+        ]
+      );
+      $element['strawberry_webform_close_modal'] = [
+        '#type' => 'link',
+        '#title' => $this->t('Cancel @a editing',
+          ['@a' => $this->getSetting('placeholder') ?: $items->getName()]),
+        '#url' => $webform_controller_url_close,
+        '#attributes' => [
+          'class' => [
+            'use-ajax',
+            'button',
+            'btn-warning',
+            'btn',
+            'js-hide',
+          ],
+        ],
+      ];
+    }
 
     // The following elements are kinda hidden and match the field properties
     $current_value = $items[$delta]->getValue();
 
-    if (!isset($current_value['creation_method']) || empty($current_value['creation_method'])){
+    if (!isset($current_value['creation_method']) || empty($current_value['creation_method'])) {
       $current_value['creation_method'] = $my_webform_machinename;
     }
 
-    if (empty($current_value['value'])){
+    if (empty($current_value['value'])) {
       $current_value['value'] = '{}';
     }
     $element['strawberry_webform_widget']['json'] = [
@@ -458,25 +481,26 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
    * @param array $element
    * @param array $form
    * @param FormStateInterface $form_state
+   *
    * @return array
    */
-  protected function _exceptionElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state)
-  {
+  protected function _exceptionElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
     $current_value = $items[$delta]->getValue();
 
     $element['strawberry_webform_widget']['json'] = [
       '#type' => 'textarea',
-      '#id' => 'webform_output_json' .  $form_state->get('strawberryfield_webform_widget_id'),
+      '#id' => 'webform_output_json' . $form_state->get('strawberryfield_webform_widget_id'),
       '#default_value' => $current_value['value'],
       '#title' => $this->t('Your metadata in JSON'),
-      '#description' => $this->t('You are seeing this because the webform used to create this value does not exist',array('@webform' => $form_state->get('webform_machine_name'))),
+      '#description' => $this->t('You are seeing this because the webform used to create this value does not exist',
+        ['@webform' => $form_state->get('webform_machine_name')]),
       '#disabled' => FALSE,
       '#rows' => 15,
     ];
     $element['strawberry_webform_widget']['creation_method'] = [
       '#type' => 'value',
       '#id' => 'webform_output_webform' . $form_state->get('strawberryfield_webform_widget_id'),
-      '#default_value' => $current_value['creation_method']
+      '#default_value' => $current_value['creation_method'],
     ];
 
     return $element;
@@ -487,10 +511,9 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Validate
 
     $tempstoreId = $form_state->get('strawberryfield_webform_widget_id');
-    /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
-
+    /** @var \Drupal\Core\TempStore\PrivateTempStore $tempstore */
     $tempstore = \Drupal::service('tempstore.private')->get('archipel');
-    if ($tempstore->getMetadata($tempstoreId) == NULL ) {
+    if ($tempstore->getMetadata($tempstoreId) == NULL) {
       // Means its empty. This can be Ok if something else than "save"
       // Is triggering the Ajax Submit action like the "Display Switch"
       // Or we are not enforcing (required) really any values
@@ -503,12 +526,12 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
           $this->t(
             "There is a problem. Either you did not complete all steps or maybe your Webform is not correctly configured. You can not Save this @bundle_label without completing the required Form.",
             [
-              '@bundle_label' => $form_state->get('strawberryfield_webform_bundle_label')
+              '@bundle_label' => $form_state->get('strawberryfield_webform_bundle_label'),
             ]
           )
         );
       }
-        return;
+      return;
     }
 
     $json_string = $tempstore->get($tempstoreId);
@@ -520,28 +543,28 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       return;
     }
     else {
-        $form_state->setError($element, $this->t("Something went wrong, so sorry. Your data does not taste like strawberry (JSON malformed) and we failed validating it: @json_error.",
+      $form_state->setError($element,
+        $this->t("Something went wrong, so sorry. Your data does not taste like strawberry (JSON malformed) and we failed validating it: @json_error.",
           [
-            '@json_error' => $json_error
+            '@json_error' => $json_error,
           ]));
-      }
+    }
   }
 
 
   /**
    * {@inheritdoc}
    */
-  public function extractFormValues(FieldItemListInterface $items, array $form, FormStateInterface $form_state)
-  {
+  public function extractFormValues(FieldItemListInterface $items, array $form, FormStateInterface $form_state) {
     parent::extractFormValues($items, $form, $form_state);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function massageFormValues(array $values, array $form, FormStateInterface $form_state)
-  {
-    $jsonarray = json_decode($values[0]['strawberry_webform_widget']['json'], true);
+  public function massageFormValues(array $values, array $form, FormStateInterface $form_state) {
+    $jsonarray = json_decode($values[0]['strawberry_webform_widget']['json'],
+      TRUE);
     // If "as:generator" is in place this will simply replace it
     // @TODO if previous form exists and is different to this one then we could
     // A) add new values to existing field ones..
@@ -550,7 +573,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Who do we ask?
 
     $jsonarray["as:generator"] = $this->addActivityStream($form_state);
-    $jsonvalue  =  json_encode($jsonarray, JSON_PRETTY_PRINT);
+    $jsonvalue = json_encode($jsonarray, JSON_PRETTY_PRINT);
     $values2[0]['value'] = $jsonvalue;
     // @TODO this no longer is part of wild strawberry field defintion. We already have other
     // ways of keeping track. Remove or deprecate.
@@ -573,14 +596,13 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
 
     $actor_properties = [
       'name' => $form_state->get('webform_machine_name') ?: 'NaW',
-      'url' =>  $form_state->get('webform_machine_name_url') ?: '',
+      'url' => $form_state->get('webform_machine_name_url') ?: '',
     ];
-    $event_type =  $form_state->get('strawberryfield_webform_isnew') ? ActivityStream::ASTYPES['Create'] : ActivityStream::ASTYPES['Update'];
+    $event_type = $form_state->get('strawberryfield_webform_isnew') ? ActivityStream::ASTYPES['Create'] : ActivityStream::ASTYPES['Update'];
 
     $activitystream = new ActivityStream($event_type, $eventBody);
 
     $activitystream->addActor(ActivityStream::ACTORTYPES['Service'], $actor_properties);
-    return $activitystream->getAsBody()?:[];
+    return $activitystream->getAsBody() ?: [];
   }
-
 }
