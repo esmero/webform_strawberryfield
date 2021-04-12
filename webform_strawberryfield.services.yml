@@ -4,3 +4,7 @@ services:
     tags:
       - {name: event_subscriber}
     arguments: ['@string_translation', '@messenger', '@logger.factory', '@tempstore.private']
+  webform_strawberryfield.twig.TwigExtension:
+    class: Drupal\webform_strawberryfield\TwigExtension
+    tags:
+      - {name: twig.extension}
