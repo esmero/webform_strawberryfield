@@ -67,8 +67,11 @@ class TwigExtension extends \Twig_Extension {
   ): ?string {
     if(is_string($option) && $option) {
       $webform_option_list = WebformOptions::load($webform_option_list_id);
-        if(!empty($webform_option_list) && !empty($webform_option_list['#options']) && !empty($webform_option_list['#options'][$option])) {
-          return $webform_option_list['#options'][$option];
+      if (!empty($webform_option_list)) {
+        $options = $webform_option_list->getOptions();
+        if (!empty($options) && !empty($options[$option])) {
+          return $options[$option];
+        }
       }
     }
     return NULL;
