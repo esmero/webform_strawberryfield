@@ -247,9 +247,10 @@ class WebformMetadataDate extends FormElement {
       $element['date_to']['#attributes']['data-max-year'] = $element['#attributes']['data-max-year'];
       $element['date_from']['#attributes']['data-max-year'] = $element['#attributes']['data-max-year'];
     }
-    $element['date_to']['#attributes']['data-drupal-date-format'] =  $element['#attributes']['data-drupal-date-format'];
-    $element['date_from']['#attributes']['data-drupal-date-format'] = $element['#attributes']['data-drupal-date-format'];
-
+    if (isset($element['#attributes']['data-drupal-date-format'])) {
+      $element['date_to']['#attributes']['data-drupal-date-format'] = $element['#attributes']['data-drupal-date-format'];
+      $element['date_from']['#attributes']['data-drupal-date-format'] = $element['#attributes']['data-drupal-date-format'];
+    }
 
     $element['date_from']['#datepicker'] = TRUE;
     $element['date_to']['#datepicker'] = TRUE;
