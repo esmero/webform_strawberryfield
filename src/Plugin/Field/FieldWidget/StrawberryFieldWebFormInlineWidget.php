@@ -347,7 +347,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       // No data
       $data['data'] = $data_defaults +
         [
-          'label' => 'New ADO',
+          'label' => NULL,
         ];
     }
     else {

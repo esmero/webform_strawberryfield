@@ -157,7 +157,7 @@ class StrawberryRunnerModalController extends ControllerBase
       // No data
       $data['data'] = $data_defaults  +
         [
-          'label' => 'New ADO'
+          'label' => NULL,
         ];
     }
     else {
