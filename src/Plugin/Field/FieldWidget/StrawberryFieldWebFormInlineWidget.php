@@ -303,11 +303,13 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       if ($json_error == JSON_ERROR_NONE) {
         $savedvalue['value'] = $json_string;
         $element['strawberry_webform_inline_message'] = [
-          '#type' => 'item',
           '#id' => 'ajax-value',
-          '#title' => $this->t('Resuming metadata session:'),
-          '#markup' => $this->t('We found and loaded a previous unfinished metadata session for you.'),
+          '#theme' => 'status_messages',
+          '#message_list' => [
+            'status' => [$this->t('We found and loaded a previous unfinished metadata session for you.')],
+            ],
         ];
+
         $webform_controller_url_clear = Url::fromRoute('webform_strawberryfield.modal_webform',
           [
             'webform' => $my_webform_machinename,
