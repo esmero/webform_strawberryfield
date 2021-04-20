@@ -5,6 +5,7 @@ webform_strawberryfield.modal_webform:
     _title: 'Strawberry Webform Widget'
   requirements:
     _permission: 'access content'
+    _csrf_token: 'TRUE'
 webform_strawberryfield.close_modal_webform:
   path: '/webform_strawberry/close-modal-widget'
   defaults:

@@ -132,7 +132,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $form_state->setValue([$element['#name'],'allscenes'],json_encode($all_scenes,TRUE));
 
     $currentscene = $form_state->getValue([$element_name, 'currentscene']);
-    error_log('building the main form');
     $sceneid = NULL;
 
     if (!$currentscene && !empty($all_scenes)) {

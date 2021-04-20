@@ -18,6 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\strawberryfield\Semantic\ActivityStream;
+use Drupal\webform\Entity\Webform;
 
 /**
  * Plugin implementation of the 'strawberryfield_webform_widget' widget.
@@ -95,7 +96,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
     $element['webform_id'] = [
       '#type' => 'entity_autocomplete',
       '#target_type' => 'webform',
-      '#default_value' => $this->getSetting('webform_id') ? \Drupal\webform\Entity\Webform::load($this->getSetting('webform_id')) : NULL,
+      '#default_value' => $this->getSetting('webform_id') ? Webform::load($this->getSetting('webform_id')) : NULL,
       '#validate_reference' => FALSE,
       '#maxlength' => 1024,
       '#placeholder' => t('Select an existing Webform to be used as default input.')
@@ -206,8 +207,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       $my_webform_machinename = 'webform_strawberry_default';
     }
 
-    $my_webform = \Drupal\webform\Entity\Webform::load($my_webform_machinename);
-
+    $my_webform = Webform::load($my_webform_machinename);
 
     if ($my_webform == null) {
       // Well someone dropped the ball here
@@ -221,8 +221,9 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         'webform_machine_name_url',
         $my_webform->toUrl()->setAbsolute()->toString()
       );
-    } catch (EntityMalformedException $e) {
-        return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
+    }
+    catch (EntityMalformedException $e) {
+      return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
     }
 
     $this_field_name = $this->fieldDefinition->getName();
