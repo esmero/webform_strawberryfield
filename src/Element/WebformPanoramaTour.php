@@ -2,6 +2,7 @@
 
 namespace Drupal\webform_strawberryfield\Element;
 
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element\FormElement;
 use Drupal\webform\Element\WebformCompositeBase;
@@ -837,8 +838,17 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $newid = Uuid::uuid4();
       $hotspot->id = $element_name . '_' . $current_scene . '_' . $newid->toString();
       if ($hotspot->type == 'url') {
-        $hotspot->URL = $hotspot->url;
-        $hotspot->type = 'info';
+        $externalURL = $form_state->getValue(
+          [$element_name, 'hotspots_temp', 'url']
+        );
+        if (UrlHelper::isValid(trim($externalURL), TRUE)) {
+          $hotspot->URL = $externalURL;
+          $hotspot->type = 'info';
+        }
+        else {
+          $form_state->setRebuild(TRUE);
+          return;
+        }
       }
       if ($hotspot->type == 'ado') {
         $nodeid = $form_state->getValue(
@@ -880,7 +890,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $hotspot->text = $hotspot->text;
         $hotspot->type = 'info';
       }
-
       $existing_objects[] = (array) $hotspot;
 
       // @TODO make sure people don't add twice the same coordinates!
@@ -890,7 +899,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $allscenes[$scene_key]['hotspots'] = $existing_objects;
       $form_state->set($all_scenes_key, $allscenes);
       $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
-
 
     } else {
       // Do we alert the user? Form needs to be restarted
@@ -1013,7 +1021,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
 
       $form_state->set($all_scenes_key, $allscenes);
-      $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
+      $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
 
 
     } else {
