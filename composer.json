@@ -13,6 +13,7 @@
         }
     ],
     "require": {
+        "php": ">=7.2",
         "ml/json-ld": "^1.2",
         "mtdowling/jmespath.php":"^2.5",
         "strawberryfield/strawberryfield":"dev-1.0.0-RC2",
