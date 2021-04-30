@@ -33,18 +33,20 @@ class WebformMetadataFile extends WebformManagedFileBase {
 
 
   /**
-   * @return array
+   * {@inheritdoc}
    */
   public function getDefaultProperties() {
 
     $properties = parent::getDefaultProperties() + [
-        'jsonkey' => 'imported_metadata',
         'keepfile' => TRUE,
       ] + parent::getDefaultProperties();
     return $properties;
 
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function prepare(
     array &$element,
     WebformSubmissionInterface $webform_submission = NULL
@@ -86,13 +88,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
     $form = parent::form($form, $form_state);
     //@NOTE    'classification' => 'classification(LCCS)', is not working
     // Not sure if this has a sub authority and how that works/if suggest
-    $form['jsonkey'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t("jsonkey to use to store XML in JSON format"),
-      '#description' => $this->t('JSON key to be used <em>names</em>'),
-      '#default_value' => 'subjects',
-    ];
-    $form['keepfile'] = [
+    $form['file']['keepfile'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Keep imported XML after persisting?'),
       '#description' => $this->t('If the imported File should be kept as inline data or should be purged on save.'),
@@ -220,5 +216,25 @@ class WebformMetadataFile extends WebformManagedFileBase {
     libxml_use_internal_errors($internalErrors);
 
     return $errors;
+  }
+
+
+  protected function  safe_json_encode($value, $options = 0, $depth = 512) {
+    $encoded = json_encode($value, $options, $depth);
+    if ($encoded === false && $value && json_last_error() == JSON_ERROR_UTF8) {
+      $encoded = json_encode($this->utf8ize($value), $options, $depth);
+    }
+    return $encoded;
+  }
+
+  protected function utf8ize($mixed) {
+    if (is_array($mixed)) {
+      foreach ($mixed as $key => $value) {
+        $mixed[$key] = $this->utf8ize($value);
+      }
+    } elseif (is_string($mixed)) {
+      return mb_convert_encoding($mixed, "UTF-8", "UTF-8");
+    }
+    return $mixed;
   }
 }
