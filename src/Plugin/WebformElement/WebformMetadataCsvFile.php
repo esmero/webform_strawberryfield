@@ -33,7 +33,6 @@ use Drupal\strawberryfield\Tools\SimpleXMLtoArray;
  *   states_wrapper = TRUE,
  * )
  */
-
 class WebformMetadataCsvFile extends WebformMetadataFile {
 
   /**
@@ -41,7 +40,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
    */
   public function getDefaultProperties() {
     $properties = parent::getDefaultProperties() + [
-        'utf8' => TRUE
+        'utf8' => TRUE,
       ] + parent::getDefaultProperties();
     return $properties;
   }
@@ -84,7 +83,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
     if ($this->getElementProperty($element, 'utf8')) {
       $element['#element_validate'][] = [
         get_class($this),
-        'validateManagedUTF8Csv'
+        'validateManagedUTF8Csv',
       ];
     }
   }
@@ -105,7 +104,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
     }
     $uri = $file->getFileUri();
     //read csv headers
-    ini_set('auto_detect_line_endings',TRUE);
+    ini_set('auto_detect_line_endings', TRUE);
     setlocale(LC_CTYPE, 'en_US.UTF-8');
 
     $index = 0;
@@ -116,19 +115,23 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
       while (($csvdata = fgetcsv($handle, "2048", ",")) !== FALSE) {
         $index++;
         if ($index < 2) {
-          foreach($csvdata as $values) {
+          foreach ($csvdata as $values) {
             // Because for each is always faster than map
             // In case the cleaning up means we end with empty, we still add it
             // Because we need to maintain the column index to fetch the right
             // row/cell data.
             $headers[] = trim(preg_replace('/[^[:print:]]/', '', $values));
           }
-          if (!count($headers)) { break 1;}
-        } else {
+          if (!count($headers)) {
+            break 1;
+          }
+        }
+        else {
           // Actual data
           $row_value = $this->safe_json_encode($csvdata);
-          $row_value = $row_value ? json_decode($row_value,TRUE, 512,JSON_INVALID_UTF8_SUBSTITUTE) : [];
-          foreach($headers as $columnindex => $header) {
+          $row_value = $row_value ? json_decode($row_value, TRUE, 512,
+            JSON_INVALID_UTF8_SUBSTITUTE) : [];
+          foreach ($headers as $columnindex => $header) {
             // Totally skip empty headers(includes empty ones after cleanup)
             if (strlen($header) > 0) {
               $data[$index][$header] = $row_value[$columnindex] ?? "";
@@ -141,12 +144,12 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
       return $jsonarray;
     }
 
-    if (!empty($data) && ($index >=2)) {
+    if (!empty($data) && ($index >= 2)) {
       $md5 = md5_file($uri);
       $jsonarray = [
         'dr:uuid' => $file->uuid(),
         'checksum' => $md5,
-        'crypHashFunc' =>  'md5',
+        'crypHashFunc' => 'md5',
         'webform_element_type' => $this->pluginDefinition['id'],
         'standard' => NULL,
         'content' => $data,
@@ -190,7 +193,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
 
       $uri = $file->getFileUri();
       //read csv headers
-      ini_set('auto_detect_line_endings',TRUE);
+      ini_set('auto_detect_line_endings', TRUE);
       setlocale(LC_CTYPE, 'en_US.UTF-8');
 
       $index = 0;
@@ -200,7 +203,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
         while (($csvdata = fgetcsv($handle, "2048", ",")) !== FALSE) {
           $index++;
           if ($index < 2) {
-            foreach($csvdata as $values) {
+            foreach ($csvdata as $values) {
               // Because for each is always faster than map
               // In case the cleaning up means we end with empty, we still add it
               // Because we need to maintain the column index to fetch the right
@@ -212,13 +215,15 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
               $form_state->setError($element, $message);
               break;
             }
-          } else {
+          }
+          else {
             // Actual data
             $encoded = json_encode($csvdata);
-            if ($encoded === false && $csvdata && json_last_error() == JSON_ERROR_UTF8) {
-              $message = t("Uploaded CSV contains Invalid UTF-8 characters, first error found at row %row. Please Fix (export as UTF-8) and replace the file.", [
-                '%row' => $index
-              ]);
+            if ($encoded === FALSE && $csvdata && json_last_error() == JSON_ERROR_UTF8) {
+              $message = t("Uploaded CSV contains Invalid UTF-8 characters, first error found at row %row. Please Fix (export as UTF-8) and replace the file.",
+                [
+                  '%row' => $index,
+                ]);
               $form_state->setError($element, $message);
               break;
             }
@@ -227,4 +232,5 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
       }
     }
   }
+
 }
