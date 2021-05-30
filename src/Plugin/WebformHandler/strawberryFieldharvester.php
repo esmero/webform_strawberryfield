@@ -469,9 +469,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
     // Cleanup states.
     $this->configuration['states'] = array_values(array_filter($this->configuration['states']));
-    // Cleanup entity values.
-    // $this->configuration['ado_settings'] = array_map('array_filter', $this->configuration['ado_settings']);
-    // $this->configuration['ado_settings'] = array_filter($this->configuration['ado_settings']);
 
   }
 
@@ -545,6 +542,20 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
       $cleanvalues = json_encode($cleanvalues, JSON_PRETTY_PRINT);
 
+      if ($cleanvalues == NULL || json_last_error() !== JSON_ERROR_NONE){
+        $this->messenger()->addError($this->t('There was an unfixable error encoding your data to JSON, most likely caused by a wrong UTF8 character: %error',
+        [
+          '%error' => json_last_error_msg(),
+        ]));
+        $this->loggerFactory->get('archipelago')->error(
+          'There was an unfixable error while using webform %webformlabel and encoding your data to JSON : %error. Attempted Metadata input was <pre><code>%data</code></pre>',
+          [
+            '%webformlabel' => $this->getWebform()->label(),
+            '%data' => print_r($webform_submission->getData(), TRUE),
+            '%error' => json_last_error_msg(),
+          ]
+        );
+      }
       try {
         $tempstore->set(
           $values["strawberry_field_widget_state_id"],
@@ -560,11 +571,11 @@ class strawberryFieldharvester extends WebformHandlerBase {
           )
         );
         $this->loggerFactory->get('archipelago')->error(
-          'Webform @webformid can not write to temp storage! with error @message. Attempted Metadata input was <pre><code>%data</code></pre>',
+          'Webform %webformlabel can not write to temp storage! with error %error. Attempted Metadata input was <pre><code>%data</code></pre>',
           [
-            '@webformid' => $this->getWebform()->id(),
+            '%webformlabel' => $this->getWebform()->label(),
             '%data' => print_r($webform_submission->getData(), TRUE),
-            '@error' => $e->getMessage(),
+            '%error' => $e->getMessage(),
           ]
         );
       }
