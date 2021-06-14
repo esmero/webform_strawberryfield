@@ -2,8 +2,14 @@
 
 namespace Drupal\webform_strawberryfield\Controller;
 
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Cache\UseCacheBackendTrait;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Site\Settings;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,6 +18,7 @@ use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Url;
+use Drupal\Component\Datetime\TimeInterface;
 
 /**
  * Defines a route controller for Authority autocomplete form elements.
@@ -20,6 +27,19 @@ use Drupal\Core\Url;
  */
 class AuthAutocompleteController extends ControllerBase implements ContainerInjectionInterface {
 
+  use UseCacheBackendTrait;
+
+  /**
+   * Mark a 401 so we can cache the fact that a certain URL will simply fail.
+   *
+   * @var bool
+   */
+  public $notAllowed = FALSE;
+
+  /**
+   * Max time to live the Results cache
+   */
+  const MAX_CACHE_AGE = 604800;
 
   /**
    * English Stop words.
@@ -67,14 +87,37 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    */
   protected $httpClient;
 
+  /**
+   * The Time Service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+
+  /**
+   * The Current User.
+   *
+   * @var \Drupal\Core\Session\AccountInterface
+   */
+  protected $currentUser;
 
   /**
    * AuthAutocompleteController constructor.
    *
    * @param \GuzzleHttp\Client $httpClient
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
+   * @param \Drupal\Core\Session\AccountInterface $current_user
+   * @param \Drupal\Core\Cache\CacheBackendInterface $cacheBackend
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
    */
-  public function __construct(Client $httpClient) {
+  public function __construct(Client $httpClient, TimeInterface $time, AccountInterface $current_user, CacheBackendInterface $cacheBackend, ConfigFactoryInterface $configFactory) {
     $this->httpClient = $httpClient;
+    $this->time = $time;
+    $this->currentUser = $current_user;
+    $this->cacheBackend = $cacheBackend;
+    $this->configFactory = $configFactory;
   }
 
   /**
@@ -84,8 +127,11 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('http_client')
-
+      $container->get('http_client'),
+      $container->get('datetime.time'),
+      $container->get('current_user'),
+      $container->get('cache.data'),
+      $container->get('config.factory')
     );
   }
 
@@ -106,7 +152,25 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     //@TODO maybe refactor into plugins so others can write any other reconciliators
     //@TODO if so, we can query the plugins and show in the webform builder options
     // Get the typed string from the URL, if it exists.
-    if ($input = $request->query->get('q')) {
+
+    $apikey = Settings::get('webform_strawberryfield.europeana_entity_apikey');
+    $input = $request->query->get('q');
+    if ($this->currentUser->isAnonymous()) {
+      sleep(5);
+    }
+
+
+    if ($input) {
+      $rdftype_str = $rdftype ?? 'null';
+      $apikey_hash = $apikey ?? 'null';
+      $count = $count ?? 10;
+      $cache_var = md5($auth_type.$input.$vocab.$rdftype_str.$count.$apikey_hash);
+      $cache_id = 'webform_strawberry:auth_lod:' . $cache_var;
+      $cached = $this->cacheGet($cache_id);
+      if ($cached) {
+        return new JsonResponse($cached->data);
+      }
+
       switch ($auth_type) {
         case 'loc':
           $results = $this->loc($input, $vocab, $rdftype);
@@ -124,9 +188,26 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         case 'viaf':
           $results = $this->viaf($input);
           break;
+        case 'europeana':
+          if ($apikey) {
+           $results = $this->europeana($input, $vocab, $apikey);
+          }
+          else {
+            $this->messenger()->addError(
+              $this->t("Can't query Europeana.Your Entity API key is not set. Please add it to your settings.php as \$settings['webform_strawberryfield.europeana_entity_apikey'] = 'yourapikey'"
+              )
+            );
+          }
       }
     }
-
+    // DO not cache NULL or FALSE. Those will be 401/403/500;
+    if ($results) {
+      //setting cache for
+      $this->cacheSet($cache_id, $results,
+        ($this->time->getRequestTime() + static::MAX_CACHE_AGE),
+        ['user:'.$this->currentUser->id()]);
+    }
+    $results = $results ?? [];
     return new JsonResponse($results);
   }
 
@@ -423,7 +504,6 @@ SPARQL;
       $baseurl = 'http://vocab.getty.edu/sparql.json';
       // I leave this as an array in case we want to combine modes in the future.
       foreach($queries as $query) {
-        error_log($query);
         $options = ['query' => ['query' => $query]];
         $url = Url::fromUri($baseurl, $options);
         $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
@@ -454,8 +534,6 @@ SPARQL;
       }
     }
        */
-
-
 
       $jsonfail = FALSE;
       foreach($bodies as $body) {
@@ -555,18 +633,131 @@ SPARQL;
     return [];
   }
 
+  /**
+   * @param $input
+   *    The query
+   * @param $vocab
+   *   Europeana Entity Type requested
+   *
+   * @param $apikey
+   *
+   * @return array
+   */
+  protected function europeana($input, $vocab, string $apikey) {
+    //@TODO make the following allowed list a constant since we use it in
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
+    if (!in_array($vocab, [
+      'agent',
+      'concept',
+      'place',
+    ])) {
+      // Drop before trying to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@vocab for Europeana Entity Suggest autocomplete is not in in our allowed list.',
+          [
+            '@vocab' => $vocab,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Vocabulary {$vocab} in Europeana Entity Query",
+      ];
+      return $results;
+    }
+
+    $input = urlencode($input);
+
+    $urlindex = "/suggest?text=" . $input . "&type=" . $vocab ."&wskey=". $apikey ;
+
+    $baseurl = 'https://www.europeana.eu/api/entities';
+    $remoteUrl = $baseurl . $urlindex;
+    $options['headers'] = ['Accept' => 'application/ld+json'];
+    $body = $this->getRemoteJsonData($remoteUrl, $options);
+    $results = [];
+    $jsondata = json_decode($body, TRUE);
+    $json_error = json_last_error();
+    if ($json_error == JSON_ERROR_NONE) {
+      /*
+       {
+      "@context": [
+         "https://www.w3.org/ns/ldp.jsonld",
+         "http://www.europeana.eu/schemas/context/entity.jsonld",
+       {
+        "@language": "en"
+       }
+       ],
+       "total": 10,
+       "type": "BasicContainer",
+       "contains": [
+        {
+        "type": "Agent"
+        "id": "http://data.europeana.eu/agent/base/147466",
+       "prefLabel": {
+                "en": "Arturo Toscanini"
+            },
+        "dateOfBirth": "1867-03-25",
+        "dateOfDeath": "1957-01-16",
+        },
+     { .. }
+     ]
+  }
+      */
+      // @NOTE!: This is API V 0.5 Already ill documented and its changing. So review the API every 2-3 months
+      if (isset($jsondata['total']) &&  $jsondata['total'] >= 1 && isset($jsondata['items']) && is_array($jsondata['items'])) {
+        foreach ($jsondata['items'] as $key => $result) {
+          $desc = NULL;
+          if (($vocab == 'place') && isset($result['isPartOf']) && is_array($result['isPartOf'])) {
+            foreach( $result['isPartOf'] as $partof) {
+              $desc[] = reset($partof['prefLabel']);
+            }
+          }
+
+          if (($vocab == 'agent') && isset($result['dateOfBirth'])) {
+              $desc[] = $result['dateOfBirth'] . '/' . $result['dateOfDeath'] ?? '?';
+          }
+
+          $desc =  !empty($desc) ? ' (' . implode(', ', $desc) . ')' : NULL;
+          $label = $result['prefLabel']['en'] ?? (reset($result['prefLabel']) ?? 'No Label');
+          $label = empty($desc) ? $label : $label . $desc;
+          $results[] = [
+            'value' => $result['id'],
+            'label' => $label,
+            'desc' => $desc,
+          ];
+        }
+      }
+      else {
+        $results[] = [
+          'value' => NULL,
+          'label' => "Sorry no match from Europeana {$vocab}",
+        ];
+      }
+      return $results;
+    }
+    $this->messenger()->addError(
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+        [
+          '@url' => $remoteUrl,
+          '@jsonerror' => $json_error,
+        ]
+      )
+    );
+    return [];
+  }
 
   /**
    * @param $remoteUrl
    * @param $options
    *
-   * @return array|string
+   * @return string
+   *   A string that may be JSON (hopefully)
    */
   protected function getRemoteJsonData($remoteUrl, $options) {
     // This is expensive, reason why we process and store in cache
     if (empty($remoteUrl)) {
       // No need to alarm. all good. If not URL just return.
-      return [];
+      return NULL;
     }
     if (!UrlHelper::isValid($remoteUrl, $absolute = TRUE)) {
       $this->messenger()->addError(
@@ -574,13 +765,28 @@ SPARQL;
           ['@$remoteUrl' => $remoteUrl]
         )
       );
-      return [];
+      return NULL;
     }
-
-
     try {
       $request = $this->httpClient->get($remoteUrl, $options);
-    } catch (ClientException $exception) {
+      // Do not cache if things go bad.
+      if ($request->getStatusCode() == '401') {
+        $this->setNotAllowed(TRUE);
+        $this->useCaches = FALSE;
+        return NULL;
+        // Means we got a server Access Denied, we reply to whoever made the call.
+      }
+      if ($request->getStatusCode() == '404') {
+        $this->useCaches = FALSE;
+        return NULL;
+      }
+      if ($request->getStatusCode() == '500') {
+        $this->useCaches = FALSE;
+        return NULL;
+      }
+    }
+    catch (ClientException $exception) {
+      $this->useCaches = FALSE;
       $responseMessage = $exception->getMessage();
       $this->messenger()->addError(
         $this->t('We tried to contact @url but we could not. <br> The WEB says: @response. <br> Check that URL!',
@@ -590,8 +796,10 @@ SPARQL;
           ]
         )
       );
-      return [];
-    } catch (ServerException $exception) {
+      return NULL;
+    }
+    catch (ServerException $exception) {
+      $this->useCaches = FALSE;
       $responseMessage = $exception->getMessage();
       $this->loggerFactory->get('webform_strawberryfield')
         ->error('We tried to contact @url but we could not. <br> The Remote server says: @response. <br> Check your query',
@@ -600,10 +808,25 @@ SPARQL;
             '@response' => $responseMessage,
           ]
         );
-      return [];
+      return NULL;
     }
+
     $body = $request->getBody()->getContents();
     return $body;
+  }
+
+  /**
+   * @return bool
+   */
+  public function isNotAllowed(): bool {
+    return $this->notAllowed;
+  }
+
+  /**
+   * @param bool $notAllowed
+   */
+  public function setNotAllowed(bool $notAllowed): void {
+    $this->notAllowed = $notAllowed;
   }
 
 }
