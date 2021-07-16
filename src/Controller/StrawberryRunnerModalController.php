@@ -34,8 +34,7 @@ class StrawberryRunnerModalController extends ControllerBase
    * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
    *   Thrown when not be accessible.
    */
-  public function openModalForm(WebformInterface $webform = NULL, Request $request)
-  {
+  public function openModalForm(WebformInterface $webform = NULL, Request $request) {
 
     // @see \Drupal\archipel\Plugin\Field\FieldWidget\StrawberryFieldWebFormWidget::formElement
     //  Request Arguments we are expecting:
@@ -70,6 +69,8 @@ class StrawberryRunnerModalController extends ControllerBase
     // throw new \InvalidArgumentException('Data type must be in the form of
     // "entityUUID:FIELD_NAME:DELTA:someSHA1hashthatidentifiesthegtriggeringwidget"');
 
+    /* @var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
+    $source_entity = NULL;
     // If uuid does not exist then it may be a new ADO. That is Ok.
     if ($source_uuid && Uuid::isValid($source_uuid)) {
       try {
@@ -100,8 +101,6 @@ class StrawberryRunnerModalController extends ControllerBase
           $notfound, ['width' => '90%']));
         return $response;
       }
-      //@var $source_entity \Drupal\Core\Entity\FieldableEntityInterface */
-      $source_entity = NULL;
 
       foreach ($entities as $entity) {
         // Means there was an entity stored! hu!
