@@ -31,15 +31,14 @@ class WebformGetty extends WebformCompositeBase {
     return [
       'vocab' => 'aat',
       'matchtype' => 'fuzzy',
-    ];
+    ] + parent::defineDefaultBaseProperties();
   }
 
   public function getDefaultProperties() {
     $properties = parent::getDefaultProperties() + [
         'vocab' => 'aat',
         'matchtype' => 'fuzzy',
-      ] + parent::defineDefaultProperties()
-      + $this->defineDefaultBaseProperties();
+      ];
 
     return $properties;
   }

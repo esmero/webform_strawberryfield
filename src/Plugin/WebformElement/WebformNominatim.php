@@ -38,7 +38,7 @@ class WebformNominatim extends WebformLocationBase {
         'geolocation' => FALSE,
         'hidden' => FALSE,
         'map' => FALSE,
-      ] + $this->defineDefaultBaseProperties();
+      ];
   }
 
   /**
