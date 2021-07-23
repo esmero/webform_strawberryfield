@@ -575,7 +575,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Who do we ask?
 
     $jsonarray["as:generator"] = $this->addActivityStream($form_state);
-    $jsonvalue = json_encode($jsonarray, JSON_PRETTY_PRINT);
+    $jsonvalue = json_encode($jsonarray);
     $values2[0]['value'] = $jsonvalue;
     // @TODO this no longer is part of wild strawberry field defintion. We already have other
     // ways of keeping track. Remove or deprecate.

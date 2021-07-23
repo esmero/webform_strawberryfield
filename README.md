@@ -1,8 +1,20 @@
 # Webform Strawberry Field
-A module that provides Drupal 8 Webform ( == awesome piece of code) integrations for StrawberryField so you can really have control over your Metadata ingests. This is part of the Archipelago Commons Project.
+A module that provides Drupal 8/9 Webform ( == awesome piece of code) integrations for StrawberryField so you can really have control over your Metadata ingests. This is part of the Archipelago Commons Project.
 
-# Disclaimer
-This is an experimental module, use at your own risk 
+# Setup
+
+This module provides many LoD Autocomplete suggester Webform Elements, but only *The Europeana Entity Suggester* for now requires you to provide an `APIKEY`.
+To be able to use the Europeana Suggester edit your Drupal `settings.php` file (located normally in `web/sites/default/settings.php`) and add the following line:
+
+```PHP
+$settings['webform_strawberryfield.europeana_entity_apikey'] = 'thekey';
+```
+
+Save and clear caches.
+
+In its current state the Europeana Entity API (Alpha 0.5) uses a static APIKEY (not the same as other APIs) and can be found at https://pro.europeana.eu/page/entity#suggest
+
+If using https://github.com/esmero/archipelago-deployment this is not needed and will be provided by the deployment.
 
 ## Help
 
@@ -18,6 +30,7 @@ Having issues with this module? Check out the Archipelago Commons google groups 
 
 * [Diego Pino](https://github.com/DiegoPino)
 * [Giancarlo Birello](https://github.com/giancarlobi)
+* [Allison Lund](https://github.com/alliomeria)
 
 ## Acknowledgments
 
