@@ -148,6 +148,8 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    */
   public function handleAutocomplete(Request $request, $auth_type, $vocab = 'subjects', $rdftype = NULL, $count) {
     $results = [];
+
+
     //@TODO pass count to the actual fetchers
     //@TODO maybe refactor into plugins so others can write any other reconciliators
     //@TODO if so, we can query the plugins and show in the webform builder options
@@ -155,10 +157,13 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
     $apikey = Settings::get('webform_strawberryfield.europeana_entity_apikey');
     $input = $request->query->get('q');
-    if ($this->currentUser->isAnonymous()) {
-      sleep(5);
-    }
+    $csrf_token = $request->headers->get('X-CSRF-Token');
+    $is_internal = FALSE;
 
+    if (is_string($csrf_token)) {
+      $request_base = $request->getSchemeAndHttpHost().':'.$request->getPort();
+      $is_internal =  $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['SERVER_ADDR'].':'.$_SERVER['SERVER_PORT'] == $request_base;
+    }
 
     if ($input) {
       $rdftype_str = $rdftype ?? 'null';
@@ -168,7 +173,11 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       $cache_id = 'webform_strawberry:auth_lod:' . $cache_var;
       $cached = $this->cacheGet($cache_id);
       if ($cached) {
+        error_log('cached');
         return new JsonResponse($cached->data);
+      }
+       if ($this->currentUser->isAnonymous() && !$is_internal) {
+        sleep(5);
       }
 
       switch ($auth_type) {
@@ -202,10 +211,16 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     }
     // DO not cache NULL or FALSE. Those will be 401/403/500;
     if ($results) {
-      //setting cache for
-      $this->cacheSet($cache_id, $results,
-        ($this->time->getRequestTime() + static::MAX_CACHE_AGE),
-        ['user:'.$this->currentUser->id()]);
+      //setting cache for anonymous or logged in
+      if (!$is_internal) {
+        $this->cacheSet($cache_id, $results,
+          ($this->time->getRequestTime() + static::MAX_CACHE_AGE),
+          ['user:' . $this->currentUser->id()]);
+      }
+      else {
+        // For internal calls. Where we have really no session or anything.
+        $this->cacheSet($cache_id, $results, ($this->time->getRequestTime() + static::MAX_CACHE_AGE));
+      }
     }
     $results = $results ?? [];
     return new JsonResponse($results);
@@ -364,7 +379,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @param string $vocab
    *
    * @param string $mode
-   *    Can be either 'fuzzy' or 'subjects', exact for 1:1 preflalbe or combined
+   *    Can be either 'fuzzy' or 'subjects', exact for 1:1 preflabel or combined
    *    subjects will be deprecated in 1.1
    * @return array
    */

@@ -34,15 +34,14 @@ class WebformEuropeana extends WebformCompositeBase {
     return [
       'vocab' => 'agent',
       'rdftype' => 'thing',
-    ];
+    ] + parent::defineDefaultBaseProperties();
   }
 
   public function getDefaultProperties() {
     $properties = parent::getDefaultProperties() + [
         'vocab' => 'agent',
         'rdftype' => 'thing',
-      ] + parent::defineDefaultProperties()
-      + $this->defineDefaultBaseProperties();
+      ];
 
     return $properties;
   }

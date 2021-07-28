@@ -155,7 +155,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Where is this field being used, a node?
     $entity_type = $items->getEntity()->getEntityTypeId();
     $bundle = $items->getEntity()->bundle();
-    $bundle_label = $items->getEntity()->type->entity->label();
+    $bundle_label = isset($items->getEntity()->type) ? $items->getEntity()->type->entity->label() : '';
     $this_field_name = $this->fieldDefinition->getName();
 
     // So does the current loaded entity, where this widget is shown
@@ -232,9 +232,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     /** @var \Drupal\webform\WebformInterface $my_webform */
     $my_webform = Webform::load($my_webform_machinename);
     // Deals with any existing confirmation messages.
-    $confirmation_message = $my_webform->getSetting('confirmation_message', FALSE);
-    $confirmation_message = !empty($confirmation_message) && strlen(trim($confirmation_message)) > 0 ? $confirmation_message : $this->t(
-      'Thanks, you are all set! Please Save the content to persist the changes.');
 
     if ($my_webform == NULL) {
       // Well someone dropped the ball here
@@ -242,6 +239,10 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       // or the original webform exists only in our hopes.
       return $this->_exceptionElement($items, $delta, $element, $form, $form_state);
     }
+    $confirmation_message = $my_webform->getSetting('confirmation_message', FALSE);
+    $confirmation_message = !empty($confirmation_message) && strlen(trim($confirmation_message)) > 0 ? $confirmation_message : $this->t(
+      'Thanks, you are all set! Please Save the content to persist the changes.');
+
     $form_state->set('webform_machine_name', $my_webform_machinename);
     try {
       $form_state->set(
@@ -502,7 +503,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     $element['strawberry_webform_widget']['creation_method'] = [
       '#type' => 'value',
       '#id' => 'webform_output_webform' . $form_state->get('strawberryfield_webform_widget_id'),
-      '#default_value' => $current_value['creation_method'],
+      '#default_value' => $current_value['creation_method'] ?? 'missing_webform',
     ];
 
     return $element;

@@ -38,7 +38,7 @@ class WebformMultiAgent extends WebformCompositeBase {
       'vocab_corporate_name' => '',
       'rdftype_corporate_name' => '',
       'role_type' => '',
-    ];
+    ] + parent::defineDefaultBaseProperties();
   }
 
   public function getDefaultProperties() {
@@ -51,8 +51,7 @@ class WebformMultiAgent extends WebformCompositeBase {
         'vocab_corporate_name' => '',
         'rdftype_corporate_name' => '',
         'role_type' => '',
-      ]
-      + parent::defineDefaultProperties();
+      ];
 
     unset($properties['multiple__header']);
     return $properties;
