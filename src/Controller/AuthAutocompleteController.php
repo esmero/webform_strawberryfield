@@ -163,6 +163,9 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     if (is_string($csrf_token)) {
       $request_base = $request->getSchemeAndHttpHost().':'.$request->getPort();
       $is_internal =  $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['SERVER_ADDR'].':'.$_SERVER['SERVER_PORT'] == $request_base;
+      if (!$is_internal) {
+        $is_internal = $_SERVER['HTTP_HOST'] == $_SERVER['SERVER_NAME'];
+      }
     }
 
     if ($input) {
@@ -612,12 +615,12 @@ SPARQL;
 
     $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
+    $jsondata = json_decode($body, TRUE) ?? [];
     $json_error = json_last_error();
     if ($json_error == JSON_ERROR_NONE) {
       //WIKIdata will give is an success key will always return at least one, the query string
       if (count($jsondata) > 1) {
-        if (count($jsondata['result']) >= 1) {
+        if (isset($jsondata['result']) && is_array($jsondata['result']) && count($jsondata['result']) >= 1)  {
           foreach ($jsondata['result'] as $key => $item) {
             $desc = (isset($item['nametype'])) ? '(' . $item['nametype'] . ')' : NULL;
             $results[] = [
