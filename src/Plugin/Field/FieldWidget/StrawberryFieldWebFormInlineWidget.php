@@ -12,11 +12,13 @@ use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\HtmlCommand;
 use Drupal\Core\Entity\EntityMalformedException;
+use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Url;
+use Drupal\node\Entity\Node;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\webform\WebformInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -265,7 +267,6 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       'strawberry_webform_inline',
     ]);
     $limit_validation_errors = $parents;
-
     // We add 'data-drupal-selector' = 'strawberry_webform_widget'
     // To allow JS to react/jquery select on this.
     $element += [
@@ -292,24 +293,23 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // Which means an abandoned Metadata Sessions somewhere
     // Someone saved/drafted 'metadata' during a form session and left for coffee
     // WE can reuse!
-
-    if (($tempstore->getMetadata($tempstoreId) != NULL) && $items->getEntity()
-        ->isNew()) {
+    $default_value = $items->getFieldDefinition()->getDefaultValue($items->getEntity());
+    $default_value = $default_value[$delta]['value'] ?? "{}";
+    $autosave = ($items->getEntity()->isNew() && $savedvalue['value'] == $default_value);
+    // If the SBF in this entity has data and its different to the default for
+    // the field then we are sure it can not be auto saved (e.g when cloning)
+    // Not should we load a session.
+    if (($tempstore->getMetadata($tempstoreId.'-draft') != NULL) && $autosave) {
       $discard = $form_state->getUserInput()['_triggering_element_name'] ?? FALSE;
       $discard = $discard == 'webform_strawberryfield_discard_session' ?? FALSE;
-
-      $json_string = $tempstore->get($tempstoreId);
+      $autosave = TRUE;
+      $json_string = $tempstore->get($tempstoreId.'-draft');
       $json = json_decode($json_string, TRUE);
       $json_error = json_last_error();
       if ($json_error == JSON_ERROR_NONE) {
         $savedvalue['value'] = $json_string;
-        $element['strawberry_webform_inline_message'] = [
-          '#id' => 'ajax-value',
-          '#theme' => 'status_messages',
-          '#message_list' => [
-            'status' => [$this->t('We found and loaded a previous unfinished metadata session for you.')],
-            ],
-        ];
+        // Let's use the time to see if draft was changed before or after this call
+        // Since this form rebuilds itself with any webform ajax interaction
 
         $webform_controller_url_clear = Url::fromRoute('webform_strawberryfield.modal_webform',
           [
@@ -320,9 +320,11 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
             'clear_saved' => $tempstoreId,
           ]
         );
+
         $element['strawberry_webform_discard_session'] = [
           '#type' => 'link',
           '#title' => $this->t('Discard Session'),
+          '#description' => $this->t('We found and unfinished Metadata Session'),
           '#url' => $webform_controller_url_clear,
           '#attributes' => [
             'class' => [
@@ -333,8 +335,11 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
             ],
           ],
         ];
+        $element['#title'] =  $element['#title'] . $this->t(' (Unfinished Metadata Session loaded)');
       }
     }
+
+    $form_state->set('autosave', $autosave);
 
     // If new this won't exist
     $stored_value = !empty($savedvalue['value']) ? $savedvalue['value'] : "{}";
@@ -343,6 +348,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
       'strawberry_field_widget_state_id' => $this_widget_id,
       'strawberry_field_widget_source_entity_uuid' => $entity_uuid,
       'strawberry_field_widget_source_entity_id' => $entity_id,
+      'strawberry_field_widget_autosave' => $autosave,
       'strawberry_field_stored_values' => json_decode($stored_value, TRUE),
     ];
 
@@ -426,7 +432,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         ],
       ];
     }
-    if ($this->getSetting('hide_cancel') === FALSE || $this->getSetting('hide_cancel') == NULL) {
+    if (($this->getSetting('hide_cancel') === FALSE || $this->getSetting('hide_cancel') == NULL) && $autosave == FALSE ){
       $webform_controller_url_close = Url::fromRoute('webform_strawberryfield.close_modal_webform',
         [
           'state' => "$entity_uuid:$this_field_name:$delta:$this_widget_id",
@@ -538,6 +544,11 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     }
 
     $json_string = $tempstore->get($tempstoreId);
+    $autosave = $form_state->get('autosave');
+    $tempstore_noautosave = \Drupal::service('tempstore.private')->get('archipel_autosave');
+    $final_uuid = $form_state->getFormObject()->getEntity()->uuid();
+    $tempstore_noautosave->set($final_uuid, $autosave);
+
     $json = json_decode($json_string, TRUE);
     $json_error = json_last_error();
     if ($json_error == JSON_ERROR_NONE) {

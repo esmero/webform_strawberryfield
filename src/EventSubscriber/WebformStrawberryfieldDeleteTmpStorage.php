@@ -111,8 +111,13 @@ class WebformStrawberryfieldDeleteTmpStorage implements EventSubscriberInterface
       foreach ($field->getValue() as $delta => $value) {
         $keyid = $this->getTempStoreKeyName($fieldname, $delta, '');
         $tempstore->delete($keyid);
-        // Delete also any cached errors
-        $tempstore->delete($keyid.'-errors');
+        // Delete also any cached errors and drafts if the autosave session
+        // Generated this ADO. If not (e.g Clone we will have marked that
+        // ADO's UUID as not autosave so we do not delete another ongoing session
+        if ($this->tempStoreFactory->get('archipel_autosave')->get($entity->uuid())) {
+          $tempstore->delete($keyid . '-errors');
+          $tempstore->delete($keyid . '-draft');
+        }
       }
     }
 
