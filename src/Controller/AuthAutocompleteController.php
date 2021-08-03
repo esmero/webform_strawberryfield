@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
+use GuzzleHttp\RequestOptions;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Url;
 use Drupal\Component\Datetime\TimeInterface;
@@ -210,6 +211,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
               )
             );
           }
+          break;
+        case 'snac':
+          $results = $this->snac($input, $vocab, $rdftype);
+          break;
       }
     }
     // DO not cache NULL or FALSE. Those will be 401/403/500;
@@ -765,13 +770,98 @@ SPARQL;
   }
 
   /**
+   * @param $input
+   *    The query
+   * @param $vocab
+   *   The 'suggest' enabled endpoint at LoC
+   *
+   * @return array
+   */
+  protected function snac($input, $vocab, $rdftype) {
+    //@TODO make the following allowed list a constant since we use it in
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
+    if (!in_array($vocab, [
+      'Constellation',
+      'rdftype',
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@vocab for SNAC autocomplete is not in in our allowed list.',
+          [
+            '@vocab' => $vocab,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Vocabulary {$vocab} in SNAC Query",
+      ];
+      return $results;
+    }
+
+
+    $input = urlencode($input);
+
+
+    $remoteUrl = "https://api.snaccooperative.org";
+    $options = [
+      'body' => json_encode([
+        "command" => "search",
+        "term" => $input,
+        "entity_type" => $rdftype != "thing" ? $rdftype : NULL,
+        "start" => 0,
+        "count" => 10,
+        "search_type" => "autocomplete",
+      ]),
+      RequestOptions::HEADERS => [
+        'Content-Type' => 'application/json'
+      ]
+    ];
+    $body = $this->getRemoteJsonData($remoteUrl, $options, 'PUT');
+
+    $jsondata = [];
+    $results = [];
+    $jsondata = json_decode($body, TRUE);
+    $json_error = json_last_error();
+    if ($json_error == JSON_ERROR_NONE) {
+      if (!empty($jsondata['results']) &&  ($jsondata['total'] ?? 0) >= 1) {
+        foreach ($jsondata['results'] as $key => $entry) {
+          $nameEntry = reset($entry['nameEntries']);
+          $results[] = [
+            'value' => $entry['ark'] ?? $entry['entityType']['uri'],
+            'label' => $nameEntry['original'],
+          ];
+        }
+      }
+      else {
+        $results[] = [
+          'value' => NULL,
+          'label' => "Sorry no match from SNAC {$vocab}",
+        ];
+      }
+      return $results;
+    }
+    $this->messenger()->addError(
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+        [
+          '@url' => $remoteUrl,
+          '@jsonerror' => $json_error,
+        ]
+      )
+    );
+    return [];
+  }
+
+
+
+  /**
    * @param $remoteUrl
    * @param $options
    *
    * @return string
    *   A string that may be JSON (hopefully)
    */
-  protected function getRemoteJsonData($remoteUrl, $options) {
+  protected function getRemoteJsonData($remoteUrl, $options, $method = 'GET') {
     // This is expensive, reason why we process and store in cache
     if (empty($remoteUrl)) {
       // No need to alarm. all good. If not URL just return.
@@ -786,7 +876,18 @@ SPARQL;
       return NULL;
     }
     try {
-      $request = $this->httpClient->get($remoteUrl, $options);
+      if ($method == 'GET') {
+        $request = $this->httpClient->get($remoteUrl, $options);
+      }
+      elseif ($method == 'POST') {
+        $request = $this->httpClient->post($remoteUrl, $options);
+      }
+      elseif ($method == 'PUT') {
+        $request = $this->httpClient->put($remoteUrl, $options);
+      }
+      else {
+        return NULL;
+      }
       // Do not cache if things go bad.
       if ($request->getStatusCode() == '401') {
         $this->setNotAllowed(TRUE);
@@ -819,7 +920,7 @@ SPARQL;
     catch (ServerException $exception) {
       $this->useCaches = FALSE;
       $responseMessage = $exception->getMessage();
-      $this->loggerFactory->get('webform_strawberryfield')
+      $this->getLogger('webform_strawberryfield')
         ->error('We tried to contact @url but we could not. <br> The Remote server says: @response. <br> Check your query',
           [
             '@url' => $remoteUrl,
