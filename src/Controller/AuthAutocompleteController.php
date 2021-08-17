@@ -177,7 +177,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         return new JsonResponse($cached->data);
       }
        if ($this->currentUser->isAnonymous() && !$is_internal) {
-        sleep(5);
+        sleep(1);
       }
 
       switch ($auth_type) {
