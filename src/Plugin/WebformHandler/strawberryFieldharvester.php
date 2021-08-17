@@ -9,7 +9,7 @@ use Drupal\webform\Plugin\WebformElement\WebformManagedFileBase;
 use Drupal\webform\Plugin\WebformElementEntityReferenceInterface;
 use Drupal\webform\Plugin\WebformHandlerBase;
 use Drupal\webform\WebformInterface;
-use Drupal\webform\webformSubmissionInterface;
+use Drupal\webform\WebformSubmissionInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\strawberryfield\Tools\Ocfl\OcflHelper;
