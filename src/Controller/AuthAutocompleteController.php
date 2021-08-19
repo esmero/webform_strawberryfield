@@ -177,11 +177,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       $cache_id = 'webform_strawberry:auth_lod:' . $cache_var;
       $cached = $this->cacheGet($cache_id);
       if ($cached) {
-        error_log('cached');
         return new JsonResponse($cached->data);
       }
-       if ($this->currentUser->isAnonymous() && !$is_internal) {
-        sleep(5);
+      if ($this->currentUser->isAnonymous() && !$is_internal) {
+        sleep(1);
       }
 
       switch ($auth_type) {
@@ -201,9 +200,15 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         case 'viaf':
           $results = $this->viaf($input);
           break;
+        case 'mesh':
+          $results = $this->mesh($input, $vocab, $rdftype);
+          break;
+        case 'snac':
+          $results = $this->snac($input, $vocab, $rdftype);
+          break;
         case 'europeana':
           if ($apikey) {
-           $results = $this->europeana($input, $vocab, $apikey);
+            $results = $this->europeana($input, $vocab, $apikey);
           }
           else {
             $this->messenger()->addError(
@@ -211,10 +216,6 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
               )
             );
           }
-          break;
-        case 'snac':
-          $results = $this->snac($input, $vocab, $rdftype);
-          break;
       }
     }
     // DO not cache NULL or FALSE. Those will be 401/403/500;
@@ -281,7 +282,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     ];
     $path = $endpoint[$vocab];
 
-    $input = urlencode($input);
+    $input = rawurlencode($input);
 
     if ($vocab == 'rdftype') {
       $urlindex = "/suggest/?q=" . $input . "&rdftype=" . $rdftype;
@@ -335,7 +336,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @return array
    */
   protected function wikidata($input) {
-    $input = urlencode($input);
+    $input = rawurlencode($input);
     $urlindex = '&language=en&format=json&search=' . $input;
     $baseurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities';
     $remoteUrl = $baseurl . $urlindex;
@@ -610,7 +611,7 @@ SPARQL;
    * @return array
    */
   protected function viaf($input) {
-    $input = urlencode($input);
+    $input = rawurlencode($input);
     $urlindex = '&query=' . $input;
     $baseurl = 'https://viaf.org/viaf/AutoSuggest?';
     $remoteUrl = $baseurl . $urlindex;
@@ -625,7 +626,7 @@ SPARQL;
     if ($json_error == JSON_ERROR_NONE) {
       //WIKIdata will give is an success key will always return at least one, the query string
       if (count($jsondata) > 1) {
-        if (isset($jsondata['result']) && is_array($jsondata['result']) && count($jsondata['result']) >= 1)  {
+        if (isset($jsondata['result']) && is_array($jsondata['result']) && count($jsondata['result']) >= 1) {
           foreach ($jsondata['result'] as $key => $item) {
             $desc = (isset($item['nametype'])) ? '(' . $item['nametype'] . ')' : NULL;
             $results[] = [
@@ -689,7 +690,7 @@ SPARQL;
       return $results;
     }
 
-    $input = urlencode($input);
+    $input = rawurlencode($input);
 
     $urlindex = "/suggest?text=" . $input . "&type=" . $vocab ."&wskey=". $apikey ;
 
@@ -737,7 +738,7 @@ SPARQL;
           }
 
           if (($vocab == 'agent') && isset($result['dateOfBirth'])) {
-              $desc[] = $result['dateOfBirth'] . '/' . $result['dateOfDeath'] ?? '?';
+            $desc[] = $result['dateOfBirth'] . '/' . $result['dateOfDeath'] ?? '?';
           }
 
           $desc =  !empty($desc) ? ' (' . implode(', ', $desc) . ')' : NULL;
@@ -853,6 +854,96 @@ SPARQL;
   }
 
 
+
+  /**
+   * @param $input
+   *    The query
+   * @param $vocab
+   *   The 'suggest' enabled endpoint at LoC
+   *
+   * @return array
+   */
+  protected function mesh($input, $vocab, $rdftype) {
+
+    //@TODO make the following allowed list a constant since we use it in
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformMesh
+    if (!in_array($vocab, [
+      'descriptor',
+      'term',
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@vocab for MeSH autocomplete is not in in our allowed list.',
+          [
+            '@vocab' => $vocab,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Vocabulary {$vocab} in MeSH API Query",
+      ];
+      return $results;
+    }
+
+    // Here $rdftype acts as match
+    if (!in_array($rdftype, [
+      'startswith',
+      'contains',
+      'exact',
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@rdftype Match type for MeSH autocomplete is not valid. It may be "exact","startswith" or "contains"',
+          [
+            '@rdftype' => $rdftype,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Match type for {$vocab} in MeSH API Query",
+      ];
+      return $results;
+    }
+
+    $input = rawurlencode($input);
+    $urlindex = "/mesh/lookup/{$vocab}?label=" . $input .'&limit=10&match=' . $rdftype;
+    $baseurl = 'https://id.nlm.nih.gov';
+    $remoteUrl = $baseurl . $urlindex;
+    $options['headers'] = ['Accept' => 'application/json'];
+    $body = $this->getRemoteJsonData($remoteUrl, $options);
+
+    $results = [];
+    $jsondata = json_decode($body, TRUE);
+    $json_error = json_last_error();
+    if ($json_error == JSON_ERROR_NONE) {
+      if (count($jsondata) > 1) {
+        foreach ($jsondata as $entry) {
+          $results[] = [
+            'value' => $entry['resource'],
+            'label' => $entry['label'],
+          ];
+        }
+      }
+      else {
+        $results[] = [
+          'value' => NULL,
+          'label' => "Sorry no match from MeSH for {$vocab}",
+        ];
+      }
+      return $results;
+    }
+    $this->messenger()->addError(
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+        [
+          '@url' => $remoteUrl,
+          '@jsonerror' => $json_error,
+        ]
+      )
+    );
+    return [];
+  }
 
   /**
    * @param $remoteUrl
