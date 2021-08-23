@@ -138,17 +138,18 @@ class StrawberryRunnerModalController extends ControllerBase
       // In case we are editing an existing entity, this one gets the
       // Strawberryfield value
       $alldata = $source_entity->get($field_name)->getValue();
-      $fielddata['value'] = !empty($alldata) ? $alldata[$delta]['value']: "{}";
+      $fielddata['value'] = $alldata[$delta]['value'] ?? "{}";
       $entityid = $source_entity->id();
     }
 
-    $stored_value = (isset($fielddata['value']) && !empty($fielddata['value'])) ? $fielddata['value'] : "{}";
+    $stored_value = $fielddata['value'] ?? "{}";
 
     $data_defaults = [
       'strawberry_field_widget_state_id' => $widgetid,
       // Can't remember why, but seems useful to pass around
       'strawberry_field_widget_source_entity_uuid' => $source_uuid,
       'strawberry_field_widget_source_entity_id' => $entityid,
+      'strawberry_field_widget_autosave' => $entityid ? FALSE : TRUE,
       'strawberry_field_stored_values' => json_decode($stored_value,true)
     ];
 
@@ -247,7 +248,7 @@ class StrawberryRunnerModalController extends ControllerBase
         // We delete both, the session and the accumulated errors.
         /** @var \Drupal\Core\TempStore\PrivateTempStore $tempstore */
         $tempstore = \Drupal::service('tempstore.private')->get('archipel');
-        $tempstore->delete($clear_saved);
+        $tempstore->delete($clear_saved.'-draft');
         $tempstore->delete($clear_saved.'-errors');
         // Selector us built using the field name and the delta.
         $response->addCommand(new \Drupal\Core\Ajax\HtmlCommand('#' . $selector  .' > .fieldset-wrapper',

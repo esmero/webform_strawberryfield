@@ -16,3 +16,4 @@
 src/Tools/Iiif/IiifHelper.php
 .idea/webform_strawberryfield.iml
 src/.DS_Store
+.idea/runConfigurations/archipelago.xml

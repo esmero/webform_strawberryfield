@@ -557,14 +557,16 @@ class strawberryFieldharvester extends WebformHandlerBase {
         );
       }
       try {
+        // Saves all what was done in the webform in our tempstore
+        // To be later retrieved by the Field Widget Submit
         $tempstore->set(
           $values["strawberry_field_widget_state_id"],
           $cleanvalues
         );
         // Just in case we have stashed errors remove them
         $tempstore->delete($values['strawberry_field_widget_state_id'] . '-errors');
-
-      } catch (TempStoreException $e) {
+      }
+      catch (TempStoreException $e) {
         $this->messenger()->addError(
           $this->t(
             'Sorry, we have issues writing metadata to your session storage. Please reload this form and/or contact your system admin.'
@@ -609,8 +611,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $values = $webform_submission->getData();
     // So we can now unset cached errors on this step. Only if triggered by next here.
     // Wizard navigation has its own way.
-    if ((!isset($values['strawberry_field_widget_source_entity_id']) ||
-        $values['strawberry_field_widget_source_entity_id'] === NULL) &&
+    if ((!isset($values['strawberry_field_widget_autosave']) ||
+        $values['strawberry_field_widget_autosave'] === TRUE) &&
       isset($values['strawberry_field_widget_state_id'])) {
       if (isset($form_state->getTriggeringElement()['#name']) && $form_state->getTriggeringElement()['#name'] == 'op') {
         $current_page = $webform_submission->getCurrentPage();
@@ -666,10 +668,11 @@ class strawberryFieldharvester extends WebformHandlerBase {
         /* @var $tempstore \Drupal\Core\TempStore\PrivateTempStore */
         $tempstore = \Drupal::service('tempstore.private')->get('archipel');
         $tempstore->set(
-          $values['strawberry_field_widget_state_id'],
+          $values['strawberry_field_widget_state_id'].'-draft',
           $cleanvalues
         );
         $form_state->set('in_draft', TRUE);
+        $form_state->set('draft_saved', TRUE);
       } catch (TempStoreException $e) {
         $this->messenger()->addError(
           $this->t(
@@ -829,8 +832,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
         // Instead of validating previous invisible steps and setting errors here
         // we will block the submit button until all errors are cleared.
 
-        if ((!isset($values['strawberry_field_widget_source_entity_id']) ||
-            $values['strawberry_field_widget_source_entity_id'] === NULL) &&
+        if ((!isset($values['strawberry_field_widget_autosave']) ||
+            $values['strawberry_field_widget_autosave'] === TRUE) &&
           isset($values['strawberry_field_widget_state_id'])
         ) {
           $tempstore = \Drupal::service('tempstore.private')->get('archipel');
@@ -845,7 +848,9 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
           $can_not = FALSE;
           if (is_array($previous_errors)) {
+            $i = 0;
             foreach ($all_pages as $pagekey => $pagekeyinfo) {
+              $i++;
               if (($pagekeyinfo['#access'] === TRUE) &&
                 isset($previous_errors[$pagekey]) &&
                 is_array($previous_errors[$pagekey]) &&
@@ -854,8 +859,9 @@ class strawberryFieldharvester extends WebformHandlerBase {
                 $this->messenger()
                   ->addWarning(t('You can not submit this form yet.'), FALSE);
                 $this->messenger()
-                  ->addWarning(t('Please check the @steps step for missing or incorrect fields', [
+                  ->addWarning(t('Please check the @steps step (@number) for missing or incorrect fields', [
                     '@steps' => $pagekeyinfo['#title'],
+                    '@number' => $i,
                   ]));
               }
             }
@@ -864,8 +870,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
             }
           }
         }
-      } elseif ((!isset($values['strawberry_field_widget_source_entity_id']) ||
-          $values['strawberry_field_widget_source_entity_id'] === NULL) &&
+      } elseif ((!isset($values['strawberry_field_widget_autosave']) ||
+          $values['strawberry_field_widget_autosave'] === TRUE) &&
         isset($values['strawberry_field_widget_state_id']) &&
         isset($form['pages'])
       ) {
@@ -904,8 +910,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
     }
     $values = $this->getWebformSubmission()->getData();
     // Only allow saving of drafts if the user is creating a new entity
-    if ((!isset($values['strawberry_field_widget_source_entity_id']) ||
-        $values['strawberry_field_widget_source_entity_id'] === NULL) &&
+    if ((!isset($values['strawberry_field_widget_autosave']) ||
+        $values['strawberry_field_widget_autosave'] === TRUE) &&
       isset($values['strawberry_field_widget_state_id'])
     ) {
       $this->setIsWidgetDriven(TRUE);
@@ -927,7 +933,8 @@ class strawberryFieldharvester extends WebformHandlerBase {
         $form_state->set('in_draft', TRUE);
         $form_state->set('draft_saved', TRUE);
         $this->getWebformSubmission()->validate();
-      } catch (TempStoreException $e) {
+      }
+      catch (TempStoreException $e) {
         $this->messenger()->addError(
           $this->t(
             'Sorry, we have issues writing metadata to your session storage. Please reload this form and/or contact your system admin.'
