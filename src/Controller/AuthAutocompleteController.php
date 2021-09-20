@@ -920,7 +920,6 @@ SPARQL;
     $baseurl = 'https://id.nlm.nih.gov';
 
     $remoteUrl = $baseurl . $urlindex;
-    error_log($remoteUrl);
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
     $results = [];
