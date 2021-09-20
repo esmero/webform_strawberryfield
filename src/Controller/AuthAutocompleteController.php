@@ -918,7 +918,6 @@ SPARQL;
     $input = rawurlencode($input);
     $urlindex = "/mesh/lookup/{$vocab}?label=" . $input .'&limit=10&match=' . $rdftype;
     $baseurl = 'https://id.nlm.nih.gov';
-
     $remoteUrl = $baseurl . $urlindex;
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
