@@ -147,7 +147,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    *
    * @return \Symfony\Component\HttpFoundation\JsonResponse
    */
-  public function handleAutocomplete(Request $request, $auth_type, $vocab = 'subjects', $rdftype = NULL, $count) {
+  public function handleAutocomplete(Request $request, $auth_type, $vocab = 'subjects', $rdftype = NULL, $count = 10) {
     $results = [];
 
 
@@ -219,7 +219,13 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       }
     }
     // DO not cache NULL or FALSE. Those will be 401/403/500;
-    if ($results) {
+    if ($results && is_array($results)) {
+      // Cut the results to the desired number
+      // Easier than dealing with EACH API's custom return options
+      if (count($results) > $count) {
+        $results = array_slice($results, 0, $count);
+      }
+
       //setting cache for anonymous or logged in
       if (!$is_internal) {
         $this->cacheSet($cache_id, $results,
@@ -231,7 +237,9 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
         $this->cacheSet($cache_id, $results, ($this->time->getRequestTime() + static::MAX_CACHE_AGE));
       }
     }
-    $results = $results ?? [];
+    else {
+      $results = [];
+    }
     return new JsonResponse($results);
   }
 
@@ -293,6 +301,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
     $baseurl = 'https://id.loc.gov';
     $remoteUrl = $baseurl . $urlindex;
+
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
@@ -411,7 +420,6 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       ];
       return $results;
     }
-
 
     $input = trim($input);
     $queries = [];
@@ -910,10 +918,11 @@ SPARQL;
     $input = rawurlencode($input);
     $urlindex = "/mesh/lookup/{$vocab}?label=" . $input .'&limit=10&match=' . $rdftype;
     $baseurl = 'https://id.nlm.nih.gov';
+
     $remoteUrl = $baseurl . $urlindex;
+    error_log($remoteUrl);
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
-
     $results = [];
     $jsondata = json_decode($body, TRUE);
     $json_error = json_last_error();
