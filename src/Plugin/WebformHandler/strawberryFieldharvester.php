@@ -1203,7 +1203,6 @@ class strawberryFieldharvester extends WebformHandlerBase {
             $message_context += [
               '@link' => $entity->toLink($entity->label())->toString(),
             ];
-
           }
 
           if ($webform_submission->getWebform()->hasSubmissionLog()) {
@@ -1248,6 +1247,14 @@ class strawberryFieldharvester extends WebformHandlerBase {
           $this->messenger()
             ->addError($this->t('There was a problem processing your request. Please check the logs'));
         }
+      }
+      else {
+        $message_context = [
+          '@state' => $state,
+          '@allowed_states' => implode(',',  $this->configuration['states']),
+        ];
+        $this->messenger()
+          ->addStatus($this->t('The current state of this Submission is @state and the allowed states for an ADO creation are @allowed_states, which means we can not create one', $message_context));
       }
     }
   }
@@ -1320,6 +1327,5 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $pagekeys = array_keys($pages);
     return reset($pagekeys);
   }
-
 
 }
