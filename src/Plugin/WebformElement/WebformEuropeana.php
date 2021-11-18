@@ -8,39 +8,52 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\WebformElement;
 
-use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Site\Settings;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
 
 /**
- * Provides an 'LoC Subject Heading' element.
+ * Provides an 'LoC Heading' element.
  *
  * @WebformElement(
- *   id = "webform_metadata_getty",
- *   label = @Translation("Getty Vocabulary Term"),
- *   description = @Translation("Provides a form element to reconciliate against the Getty Vocabularies."),
+ *   id = "webform_metadata_europeana",
+ *   label = @Translation("Europeana Entity Suggest"),
+ *   description = @Translation("Provides a form element to reconciliate against Europeana's Entity Suggest API."),
  *   category = @Translation("Composite elements"),
  *   multiline = TRUE,
  *   composite = TRUE,
  *   states_wrapper = TRUE,
  * )
  */
-class WebformGetty extends WebformCompositeBase {
+class WebformEuropeana extends WebformCompositeBase {
+
 
   protected function defineDefaultBaseProperties() {
     return [
-      'vocab' => 'aat',
-      'matchtype' => 'fuzzy',
+      'vocab' => 'agent',
+      'rdftype' => 'thing',
     ] + parent::defineDefaultBaseProperties();
   }
 
   public function getDefaultProperties() {
     $properties = parent::getDefaultProperties() + [
-        'vocab' => 'aat',
-        'matchtype' => 'fuzzy',
+        'vocab' => 'agent',
+        'rdftype' => 'thing',
       ];
 
     return $properties;
+  }
+
+
+
+  public function prepare(
+    array &$element,
+    WebformSubmissionInterface $webform_submission = NULL
+  ) {
+
+    // @TODO explore this method to act on submitted data v/s element behavior
   }
 
   /**
@@ -58,23 +71,16 @@ class WebformGetty extends WebformCompositeBase {
     // This is where the original element type is also
     // swapped by webform_multiple
     // breaking all our #process callbacks.
-    $vocab = 'aat';
-    $matchtype = 'fuzzy';
+    $vocab = 'agent';
+    $rdftype = 'thing';
     $vocab = $this->getElementProperty($element, 'vocab');
     $vocab = $vocab ?:  $this->getDefaultProperty($vocab);
-    if ($vocab == 'aat') {
-      $matchtype = trim($this->getElementProperty($element, 'matchtype'));
-    }
-
-    $matchtype = $matchtype ?: $this->getDefaultProperty('matchtype');
-    // This seems to have been an old Webform module variation
-    // Keeping it here until sure its not gone for good
-    if (isset($element['#element']['#webform_composite_elements']['label'])) {
+   if (isset($element['#element']['#webform_composite_elements']['label'])) {
       $element['#element']['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
         [
-          'auth_type' => 'getty',
+          'auth_type' => 'europeana',
           'vocab' => $vocab,
-          'rdftype' => $matchtype,
+          'rdftype' => $rdftype,
           'count' => 10
         ];
     }
@@ -83,19 +89,20 @@ class WebformGetty extends WebformCompositeBase {
     if (isset($element["#multiple__header"]) && $element["#multiple__header"] == true) {
       $element['#element']['label']["#autocomplete_route_parameters"] =
         [
-          'auth_type' => 'getty',
+          'auth_type' => 'europeana',
           'vocab' => $vocab,
-          'rdftype' => $matchtype,
+          'rdftype' => $rdftype,
           'count' => 10
         ];
     }
   }
 
+
   /**
    * {@inheritdoc}
    */
   public function getPluginLabel() {
-    return $this->elementManager->isExcluded('webform_metadata_getty') ? $this->t('Getty Subject Headings') : parent::getPluginLabel();
+    return $this->elementManager->isExcluded('webform_metadata_europeana') ? $this->t('Europeana Entity') : parent::getPluginLabel();
   }
 
   /**
@@ -127,27 +134,22 @@ class WebformGetty extends WebformCompositeBase {
    */
   public function form(array $form, FormStateInterface $form_state) {
     $form = parent::form($form, $form_state);
-    //@NOTE    'classification' => 'classification(LCCS)', is not working
-    // Not sure if this has a sub authority and how that works/if suggest
+    $apikey = Settings::get('webform_strawberryfield.europeana_entity_apikey');
+    if ($apikey) {
+      $description = $this->t('See <a href="https://pro.europeana.eu/page/entity#suggest">Europeana Entity API</a>. Good! We found your Europeana Entity API key.');
+    } else {
+      $description = $this->t('See <a href="https://pro.europeana.eu/page/entity#suggest">Europeana Entity API</a>. Warning: This API requires an apikey. Please ask your Drupal admin to set it for you in <em>settings.php</em>');
+    }
+
     $form['composite']['vocab'] = [
       '#type' => 'select',
       '#options' => [
-        'aat' => t('Art & Architecture Thesaurus'),
+        'agent' => 'Europeana Agents',
+        'concept' => 'Europeana Concepts',
+        'place' => 'Europeana Places',
       ],
-      '#default_value' => 'aat',
-      '#title' => $this->t("What Getty Vocabulary SPARQL Source Provider to use."),
-      '#description' => $this->t('Currently only AAT is supported but more are on the works'),
-    ];
-    // Not sure if this has a sub authority and how that works/if suggest
-    $form['composite']['matchtype'] = [
-      '#type' => 'select',
-      '#options' => [
-        'fuzzy' => 'Fuzzy, based on description',
-        'exact' => 'Exact, based on recommended Label. Will give you a single result or none.',
-        'terms' => 'Uses Terms and wildcards to narrow down queries',
-      ],
-      '#title' => $this->t("What type of Match Query to perform"),
-      '#description' => $this->t('All match types return the same number of results. Exact matches only against the prefered label of the term, fuzzy will search inside the extended description. Terms will try to use indexed terms using each input word to find a closer match.'),
+      '#title' => $this->t("What Europeana Autocomplete Entity Type to use."),
+      '#description' => $description,
     ];
     return $form;
   }

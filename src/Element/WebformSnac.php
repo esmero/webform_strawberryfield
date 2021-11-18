@@ -7,20 +7,21 @@ use Drupal\webform\Element\WebformCompositeBase;
 
 
 /**
- * Provides a webform element for a Getty Vocab element.
+ * Provides a webform element for a Snac element.
  *
- * @FormElement("webform_metadata_getty")
+ * @FormElement("webform_metadata_snac")
  */
-class WebformGetty extends WebformCompositeBase {
+class WebformSnac extends WebformCompositeBase {
 
   /**
    * {@inheritdoc}
    */
   public function getInfo() {
+    // #rdftype one of person, corporateBody, family, thing will kick in any
     $info =  parent::getInfo() + [
-        '#vocab' => 'aat',
-        '#matchtype' => 'fuzzy'
-      ];
+      '#vocab' => 'Constellation',
+      '#rdftype' => 'thing'
+    ];
     return $info;
   }
 
@@ -28,36 +29,39 @@ class WebformGetty extends WebformCompositeBase {
    * {@inheritdoc}
    */
   public static function getCompositeElements(array $element) {
+
     $elements = [];
-    $vocab = 'aat';
-    $matchtype = 'fuzzy';
+    $vocab = 'Constellation';
+    $rdftype = 'thing';
     if (isset($element['#vocab'])) {
       $vocab = $element['#vocab'];
     }
-    if (isset($element['#matchtype'])) {
-      $matchtype = $element['#matchtype'];
+    if (($vocab == 'rdftype') && isset($element['#rdftype'])) {
+      $rdftype = trim($element['#rdftype']);
     }
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformGetty';
+    $class = '\Drupal\webform_strawberryfield\Element\WebformLoC';
     $elements['label'] = [
       '#type' => 'textfield',
-      '#title' => t('Getty Term Label'),
+      '#title' => t('Label'),
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
-      '#autocomplete_route_parameters' => ['auth_type' => 'getty', 'vocab' => $vocab, 'rdftype'=> $matchtype ,'count' => 10],
+      '#autocomplete_route_parameters' => ['auth_type' => 'snac', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10],
       '#attributes' => [
         'data-source-strawberry-autocomplete-key' => 'label',
         'data-target-strawberry-autocomplete-key' => 'uri'
       ],
-    ];
 
+    ];
     $elements['uri'] = [
       '#type' => 'url',
-      '#title' => t('Term URL'),
+      '#title' => t('Snac URL'),
       '#attributes' => ['data-strawberry-autocomplete-value' => TRUE]
     ];
     $elements['label']['#process'][] =  [$class, 'processAutocomplete'];
     return $elements;
   }
+
+
 
   /**
    * {@inheritdoc}
@@ -72,19 +76,18 @@ class WebformGetty extends WebformCompositeBase {
     // So basically whatever i do here gets skipped if multiple elements are allowed.
     // Solution is acting here instead:
     // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC::prepareMultipleWrapper
-    $vocab = 'aat';
-    $matchtype = 'fuzzy';
+    $vocab = 'Constellation';
+    $rdftype = 'thing';
 
     $element = parent::processWebformComposite($element, $form_state, $complete_form);
     if (isset($element['#vocab'])) {
       $vocab = $element['#vocab'];
     }
-    if (isset($element['#matchtype'])) {
-      $matchtype = $element['#matchtype'];
+    if (($vocab == 'rdftype') && isset($element['#rdftype'])) {
+      $rdftype = trim($element['#rdftype']);
     }
-
     $element['label']["#autocomplete_route_parameters"] =
-      ['auth_type' => 'getty', 'vocab' => $vocab, 'rdftype'=> $matchtype ,'count' => 10];
+      ['auth_type' => 'snac', 'vocab' => $vocab, 'rdftype'=> $rdftype ,'count' => 10];
 
     return $element;
   }
@@ -100,11 +103,12 @@ class WebformGetty extends WebformCompositeBase {
     $element = parent::processAutocomplete($element, $form_state, $complete_form);
     $element['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.metadataauth.autocomplete';
     $element['#attached']['drupalSettings'] = [
-        'webform_strawberryfield_autocomplete' => [],
-      ];
+      'webform_strawberryfield_autocomplete' => [],
+    ];
 
-    $element['#attributes']['data-strawberry-autocomplete'] = 'getty';
+    $element['#attributes']['data-strawberry-autocomplete'] = 'Snac';
     return $element;
   }
+
 
 }

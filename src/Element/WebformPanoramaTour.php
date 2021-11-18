@@ -2,6 +2,7 @@
 
 namespace Drupal\webform_strawberryfield\Element;
 
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element\FormElement;
 use Drupal\webform\Element\WebformCompositeBase;
@@ -13,6 +14,7 @@ use Drupal\webform_strawberryfield\Ajax\AddHotSpotCommand;
 use Drupal\webform_strawberryfield\Ajax\RemoveHotSpotCommand;
 use Drupal\webform\Utility\WebformElementHelper;
 use Drupal\Core\Entity\Element\EntityAutocomplete;
+use Ramsey\Uuid\Uuid;
 
 
 /**
@@ -131,7 +133,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
     $form_state->setValue([$element['#name'],'allscenes'],json_encode($all_scenes,TRUE));
 
     $currentscene = $form_state->getValue([$element_name, 'currentscene']);
-    error_log('building the main form');
     $sceneid = NULL;
 
     if (!$currentscene && !empty($all_scenes)) {
@@ -500,7 +501,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
               'label' =>  [
                 '#type' => 'html_tag',
                 '#tag' => 'p',
-                '#value' => isset($hotspot->text) ? $hotspot->text ." ". $hotspot->id." " : t('no name'),
+                '#value' => isset($hotspot->text) ? $hotspot->text ." (ID: ". $hotspot->id.")" : t('no name'),
               ],
               'operations' => $delete_hot_spot_button
             ];
@@ -830,10 +831,24 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $hotspot->text = $form_state->getValue(
         [$element_name, 'hotspots_temp', 'label']
       );
-      $hotspot->id = $element_name . '_' . $current_scene . '_' .(count($existing_objects) + 1);
+      // Instead of trying to figure out which Incremental ID is next
+      // stop wasting cycles and generate a UUID for it and prefix it. Will
+      // also confuse users less after deleting/adding/deleting and ending
+      // with non consecutive Ids.
+      $newid = Uuid::uuid4();
+      $hotspot->id = $element_name . '_' . $current_scene . '_' . $newid->toString();
       if ($hotspot->type == 'url') {
-        $hotspot->URL = $hotspot->url;
-        $hotspot->type = 'info';
+        $externalURL = $form_state->getValue(
+          [$element_name, 'hotspots_temp', 'url']
+        );
+        if (UrlHelper::isValid(trim($externalURL), TRUE)) {
+          $hotspot->URL = $externalURL;
+          $hotspot->type = 'info';
+        }
+        else {
+          $form_state->setRebuild(TRUE);
+          return;
+        }
       }
       if ($hotspot->type == 'ado') {
         $nodeid = $form_state->getValue(
@@ -875,7 +890,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         $hotspot->text = $hotspot->text;
         $hotspot->type = 'info';
       }
-
       $existing_objects[] = (array) $hotspot;
 
       // @TODO make sure people don't add twice the same coordinates!
@@ -885,7 +899,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
       $allscenes[$scene_key]['hotspots'] = $existing_objects;
       $form_state->set($all_scenes_key, $allscenes);
       $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
-
 
     } else {
       // Do we alert the user? Form needs to be restarted
@@ -1008,7 +1021,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
 
       $form_state->set($all_scenes_key, $allscenes);
-      $form_state->setValue([$element_name, 'allscenes'],json_encode($allscenes));
+      $form_state->setValue([$element_name, 'allscenes'], json_encode($allscenes));
 
 
     } else {

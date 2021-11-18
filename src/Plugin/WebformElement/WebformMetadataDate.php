@@ -58,6 +58,7 @@ class WebformMetadataDate extends MetadataDateBase {
         'step' => '',
         'size' => '',
         'input_hide' => FALSE,
+        'edtf_validateme' => FALSE,
       ] + parent::defineDefaultProperties()
       + $this->defineDefaultMultipleProperties();
   }
@@ -110,21 +111,6 @@ class WebformMetadataDate extends MetadataDateBase {
   /**
    * {@inheritdoc}
    */
-  public function getItemFormat(array $element) {
-    $format = parent::getItemFormat($element);
-    // Drupal's default date fallback includes the time so we need to fallback
-    // to the specified or default date only format.
-    if ($format === 'fallback') {
-      $format = (isset($element['#date_date_format'])) ? $element['#date_date_format'] : $this->getDefaultProperty(
-        'date_date_format'
-      );
-    }
-    return $format;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function form(array $form, FormStateInterface $form_state) {
     $form = parent::form($form, $form_state);
     $form['date']['showfreeformalways'] = [
@@ -134,6 +120,19 @@ class WebformMetadataDate extends MetadataDateBase {
         'If checked both Point and Range modes will also allow a non validated free form input'
       ),
       '#return_value' => TRUE,
+    ];
+    $form['date']['edtf_validateme'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Validate freeform date as EDTF'),
+      '#description' => $this->t(
+        'Option to validate the freeform date as extended date/time format date (EDTF). See <a href="https://www.loc.gov/standards/datetime/">here</a>'
+      ),
+      '#return_value' => TRUE,
+      '#states' => [
+        'visible' => [
+          ':input[name="properties[showfreeformalways]"]' => ['checked' => TRUE],
+        ],
+      ],
     ];
     $form['date']['datepicker'] = [
       '#type' => 'checkbox',
@@ -216,5 +215,150 @@ class WebformMetadataDate extends MetadataDateBase {
     ];
 
     return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getItemFormat(array $element) {
+    return parent::getItemFormat($element);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function formatHtmlItem(array $element, WebformSubmissionInterface $webform_submission, array $options = []) {
+    if (!$this->hasValue($element, $webform_submission, $options)) {
+      return '';
+    }
+
+    $format = $this->getItemFormat($element);
+
+    switch ($format) {
+      case 'blabla':
+        $items = $this->formatCompositeHtmlItems($element, $webform_submission, $options);
+        return [
+          '#theme' => 'item_list',
+          '#items' => $items,
+        ];
+
+      default:
+        $lines = $this->formatHtmlItemValue($element, $webform_submission, $options);
+        if (empty($lines)) {
+          return '';
+        }
+        foreach ($lines as $key => $line) {
+          if (is_string($line)) {
+            $lines[$key] = ['#markup' => $line];
+          }
+          $lines[$key]['#suffix'] = '<br />';
+        }
+        // Remove the <br/> suffix from the last line.
+        unset($lines[$key]['#suffix']);
+        return $lines;
+    }
+  }
+
+
+
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function formatHtmlItemValue(array $element, WebformSubmissionInterface $webform_submission, array $options = []) {
+    return $this->formatTextItemValue($element, $webform_submission, $options);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function formatTextItemValue(array $element, WebformSubmissionInterface $webform_submission, array $options = []) {
+    $value = $this->getValue($element, $webform_submission, $options);
+
+    $lines = [];
+
+    $date_types = [
+      'date_point' => 'Point Date',
+      'date_range' => 'Date Range',
+      'date_free' => 'Freeform Date',
+    ];
+    $type = 'date_free';
+    if (!empty($value['date_type'])) {
+      $type = isset($date_types[$value['date_type']]) ? $value['date_type'] : $type;
+    }
+    $lines[] = "Date type:". $date_types[$type];
+    switch ($type) {
+      case 'date_free':
+        if (!empty($value['date_free'])) {
+          $lines[] = $value['date_free'];
+        } else {
+          $lines[] = 'Not Set';
+        }
+        break;
+      case 'date_range':
+        $date_string = 'From:';
+        if (!empty($value['date_from'])) {
+          $date_string .= $value['date_from'];
+        } else {
+          $date_string .= 'Not Set';
+        }
+        $date_string = ' To:';
+        if (!empty($value['date_to'])) {
+          $date_string .= $value['date_to'];
+        }
+        else {
+          $date_string .= 'Not Set';
+        }
+        if (!empty($value['date_free'])) {
+          $date_string .= ', Display Date(free):'. $value['date_free'];
+        }
+        $lines[] = $date_string;
+        break;
+      case 'date_point':
+        $date_string = 'Point Date:';
+        if (!empty($value['date_from'])) {
+          $date_string .= $value['date_from'];
+        } else {
+          $date_string .= 'Not Set';
+        }
+        if (!empty($value['date_free'])) {
+          $date_string .= ', Display Date(free):'. $value['date_free'];
+        }
+        $lines[] = $date_string;
+    }
+    return $lines;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function preSave(array &$element, WebformSubmissionInterface $webform_submission, $update = TRUE) {
+    // Get current value and original value for this element.
+
+    parent::preSave($element, $webform_submission, $update);
+    $key = $element['#webform_key'];
+
+    $value = $this->getValue($element, $webform_submission, []);
+    // Since this element generates empty entries because the date_type is actually a value
+    // we will use this last moment to filter out those.
+    $newvalue = [];
+    if (isset($element['#multiple']) && $element['#multiple']) {
+        foreach ($value as $item) {
+          $filtered_value = array_filter($item);
+          // Empty elements here will carry at least the date_type making them
+          // not empty. So deal with that by unsetting the value completely in
+          // that case.
+          if (count($filtered_value) > 1 ) {
+            $newvalue[] = $item;
+          }
+      }
+      }
+    else {
+      $filtered_value = array_filter($value);
+      if (count($filtered_value) > 1 ) {
+        $newvalue = $value;
+      }
+    }
+    $webform_submission->setElementData($key,$newvalue);
   }
 }

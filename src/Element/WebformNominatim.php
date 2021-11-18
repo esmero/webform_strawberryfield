@@ -261,7 +261,7 @@ class WebformNominatim extends WebformLocationBase {
   }
 
   /**
-   * Submit Hanlder for the Nominatim reconciliation call.
+   * Submit Handler for the Nominatim reconciliation call.
    *
    * @param array $form
    * @param \Drupal\Core\Form\FormStateInterface $form_state
@@ -306,7 +306,6 @@ class WebformNominatim extends WebformLocationBase {
         'search',
         5,
         $current_laguage
-
       );
       $nomitanim_response_encoded = $json_response->isSuccessful()
         ? $json_response->getContent() : [];

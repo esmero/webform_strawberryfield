@@ -2,16 +2,24 @@
 
 namespace Drupal\webform_strawberryfield\Controller;
 
+use Drupal\Core\Cache\Cache;
+use Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Cache\UseCacheBackendTrait;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Site\Settings;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\ServerException;
+use GuzzleHttp\RequestOptions;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Url;
+use Drupal\Component\Datetime\TimeInterface;
 
 /**
  * Defines a route controller for Authority autocomplete form elements.
@@ -20,6 +28,19 @@ use Drupal\Core\Url;
  */
 class AuthAutocompleteController extends ControllerBase implements ContainerInjectionInterface {
 
+  use UseCacheBackendTrait;
+
+  /**
+   * Mark a 401 so we can cache the fact that a certain URL will simply fail.
+   *
+   * @var bool
+   */
+  public $notAllowed = FALSE;
+
+  /**
+   * Max time to live the Results cache
+   */
+  const MAX_CACHE_AGE = 604800;
 
   /**
    * English Stop words.
@@ -67,14 +88,37 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    */
   protected $httpClient;
 
+  /**
+   * The Time Service.
+   *
+   * @var \Drupal\Component\Datetime\TimeInterface
+   */
+  protected $time;
+
+
+  /**
+   * The Current User.
+   *
+   * @var \Drupal\Core\Session\AccountInterface
+   */
+  protected $currentUser;
 
   /**
    * AuthAutocompleteController constructor.
    *
    * @param \GuzzleHttp\Client $httpClient
+   * @param \Drupal\Component\Datetime\TimeInterface $time
+   *   The time service.
+   * @param \Drupal\Core\Session\AccountInterface $current_user
+   * @param \Drupal\Core\Cache\CacheBackendInterface $cacheBackend
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
    */
-  public function __construct(Client $httpClient) {
+  public function __construct(Client $httpClient, TimeInterface $time, AccountInterface $current_user, CacheBackendInterface $cacheBackend, ConfigFactoryInterface $configFactory) {
     $this->httpClient = $httpClient;
+    $this->time = $time;
+    $this->currentUser = $current_user;
+    $this->cacheBackend = $cacheBackend;
+    $this->configFactory = $configFactory;
   }
 
   /**
@@ -84,8 +128,11 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('http_client')
-
+      $container->get('http_client'),
+      $container->get('datetime.time'),
+      $container->get('current_user'),
+      $container->get('cache.data'),
+      $container->get('config.factory')
     );
   }
 
@@ -100,13 +147,42 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    *
    * @return \Symfony\Component\HttpFoundation\JsonResponse
    */
-  public function handleAutocomplete(Request $request, $auth_type, $vocab = 'subjects', $rdftype = NULL, $count) {
+  public function handleAutocomplete(Request $request, $auth_type, $vocab = 'subjects', $rdftype = NULL, $count = 10) {
     $results = [];
+
+
     //@TODO pass count to the actual fetchers
     //@TODO maybe refactor into plugins so others can write any other reconciliators
     //@TODO if so, we can query the plugins and show in the webform builder options
     // Get the typed string from the URL, if it exists.
-    if ($input = $request->query->get('q')) {
+
+    $apikey = Settings::get('webform_strawberryfield.europeana_entity_apikey');
+    $input = $request->query->get('q');
+    $csrf_token = $request->headers->get('X-CSRF-Token');
+    $is_internal = FALSE;
+
+    if (is_string($csrf_token)) {
+      $request_base = $request->getSchemeAndHttpHost().':'.$request->getPort();
+      $is_internal =  $_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['SERVER_ADDR'].':'.$_SERVER['SERVER_PORT'] == $request_base;
+      if (!$is_internal) {
+        $is_internal = $_SERVER['HTTP_HOST'] == $_SERVER['SERVER_NAME'];
+      }
+    }
+
+    if ($input) {
+      $rdftype_str = $rdftype ?? 'null';
+      $apikey_hash = $apikey ?? 'null';
+      $count = $count ?? 10;
+      $cache_var = md5($auth_type.$input.$vocab.$rdftype_str.$count.$apikey_hash);
+      $cache_id = 'webform_strawberry:auth_lod:' . $cache_var;
+      $cached = $this->cacheGet($cache_id);
+      if ($cached) {
+        return new JsonResponse($cached->data);
+      }
+      if ($this->currentUser->isAnonymous() && !$is_internal) {
+        sleep(1);
+      }
+
       switch ($auth_type) {
         case 'loc':
           $results = $this->loc($input, $vocab, $rdftype);
@@ -115,16 +191,55 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
           $results = $this->wikidata($input);
           break;
         case 'aat':
-          $results = $this->getty($input, 'aat', $vocab);
+          // @TODO this will be deprecated in 1.1. legacy so old access can be kept
+          $results = $this->getty($input, 'aat', $rdftype);
+          break;
+        case 'getty':
+          $results = $this->getty($input, $vocab, $rdftype);
           break;
         case 'viaf':
           $results = $this->viaf($input);
           break;
+        case 'mesh':
+          $results = $this->mesh($input, $vocab, $rdftype);
+          break;
+        case 'snac':
+          $results = $this->snac($input, $vocab, $rdftype);
+          break;
+        case 'europeana':
+          if ($apikey) {
+            $results = $this->europeana($input, $vocab, $apikey);
+          }
+          else {
+            $this->messenger()->addError(
+              $this->t("Can't query Europeana.Your Entity API key is not set. Please add it to your settings.php as \$settings['webform_strawberryfield.europeana_entity_apikey'] = 'yourapikey'"
+              )
+            );
+          }
+      }
+    }
+    // DO not cache NULL or FALSE. Those will be 401/403/500;
+    if ($results && is_array($results)) {
+      // Cut the results to the desired number
+      // Easier than dealing with EACH API's custom return options
+      if (count($results) > $count) {
+        $results = array_slice($results, 0, $count);
       }
 
-
+      //setting cache for anonymous or logged in
+      if (!$is_internal) {
+        $this->cacheSet($cache_id, $results,
+          ($this->time->getRequestTime() + static::MAX_CACHE_AGE),
+          ['user:' . $this->currentUser->id()]);
+      }
+      else {
+        // For internal calls. Where we have really no session or anything.
+        $this->cacheSet($cache_id, $results, ($this->time->getRequestTime() + static::MAX_CACHE_AGE));
+      }
     }
-
+    else {
+      $results = [];
+    }
     return new JsonResponse($results);
   }
 
@@ -137,7 +252,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @return array
    */
   protected function loc($input, $vocab, $rdftype) {
-    //@TODO make the following whitelist a constant since we use it in
+    //@TODO make the following allowed list a constant since we use it in
     // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
     if (!in_array($vocab, [
       'relators',
@@ -150,7 +265,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     ])) {
       // Drop before tryin to hit non existing vocab
       $this->messenger()->addError(
-        $this->t('@vocab for LoC autocomplete is not in in our whitelist.',
+        $this->t('@vocab for LoC autocomplete is not in in our allowed list.',
           [
             '@vocab' => $vocab,
           ]
@@ -175,7 +290,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     ];
     $path = $endpoint[$vocab];
 
-    $input = urlencode($input);
+    $input = rawurlencode($input);
 
     if ($vocab == 'rdftype') {
       $urlindex = "/suggest/?q=" . $input . "&rdftype=" . $rdftype;
@@ -186,6 +301,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
     $baseurl = 'https://id.loc.gov';
     $remoteUrl = $baseurl . $urlindex;
+
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
@@ -229,7 +345,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @return array
    */
   protected function wikidata($input) {
-    $input = urlencode($input);
+    $input = rawurlencode($input);
     $urlindex = '&language=en&format=json&search=' . $input;
     $baseurl = 'https://www.wikidata.org/w/api.php?action=wbsearchentities';
     $remoteUrl = $baseurl . $urlindex;
@@ -264,7 +380,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       }
       return $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
@@ -281,52 +397,48 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
    * @param string $vocab
    *
    * @param string $mode
-   *    Can be either 'subjects' for fuzzy or exact for 1:1 preflabel
-   *
+   *    Can be either 'fuzzy' or 'subjects', exact for 1:1 preflabel or combined
+   *    subjects will be deprecated in 1.1
    * @return array
    */
-  protected function getty($input, $vocab = 'aat', $mode = 'subjects') {
+  protected function getty($input, $vocab = 'aat', $mode = 'fuzzy') {
 
-    if (!in_array($mode, [
-      'subjects',
-      'exact',
-    ])) {
-      // Drop before tryin to hit non existing vocab
+    if (!in_array($mode, ['fuzzy', 'subjects', 'exact', 'terms'])) {
+      // Drop before trying to hit non existing vocab
       $this->messenger()->addError(
-        $this->t('@mode mode for aat autocomplete is not in in our whitelist.',
+        $this->t('@mode mode for @vocab Getty autocomplete is not in in our allowed list.',
           [
             '@mode' => $mode,
+            '@vocab' => $vocab,
           ]
         )
       );
       $results[] = [
         'value' => NULL,
-        'label' => "Wrong Query Mode {$mode} in AAT Query",
+        'label' => "Wrong Query Mode {$mode} in Getty {$vocab} Query",
         'desc' => NULL,
       ];
       return $results;
     }
 
-
-    // Split in pieces
-
-    // Limit the size here: max 64 chars.
     $input = trim($input);
+    $queries = [];
+    $results = [];
+    // Limit the size here: max 64 chars.
     if (strlen($input) > 64) {
       return $results[] = [
         'value' => NULL,
         'label' => "Sorry query is too long! Try with less characters",
         'desc' => NULL,
       ];
-
     }
+    //split in pieces
     $input_parts = explode(' ', $input);
     $clean_input = array_diff($input_parts, $this::STOPWORDS_EN);
     if (!empty($clean_input)) {
-
       // @see http://vocab.getty.edu/queries#Case-insensitive_Full_Text_Search_Query
       // Build the SPARQL query
-      if ($mode == "subjects") {
+      if (in_array($mode, ["subjects","fuzzy"])) {
         $toremove = ['-', '.', '(', ')', '|' . '+', '$', '#', '@', '*'];
         $search = str_replace($toremove, ' ', $clean_input);
         $search = array_map('trim', $search);
@@ -336,52 +448,100 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
           return strtolower($value) . '*';
         }, $search);
         $search = implode(' AND ', $search);
-        $query = <<<SPARQL
+        // Note to myself: removing order by asc(lcase(str(?T)))
+        $query_fuzzy = <<<SPARQL
       SELECT ?S ?T ?P ?Note {
         ?S a skos:Concept; luc:text !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/> ;
            gvp:prefLabelGVP [xl:literalForm ?T].
         optional {?S gvp:parentStringAbbrev ?P}
         optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
-        } order by asc(lcase(str(?T)))
-        LIMIT 10
+        }
+        LIMIT !number
 SPARQL;
-
-
+        $search = '"' . $search . '"';
+        $query_fuzzy = preg_replace('!\s+!', ' ', $query_fuzzy);
+        // use Drupal\Component\Render\FormattableMarkup; has no pass through option
+        // Anymore, so use native PHP.
+        // If we have more than one word we will use extra single quote to make
+        // a closer to exact match.
+        $queries[] = strtr(trim($query_fuzzy), [
+          '!searchterm' => $search,
+          '!vocab' => $vocab,
+          '!number' => 10
+        ]);
       }
-      else {
-        $search = array_map('trim', $clean_input);
-        $search = strtolower(implode(' ', $search));
-        $original_search = $search;
-        $query = <<<SPARQL
+      elseif ($mode == "exact") {
+        $search_exact = array_map('trim', $clean_input);
+        $search_exact = strtolower(implode(' ', $search_exact));
+        $original_search = $search_exact;
+        $query_exact = <<<SPARQL
         select distinct ?S ?T ?P ?Note {
           ?S skos:inScheme <http://vocab.getty.edu/!vocab/> ;
           gvp:prefLabelGVP/xl:literalForm !searchterm@en .
           optional {?S gvp:parentStringAbbrev ?P}
           optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
         }
-        LIMIT 1
+        LIMIT !number
 SPARQL;
+        $search_exact = '"' . $search_exact . '"';
+        $query_exact = preg_replace('!\s+!', ' ', $query_exact);
+        $queries[] = strtr(trim($query_exact), [
+          '!searchterm' => $search_exact,
+          '!vocab' => $vocab,
+          '!number' => 1
+        ]);
       }
-      $search = '"' . $search . '"';
-      $query = preg_replace('!\s+!', ' ', $query);
-      // use Drupal\Component\Render\FormattableMarkup; has no pass through option
-      // Anymore, so use native PHP.
-      // If we have more than one word we will use extra single quote to make
-      // a closer to exact match.
-      // @TODO ask if people want always fuzzy?
+      elseif ($mode == "terms") {
+        $toremove = ['-', '.', '(', ')', '|' . '+', '$', '#', '@', '*'];
+        $search_terms = str_replace($toremove, ' ', $clean_input);
+        $search_terms = array_map('trim', $search_terms);
+        $search_terms = array_filter($search_terms);
+        if (count($search_terms) > 0) {
+          $search_terms = strtolower(implode('* ', $search_terms));
+          $search_terms = $search_terms.'*'; //adds an extra * for the last term
+        }
+        $original_search = $search_terms;
+        $query_terms = <<<SPARQL
+        select distinct ?S ?T ?P ?Note {
+          ?S a gvp:Concept; luc:term !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/>.
+          ?S gvp:prefLabelGVP [xl:literalForm ?T]
+          optional {?S gvp:parentStringAbbrev ?P}
+          optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
+        }
+        LIMIT !number
+SPARQL;
+
+        /*
+         *   ?S a gvp:Concept; luc:term "actors* (performing artists)*"; skos:inScheme aat:.
+          ?S gvp:prefLabelGVP [xl:literalForm ?T]
+          optional {?S gvp:parentStringAbbrev ?P}
+          optional {?S skos:scopeNote [dct:language gvp_lang:en; rdf:value ?Note]}
+         *
+         */
+        $search_terms = '"' . $search_terms . '"';
+        $query_terms= preg_replace('!\s+!', ' ', $query_terms);
+        // use Drupal\Component\Render\FormattableMarkup; has no pass through option
+        // Anymore, so use native PHP.
+        // If we have more than one word we will use extra single quote to make
+        // a closer to exact match.
+        $queries[] = strtr(trim($query_terms), [
+          '!searchterm' => $search_terms,
+          '!vocab' => $vocab,
+          '!number' => 10
+        ]);
+      }
 
 
-      $query = strtr(trim($query), [
-        '!searchterm' => $search,
-        '!vocab' => $vocab,
-      ]);
-
+      $bodies = [];
       $baseurl = 'http://vocab.getty.edu/sparql.json';
-      $options = ['query' => ['query' => $query]];
-      $url = Url::fromUri($baseurl, $options);
-      $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
-      $options['headers'] = ['Accept' => 'application/sparql-results+json'];
-      $body = $this->getRemoteJsonData($remoteUrl, $options);
+      // I leave this as an array in case we want to combine modes in the future.
+      foreach($queries as $query) {
+        $options = ['query' => ['query' => $query]];
+        $url = Url::fromUri($baseurl, $options);
+        $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
+        $options['headers'] = ['Accept' => 'application/sparql-results+json'];
+        $bodies[] = $this->getRemoteJsonData($remoteUrl, $options);
+      }
       // This is how a result here looks like
       /*
      "results" : {
@@ -407,45 +567,50 @@ SPARQL;
     }
        */
 
-
-      $results = [];
-      $jsondata = json_decode($body, TRUE);
-      $json_error = json_last_error();
-      if ($json_error == JSON_ERROR_NONE) {
-        if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
-          foreach ($jsondata['results']['bindings'] as $key => $item) {
-            // We reapply original search because i had no luck with SPARQL binding the search for exact
-            // So we have no T
-            $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search;
-            $parent = isset($item['P']['value']) ? ' | Parent of: ' . $item['P']['value'] : '';
-            $note = isset($item['Note']['value']) ? ' | (' . $item['Note']['value'] . ')' : '';
-            $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
-            $results[] = [
-              'value' => $uri,
-              'label' => $term . $parent . $note,
-              'desc' => $parent . $note,
-            ];
+      $jsonfail = FALSE;
+      foreach($bodies as $body) {
+        $jsondata = json_decode($body, TRUE);
+        $json_error = json_last_error();
+        if ($json_error == JSON_ERROR_NONE) {
+          if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
+            foreach ($jsondata['results']['bindings'] as $key => $item) {
+              // We reapply original search because i had no luck with SPARQL binding the search for exact
+              // So we have no T
+              $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search;
+              $parent = isset($item['P']['value']) ? ' | Parent of: ' . $item['P']['value'] : '';
+              $note = isset($item['Note']['value']) ? ' | (' . $item['Note']['value'] . ')' : '';
+              $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
+              $results[] = [
+                'value' => $uri,
+                'label' => $term . $parent . $note,
+                'desc' => $parent . $note,
+              ];
+            }
           }
         }
         else {
-          $results[] = [
-            'value' => NULL,
-            'label' => 'Sorry no Match from Getty ' . $vocab . ' Vocabulary',
-            'desc' => NULL,
-          ];
+          $jsonfail = TRUE;
         }
-        return $results;
       }
-      $this->messenger->addError(
-        $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-          [
-            '@url' => $remoteUrl,
-            '@jsonerror' => $json_error,
-          ]
-        )
-      );
-      return [];
+      if (empty($results)) {
+        $results[] = [
+          'value' => NULL,
+          'label' => 'Sorry no Match from Getty ' . $vocab . ' Vocabulary',
+          'desc' => NULL,
+        ];
+      }
+      if ($jsonfail) {
+        $this->messenger()->addError(
+          $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+            [
+              '@url' => $remoteUrl,
+              '@jsonerror' => $json_error,
+            ]
+          )
+        );
+      }
     }
+    return $results;
   }
 
   /**
@@ -454,7 +619,7 @@ SPARQL;
    * @return array
    */
   protected function viaf($input) {
-    $input = urlencode($input);
+    $input = rawurlencode($input);
     $urlindex = '&query=' . $input;
     $baseurl = 'https://viaf.org/viaf/AutoSuggest?';
     $remoteUrl = $baseurl . $urlindex;
@@ -464,12 +629,12 @@ SPARQL;
 
     $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
+    $jsondata = json_decode($body, TRUE) ?? [];
     $json_error = json_last_error();
     if ($json_error == JSON_ERROR_NONE) {
       //WIKIdata will give is an success key will always return at least one, the query string
       if (count($jsondata) > 1) {
-        if (count($jsondata['result']) >= 1) {
+        if (isset($jsondata['result']) && is_array($jsondata['result']) && count($jsondata['result']) >= 1) {
           foreach ($jsondata['result'] as $key => $item) {
             $desc = (isset($item['nametype'])) ? '(' . $item['nametype'] . ')' : NULL;
             $results[] = [
@@ -489,7 +654,203 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger->addError(
+    $this->messenger()->addError(
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+        [
+          '@url' => $remoteUrl,
+          '@jsonerror' => $json_error,
+        ]
+      )
+    );
+    return [];
+  }
+
+  /**
+   * @param $input
+   *    The query
+   * @param $vocab
+   *   Europeana Entity Type requested
+   *
+   * @param $apikey
+   *
+   * @return array
+   */
+  protected function europeana($input, $vocab, string $apikey) {
+    //@TODO make the following allowed list a constant since we use it in
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
+    if (!in_array($vocab, [
+      'agent',
+      'concept',
+      'place',
+    ])) {
+      // Drop before trying to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@vocab for Europeana Entity Suggest autocomplete is not in in our allowed list.',
+          [
+            '@vocab' => $vocab,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Vocabulary {$vocab} in Europeana Entity Query",
+      ];
+      return $results;
+    }
+
+    $input = rawurlencode($input);
+
+    $urlindex = "/suggest?text=" . $input . "&type=" . $vocab ."&wskey=". $apikey ;
+
+    $baseurl = 'https://www.europeana.eu/api/entities';
+    $remoteUrl = $baseurl . $urlindex;
+    $options['headers'] = ['Accept' => 'application/ld+json'];
+    $body = $this->getRemoteJsonData($remoteUrl, $options);
+    $results = [];
+    $jsondata = json_decode($body, TRUE);
+    $json_error = json_last_error();
+    if ($json_error == JSON_ERROR_NONE) {
+      /*
+       {
+      "@context": [
+         "https://www.w3.org/ns/ldp.jsonld",
+         "http://www.europeana.eu/schemas/context/entity.jsonld",
+       {
+        "@language": "en"
+       }
+       ],
+       "total": 10,
+       "type": "BasicContainer",
+       "contains": [
+        {
+        "type": "Agent"
+        "id": "http://data.europeana.eu/agent/base/147466",
+       "prefLabel": {
+                "en": "Arturo Toscanini"
+            },
+        "dateOfBirth": "1867-03-25",
+        "dateOfDeath": "1957-01-16",
+        },
+     { .. }
+     ]
+  }
+      */
+      // @NOTE!: This is API V 0.5 Already ill documented and its changing. So review the API every 2-3 months
+      if (isset($jsondata['total']) &&  $jsondata['total'] >= 1 && isset($jsondata['items']) && is_array($jsondata['items'])) {
+        foreach ($jsondata['items'] as $key => $result) {
+          $desc = NULL;
+          if (($vocab == 'place') && isset($result['isPartOf']) && is_array($result['isPartOf'])) {
+            foreach( $result['isPartOf'] as $partof) {
+              $desc[] = reset($partof['prefLabel']);
+            }
+          }
+
+          if (($vocab == 'agent') && isset($result['dateOfBirth'])) {
+            $desc[] = $result['dateOfBirth'] . '/' . $result['dateOfDeath'] ?? '?';
+          }
+
+          $desc =  !empty($desc) ? ' (' . implode(', ', $desc) . ')' : NULL;
+          $label = $result['prefLabel']['en'] ?? (reset($result['prefLabel']) ?? 'No Label');
+          $label = empty($desc) ? $label : $label . $desc;
+          $results[] = [
+            'value' => $result['id'],
+            'label' => $label,
+            'desc' => $desc,
+          ];
+        }
+      }
+      else {
+        $results[] = [
+          'value' => NULL,
+          'label' => "Sorry no match from Europeana {$vocab}",
+        ];
+      }
+      return $results;
+    }
+    $this->messenger()->addError(
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+        [
+          '@url' => $remoteUrl,
+          '@jsonerror' => $json_error,
+        ]
+      )
+    );
+    return [];
+  }
+
+  /**
+   * @param $input
+   *    The query
+   * @param $vocab
+   *   The 'suggest' enabled endpoint at LoC
+   *
+   * @return array
+   */
+  protected function snac($input, $vocab, $rdftype) {
+    //@TODO make the following allowed list a constant since we use it in
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformLoC
+    if (!in_array($vocab, [
+      'Constellation',
+      'rdftype',
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@vocab for SNAC autocomplete is not in in our allowed list.',
+          [
+            '@vocab' => $vocab,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Vocabulary {$vocab} in SNAC Query",
+      ];
+      return $results;
+    }
+
+
+    $input = urlencode($input);
+
+
+    $remoteUrl = "https://api.snaccooperative.org";
+    $options = [
+      'body' => json_encode([
+        "command" => "search",
+        "term" => $input,
+        "entity_type" => $rdftype != "thing" ? $rdftype : NULL,
+        "start" => 0,
+        "count" => 10,
+        "search_type" => "autocomplete",
+      ]),
+      RequestOptions::HEADERS => [
+        'Content-Type' => 'application/json'
+      ]
+    ];
+    $body = $this->getRemoteJsonData($remoteUrl, $options, 'PUT');
+
+    $jsondata = [];
+    $results = [];
+    $jsondata = json_decode($body, TRUE);
+    $json_error = json_last_error();
+    if ($json_error == JSON_ERROR_NONE) {
+      if (!empty($jsondata['results']) &&  ($jsondata['total'] ?? 0) >= 1) {
+        foreach ($jsondata['results'] as $key => $entry) {
+          $nameEntry = reset($entry['nameEntries']);
+          $results[] = [
+            'value' => $entry['ark'] ?? $entry['entityType']['uri'],
+            'label' => $nameEntry['original'],
+          ];
+        }
+      }
+      else {
+        $results[] = [
+          'value' => NULL,
+          'label' => "Sorry no match from SNAC {$vocab}",
+        ];
+      }
+      return $results;
+    }
+    $this->messenger()->addError(
       $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
         [
           '@url' => $remoteUrl,
@@ -501,17 +862,108 @@ SPARQL;
   }
 
 
+
+  /**
+   * @param $input
+   *    The query
+   * @param $vocab
+   *   The 'suggest' enabled endpoint at LoC
+   *
+   * @return array
+   */
+  protected function mesh($input, $vocab, $rdftype) {
+
+    //@TODO make the following allowed list a constant since we use it in
+    // \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformMesh
+    if (!in_array($vocab, [
+      'descriptor',
+      'term',
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@vocab for MeSH autocomplete is not in in our allowed list.',
+          [
+            '@vocab' => $vocab,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Vocabulary {$vocab} in MeSH API Query",
+      ];
+      return $results;
+    }
+
+    // Here $rdftype acts as match
+    if (!in_array($rdftype, [
+      'startswith',
+      'contains',
+      'exact',
+    ])) {
+      // Drop before tryin to hit non existing vocab
+      $this->messenger()->addError(
+        $this->t('@rdftype Match type for MeSH autocomplete is not valid. It may be "exact","startswith" or "contains"',
+          [
+            '@rdftype' => $rdftype,
+          ]
+        )
+      );
+      $results[] = [
+        'value' => NULL,
+        'label' => "Wrong Match type for {$vocab} in MeSH API Query",
+      ];
+      return $results;
+    }
+
+    $input = rawurlencode($input);
+    $urlindex = "/mesh/lookup/{$vocab}?label=" . $input .'&limit=10&match=' . $rdftype;
+    $baseurl = 'https://id.nlm.nih.gov';
+    $remoteUrl = $baseurl . $urlindex;
+    $options['headers'] = ['Accept' => 'application/json'];
+    $body = $this->getRemoteJsonData($remoteUrl, $options);
+    $results = [];
+    $jsondata = json_decode($body, TRUE);
+    $json_error = json_last_error();
+    if ($json_error == JSON_ERROR_NONE) {
+      if (count($jsondata) > 1) {
+        foreach ($jsondata as $entry) {
+          $results[] = [
+            'value' => $entry['resource'],
+            'label' => $entry['label'],
+          ];
+        }
+      }
+      else {
+        $results[] = [
+          'value' => NULL,
+          'label' => "Sorry no match from MeSH for {$vocab}",
+        ];
+      }
+      return $results;
+    }
+    $this->messenger()->addError(
+      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+        [
+          '@url' => $remoteUrl,
+          '@jsonerror' => $json_error,
+        ]
+      )
+    );
+    return [];
+  }
+
   /**
    * @param $remoteUrl
    * @param $options
    *
-   * @return array|string
+   * @return string
+   *   A string that may be JSON (hopefully)
    */
-  protected function getRemoteJsonData($remoteUrl, $options) {
+  protected function getRemoteJsonData($remoteUrl, $options, $method = 'GET') {
     // This is expensive, reason why we process and store in cache
     if (empty($remoteUrl)) {
       // No need to alarm. all good. If not URL just return.
-      return [];
+      return NULL;
     }
     if (!UrlHelper::isValid($remoteUrl, $absolute = TRUE)) {
       $this->messenger()->addError(
@@ -519,13 +971,39 @@ SPARQL;
           ['@$remoteUrl' => $remoteUrl]
         )
       );
-      return [];
+      return NULL;
     }
-
-
     try {
-      $request = $this->httpClient->get($remoteUrl, $options);
-    } catch (ClientException $exception) {
+      if ($method == 'GET') {
+        $request = $this->httpClient->get($remoteUrl, $options);
+      }
+      elseif ($method == 'POST') {
+        $request = $this->httpClient->post($remoteUrl, $options);
+      }
+      elseif ($method == 'PUT') {
+        $request = $this->httpClient->put($remoteUrl, $options);
+      }
+      else {
+        return NULL;
+      }
+      // Do not cache if things go bad.
+      if ($request->getStatusCode() == '401') {
+        $this->setNotAllowed(TRUE);
+        $this->useCaches = FALSE;
+        return NULL;
+        // Means we got a server Access Denied, we reply to whoever made the call.
+      }
+      if ($request->getStatusCode() == '404') {
+        $this->useCaches = FALSE;
+        return NULL;
+      }
+      if ($request->getStatusCode() == '500') {
+        $this->useCaches = FALSE;
+        return NULL;
+      }
+    }
+    catch (ClientException $exception) {
+      $this->useCaches = FALSE;
       $responseMessage = $exception->getMessage();
       $this->messenger()->addError(
         $this->t('We tried to contact @url but we could not. <br> The WEB says: @response. <br> Check that URL!',
@@ -535,20 +1013,37 @@ SPARQL;
           ]
         )
       );
-      return [];
-    } catch (ServerException $exception) {
+      return NULL;
+    }
+    catch (ServerException $exception) {
+      $this->useCaches = FALSE;
       $responseMessage = $exception->getMessage();
-      $this->loggerFactory->get('webform_strawberryfield')
+      $this->getLogger('webform_strawberryfield')
         ->error('We tried to contact @url but we could not. <br> The Remote server says: @response. <br> Check your query',
           [
             '@url' => $remoteUrl,
             '@response' => $responseMessage,
           ]
         );
-      return [];
+      return NULL;
     }
+
     $body = $request->getBody()->getContents();
     return $body;
+  }
+
+  /**
+   * @return bool
+   */
+  public function isNotAllowed(): bool {
+    return $this->notAllowed;
+  }
+
+  /**
+   * @param bool $notAllowed
+   */
+  public function setNotAllowed(bool $notAllowed): void {
+    $this->notAllowed = $notAllowed;
   }
 
 }

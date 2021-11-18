@@ -8,39 +8,52 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\WebformElement;
 
-use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Site\Settings;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Plugin\WebformElement\WebformCompositeBase;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Render\Element;
 
 /**
- * Provides an 'LoC Subject Heading' element.
+ * Provides an 'LoC Heading' element.
  *
  * @WebformElement(
- *   id = "webform_metadata_getty",
- *   label = @Translation("Getty Vocabulary Term"),
- *   description = @Translation("Provides a form element to reconciliate against the Getty Vocabularies."),
+ *   id = "webform_metadata_mesh",
+ *   label = @Translation("PubMed MeSH Suggest"),
+ *   description = @Translation("Provides a form element to reconciliate against Medical Subject Headings (MeSH) RDF API."),
  *   category = @Translation("Composite elements"),
  *   multiline = TRUE,
  *   composite = TRUE,
  *   states_wrapper = TRUE,
  * )
  */
-class WebformGetty extends WebformCompositeBase {
+class WebformMesh extends WebformCompositeBase {
+
 
   protected function defineDefaultBaseProperties() {
     return [
-      'vocab' => 'aat',
-      'matchtype' => 'fuzzy',
-    ] + parent::defineDefaultBaseProperties();
+        'vocab' => 'descriptor',
+        'matchtype' => 'startswith',
+      ] + parent::defineDefaultBaseProperties();
   }
 
   public function getDefaultProperties() {
     $properties = parent::getDefaultProperties() + [
-        'vocab' => 'aat',
-        'matchtype' => 'fuzzy',
+        'vocab' => 'descriptor',
+        'matchtype' => 'startswith',
       ];
 
     return $properties;
+  }
+
+
+
+  public function prepare(
+    array &$element,
+    WebformSubmissionInterface $webform_submission = NULL
+  ) {
+
+    // @TODO explore this method to act on submitted data v/s element behavior
   }
 
   /**
@@ -58,21 +71,14 @@ class WebformGetty extends WebformCompositeBase {
     // This is where the original element type is also
     // swapped by webform_multiple
     // breaking all our #process callbacks.
-    $vocab = 'aat';
-    $matchtype = 'fuzzy';
+    $matchtype = trim($this->getElementProperty($element, 'matchtype'));
+    $matchtype = $matchtype?: $this->getDefaultProperty('matchtype');
     $vocab = $this->getElementProperty($element, 'vocab');
-    $vocab = $vocab ?:  $this->getDefaultProperty($vocab);
-    if ($vocab == 'aat') {
-      $matchtype = trim($this->getElementProperty($element, 'matchtype'));
-    }
-
-    $matchtype = $matchtype ?: $this->getDefaultProperty('matchtype');
-    // This seems to have been an old Webform module variation
-    // Keeping it here until sure its not gone for good
+    $vocab = $vocab ?:  $this->getDefaultProperty('vocab');
     if (isset($element['#element']['#webform_composite_elements']['label'])) {
       $element['#element']['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
         [
-          'auth_type' => 'getty',
+          'auth_type' => 'mesh',
           'vocab' => $vocab,
           'rdftype' => $matchtype,
           'count' => 10
@@ -83,19 +89,21 @@ class WebformGetty extends WebformCompositeBase {
     if (isset($element["#multiple__header"]) && $element["#multiple__header"] == true) {
       $element['#element']['label']["#autocomplete_route_parameters"] =
         [
-          'auth_type' => 'getty',
+          'auth_type' => 'mesh',
           'vocab' => $vocab,
           'rdftype' => $matchtype,
+          'matchtype' => 'startswith',
           'count' => 10
         ];
     }
   }
 
+
   /**
    * {@inheritdoc}
    */
   public function getPluginLabel() {
-    return $this->elementManager->isExcluded('webform_metadata_getty') ? $this->t('Getty Subject Headings') : parent::getPluginLabel();
+    return $this->elementManager->isExcluded('webform_metadata_mesh') ? $this->t('Medical Subject Heading MeSH') : parent::getPluginLabel();
   }
 
   /**
@@ -127,27 +135,26 @@ class WebformGetty extends WebformCompositeBase {
    */
   public function form(array $form, FormStateInterface $form_state) {
     $form = parent::form($form, $form_state);
-    //@NOTE    'classification' => 'classification(LCCS)', is not working
-    // Not sure if this has a sub authority and how that works/if suggest
+
     $form['composite']['vocab'] = [
       '#type' => 'select',
       '#options' => [
-        'aat' => t('Art & Architecture Thesaurus'),
+        'descriptor' => 'Medical Subject Headings Descriptor (Subject Headings) API',
+        'term' => 'Medical Subject Headings Term API',
       ],
-      '#default_value' => 'aat',
-      '#title' => $this->t("What Getty Vocabulary SPARQL Source Provider to use."),
-      '#description' => $this->t('Currently only AAT is supported but more are on the works'),
+      '#title' => $this->t("What MeSH Autocomplete API Type to use."),
+      '#description' =>  $this->t('See <a href="https://id.nlm.nih.gov/mesh/swagger/ui#/">MeSH Subject HeadingsAPI</a>'),
+
     ];
-    // Not sure if this has a sub authority and how that works/if suggest
     $form['composite']['matchtype'] = [
       '#type' => 'select',
       '#options' => [
-        'fuzzy' => 'Fuzzy, based on description',
         'exact' => 'Exact, based on recommended Label. Will give you a single result or none.',
-        'terms' => 'Uses Terms and wildcards to narrow down queries',
+        'startswith' => 'Label Starts with.',
+        'contains' => 'Label Contains.',
       ],
       '#title' => $this->t("What type of Match Query to perform"),
-      '#description' => $this->t('All match types return the same number of results. Exact matches only against the prefered label of the term, fuzzy will search inside the extended description. Terms will try to use indexed terms using each input word to find a closer match.'),
+      '#description' => $this->t('All match types return the same number of results. Exact matches only against the prefered label of the query.'),
     ];
     return $form;
   }
