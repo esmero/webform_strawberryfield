@@ -14,6 +14,7 @@ use Drupal\webform\Element\WebformMessage as WebformMessageElement;
 use Drupal\webform\Plugin\WebformElementBase;
 use Drupal\webform\Utility\WebformArrayHelper;
 use Drupal\webform\Utility\WebformDateHelper;
+use Drupal\webform\WebformSubmissionConditionsValidator;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\WebformInterface;
 
@@ -266,6 +267,43 @@ abstract class MetadataDateBase extends WebformElementBase {
     }
 
     parent::validateConfigurationForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getElementSelectorInputValue($selector, $trigger, array $element, WebformSubmissionInterface $webform_submission) {
+    $input_name = WebformSubmissionConditionsValidator::getSelectorInputName($selector);
+    $input_keys = WebformSubmissionConditionsValidator::getInputNameAsArray($input_name, NULL);
+    // Multi-value fields utilize input paths in the form 'webform_example_element_multiple[items][0][_item_]' => '{Test 01}',
+    // but ::getRawValue does not work with 'items' and '_item_' in the path. So we strip them out here.
+    $input_keys = array_diff($input_keys, ['items', '_item_']);
+    // After doing so, we expect the input keys to be in the form:
+    // ['webform field name', 'the composite element key'] OR ['webform field name', 'multiple-value delta', 'the composite element key']
+    // If neither case applies, return NULL;
+    if(!(count($input_keys) == 2 || count($input_keys) == 3)) {
+      return NULL;
+    }
+    else {
+      // Prepare options for ::getRawValue().
+      $options = [
+        'webform_key' => reset($input_keys),
+        'composite_key' => end($input_keys),
+      ];
+      // Set delta for multiple value elements.
+      if(!empty($element['#multiple']) ) {
+        $options['delta'] = (count($input_keys) == 3 && is_numeric($input_keys[1])) ? $input_keys[1] : 0;
+      }
+
+      $input_value = $this->getRawValue($element, $webform_submission, $options);
+      // getRawValue can return an array, which \Drupal\webform\WebformSubmissionConditionsValidator::checkConditionTrigger
+      // tries to cast to a string and therefore generates a php array to string conversion warning.
+      // If the array is empty, we replace it with an empty string. Otherwise we let checkConditionTrigger complain.
+      if(is_array($input_value) && empty($input_value)) {
+        $input_value = "";
+      }
+      return $input_value;
+    }
   }
 
   /**
