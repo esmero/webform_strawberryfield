@@ -20,15 +20,15 @@ use Drupal\strawberryfield\Tools\SimpleXMLtoArray;
  * Provides a 'file element that can import into the submission/ process other formats' element.
  *
  * @WebformElement(
- *   id = "webform_metadata_file",
+ *   id = "webform_uploaded_file",
  *   api = "https://api.drupal.org/api/drupal/core!modules!file!src!Element!ManagedFile.php/class/ManagedFile",
- *   label = @Translation("Import Metadata from a File"),
- *   description = @Translation("Provides a form element for uploading, saving a file and parsing the content as metadata/webform submission data."),
+ *   label = @Translation("Connect existing Path to a new a File"),
+ *   description = @Translation("Provides a form element for connecting the path to a Drupal file using a streamwrapper."),
  *   category = @Translation("File upload elements"),
  *   states_wrapper = TRUE,
  * )
  */
-class WebformMetadataFile extends WebformManagedFileBase {
+class WebformUploadedFile extends WebformManagedFileBase {
 
 
   /**

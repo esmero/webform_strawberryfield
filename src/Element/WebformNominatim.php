@@ -114,7 +114,7 @@ class WebformNominatim extends WebformLocationBase {
       $complete_form
     );
 
-    // This key contains the nominati reponse for this $element
+    // This key contains the nominatim reponse for this $element
     $my_geosjonkey = $element['#name'] . '-geojson';
 
     $element['nominatim'] = [

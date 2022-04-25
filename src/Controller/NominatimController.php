@@ -181,7 +181,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
         // Means our call was correct, but nominatim failed. Could be temporary?
         $results[] = [
           'value' => NULL,
-          'label' => 'Sorry https://nominatim.openstreetmap.org responsed with an error. Please Try again'
+          'label' => 'Sorry https://nominatim.openstreetmap.org responded with an error. Please Try again'
         ];
       }
       return  $results;

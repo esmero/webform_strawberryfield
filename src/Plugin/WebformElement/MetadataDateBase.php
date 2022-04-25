@@ -14,6 +14,7 @@ use Drupal\webform\Element\WebformMessage as WebformMessageElement;
 use Drupal\webform\Plugin\WebformElementBase;
 use Drupal\webform\Utility\WebformArrayHelper;
 use Drupal\webform\Utility\WebformDateHelper;
+use Drupal\webform\WebformSubmissionConditionsValidator;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\WebformInterface;
 
@@ -596,6 +597,17 @@ abstract class MetadataDateBase extends WebformElementBase {
     /** @var \Drupal\Core\Datetime\DateFormatterInterface $date_formatter */
     $date_formatter = \Drupal::service('date.formatter');
     return $date_formatter->format($timestamp ?: time(), 'custom', $custom_format);
+  }
+
+  public function getElementSelectorInputValue($selector, $trigger, array $element, WebformSubmissionInterface $webform_submission) {
+    $input_name = WebformSubmissionConditionsValidator::getSelectorInputName($selector);
+    $composite_key = WebformSubmissionConditionsValidator::getInputNameAsArray($input_name, 1);
+    if ($composite_key) {
+      return $this->getRawValue($element, $webform_submission, ['composite_key' => $composite_key]);
+    }
+    else {
+      return NULL;
+    }
   }
 
 }

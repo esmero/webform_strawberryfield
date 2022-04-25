@@ -200,7 +200,7 @@ class EntityReference extends DisplayPluginBase {
           $realfieldname = $this->getHandlers('field')[$field_id]->field;
           // Add an OR condition for the field.
           // We use = operator since we expect fields to be ngrams indexed
-          $match_condition_group->addCondition($realfieldname, $value, '=');
+          $match_condition_group->addCondition($realfieldname, $value);
         }
       }
 
@@ -210,6 +210,11 @@ class EntityReference extends DisplayPluginBase {
     if (!empty($options['ids_solr'])) {
       $search_api_query->addWhere(0, $id_field, $options['ids_solr'], 'IN');
     }
+    $parse_mode_manager = \Drupal::service('plugin.manager.search_api.parse_mode');
+    $parse_mode_direct = $parse_mode_manager->createInstance('direct');
+    $search_api_query->setParseMode($parse_mode_direct);
+
+
     $this->view->setItemsPerPage($options['limit']);
   }
 
