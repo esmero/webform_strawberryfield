@@ -682,6 +682,7 @@ SPARQL;
       'agent',
       'concept',
       'place',
+      'timespan',
     ])) {
       // Drop before trying to hit non existing vocab
       $this->messenger()->addError(
@@ -702,7 +703,7 @@ SPARQL;
 
     $urlindex = "/suggest?text=" . $input . "&type=" . $vocab ."&wskey=". $apikey ;
 
-    $baseurl = 'https://www.europeana.eu/api/entities';
+    $baseurl = 'https://api.europeana.eu/entity';
     $remoteUrl = $baseurl . $urlindex;
     $options['headers'] = ['Accept' => 'application/ld+json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
@@ -720,8 +721,8 @@ SPARQL;
        }
        ],
        "total": 10,
-       "type": "BasicContainer",
-       "contains": [
+       "type": "ResultPage",
+       "items": [
         {
         "type": "Agent"
         "id": "http://data.europeana.eu/agent/base/147466",
@@ -735,7 +736,7 @@ SPARQL;
      ]
   }
       */
-      // @NOTE!: This is API V 0.5 Already ill documented and its changing. So review the API every 2-3 months
+      // @NOTE: This is Entities API is 0.10.3 (December 2021)and it might chang. So review the API every 6 months
       if (isset($jsondata['total']) &&  $jsondata['total'] >= 1 && isset($jsondata['items']) && is_array($jsondata['items'])) {
         foreach ($jsondata['items'] as $key => $result) {
           $desc = NULL;
