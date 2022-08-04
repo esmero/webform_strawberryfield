@@ -12,9 +12,10 @@ $settings['webform_strawberryfield.europeana_entity_apikey'] = 'thekey';
 
 Save and clear caches.
 
-In its current state the Europeana Entity API (Alpha 0.5) uses a static APIKEY (not the same as other APIs) and can be found at https://pro.europeana.eu/page/entity#suggest
+In its current state the Europeana Entity API (Alpha 0.10.3) as of December 2021 uses a static APIKEY (not the same as other APIs) and can be requested at https://pro.europeana.eu/page/get-api
 
-If using https://github.com/esmero/archipelago-deployment this is not needed and will be provided by the deployment.
+If using https://github.com/esmero/archipelago-deployment this is not needed and a stub one be provided by the deployment.
+Please read the Terms of Use: https://www.europeana.eu/en/rights/api-terms-of-use
 
 ## Help
 
