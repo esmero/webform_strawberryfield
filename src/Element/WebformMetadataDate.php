@@ -254,6 +254,13 @@ class WebformMetadataDate extends FormElement {
 
     $element['date_from']['#datepicker'] = TRUE;
     $element['date_to']['#datepicker'] = TRUE;
+    // @see https://www.drupal.org/node/3258267
+    // Basically the preRender callback that should fix this is called AFTER the
+    // \Drupal\Core\Render\Element\Date::processDate.
+    // So stupid. No where people check if an array key exists before using it
+    // NOWHERE!!
+    $element['date_from']['#attributes']['type'] = 'date';
+    $element['date_to']['#attributes']['type'] = 'date';
 
     $element['date_free']['#title'] = $date_free_title;
     $element['date_free']['#attributes']['class'][] = 'webform-date-free';

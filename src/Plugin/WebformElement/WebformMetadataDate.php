@@ -99,9 +99,9 @@ class WebformMetadataDate extends MetadataDateBase {
     // Convert date element into textfield with date picker.
     if (!empty($element['#datepicker'])) {
       $element['#attributes']['type'] = 'text';
-
       // Must manually set 'data-drupal-date-format' to trigger date picker.
       // @see \Drupal\Core\Render\Element\Date::processDate
+
       $element['#attributes']['data-drupal-date-format'] = [$element['#date_date_format']];
     }
 
