@@ -18,7 +18,7 @@
         "ml/json-ld": "^1.2",
         "mtdowling/jmespath.php":"^2.5",
         "strawberryfield/strawberryfield":"1.0.0.x-dev",
-        "strawberryfield/format_strawberryfield":"1.0.0.x-dev",
+        "strawberryfield/format_strawberryfield":"dev-ISSUE-227",
         "drupal/webform": "^5.23 || ^6.0",
         "ramsey/uuid": "^4"
     }
