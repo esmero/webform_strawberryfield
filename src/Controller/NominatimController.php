@@ -81,7 +81,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
           }
           break;
      }
-      
+
     // Add Cache settings for Max-age and URL context.
     // You can use any of Drupal's contexts, tags, and time.
    /* $results['#cache'] = [
@@ -116,13 +116,13 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
       'format' => 'geojson',
       'addressdetails' => 1
     ];
-    
+
     return $this->processRequest($remoteUrl, $options);
   }
 
   /**
    * Takes lat/long and returns a single address from Nominatim API.
-   * 
+   *
    * @param $lat
    * @param $lon
    * @param string $lang
@@ -141,13 +141,13 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
       'format' => 'geojson',
       'addressdetails' => 1
     ];
-    
+
     return $this->processRequest($remoteUrl, $options);
   }
 
   /**
    * Sends given request with options, returns results, and adds errors to messenger service.
-   * 
+   *
    * @param $remoteUrl
    * @param $options
    *
@@ -241,7 +241,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
     }
     catch (ServerException $exception) {
       $responseMessage = $exception->getMessage();
-      $this->loggerFactory->get('webform_strawberryfield')->error('We tried to contact @url with query @options but we could not. <br> The Remote server says: @response. <br> Check your query',
+      $this->getLogger('webform_strawberryfield')->error('Server Exception: We tried to contact the Nominatim @url with query @options but we could not. <br> The Remote server says: @response. <br> Check your query',
           [
             '@url' => $remoteUrl,
             '@response' => $responseMessage,
