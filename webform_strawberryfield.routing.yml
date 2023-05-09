@@ -49,7 +49,7 @@ webform_strawberryfield.webform_submission.ingestentities_form:
     _custom_access: '\Drupal\webform_strawberryfield\Access\WebformStrawberryfieldHandlerAccess::checkIngestEntityAccess'
 
 webform_strawberryfield.element.autocomplete:
-  path: '/webform_strawberry/{webform}/autocomplete/{key}'
+  path: '/webform_strawberry/webformoptions_autocomplete/{webform}/{key}'
   defaults:
     _controller: '\Drupal\webform_strawberryfield\Controller\WebformOptionsAutocompleteController::autocomplete'
   options:
@@ -58,3 +58,21 @@ webform_strawberryfield.element.autocomplete:
         type: 'entity:webform'
   requirements:
     _entity_access: 'webform.submission_create'
+
+webform_strawberryfield.rowsbylabel.autocomplete:
+  path: '/webform_strawberry/csv_autocomplete/{node}/{label_header}/{url_header}'
+  options:
+    parameters:
+      node:
+        type: 'entity:node'
+      resource_type:
+        type: 'ado'
+  defaults:
+    label_header: 'label'
+    url_header: 'url'
+    _controller: '\Drupal\webform_strawberryfield\Controller\RowAutocompleteController::handleAutocomplete'
+    _format: json
+  requirements:
+    _entity_access: 'node.view'
+    _permission: 'access content'
+    _csrf_token: 'TRUE'

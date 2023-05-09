@@ -18,7 +18,7 @@ class WebformLoDfromOptions extends WebformCompositeBase {
    */
   public function getInfo() {
 
-    $info =  parent::getInfo();
+    $info = parent::getInfo();
     return $info;
   }
 
