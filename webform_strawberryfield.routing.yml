@@ -47,3 +47,14 @@ webform_strawberryfield.webform_submission.ingestentities_form:
   requirements:
     _entity_access: 'webform_submission.update'
     _custom_access: '\Drupal\webform_strawberryfield\Access\WebformStrawberryfieldHandlerAccess::checkIngestEntityAccess'
+
+webform_strawberryfield.element.autocomplete:
+  path: '/webform_strawberry/{webform}/autocomplete/{key}'
+  defaults:
+    _controller: '\Drupal\webform_strawberryfield\Controller\WebformOptionsAutocompleteController::autocomplete'
+  options:
+    parameters:
+      webform:
+        type: 'entity:webform'
+  requirements:
+    _entity_access: 'webform.submission_create'
