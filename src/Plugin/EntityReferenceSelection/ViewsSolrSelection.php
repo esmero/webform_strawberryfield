@@ -261,6 +261,12 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     $limit = 0,
     $ids = NULL
   ) {
+    // @See https://github.com/esmero/webform_strawberryfield/issues/153
+    // May 2023,  match_operator can not be used with Solr.
+    // We will keep it around to make the classes match but is unused
+    // When using Solr we will always get native match based on the Field
+    // type.
+
     $view_name = $this->getConfiguration()['view']['view_name'];
     $display_name = $this->getConfiguration()['view']['display_name'];
 

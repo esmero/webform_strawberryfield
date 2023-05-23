@@ -182,12 +182,6 @@ class EntityReference extends DisplayPluginBase {
       // See if we need to use some escape mechanism from here
       // @see \Drupal\search_api_solr\Utility\Utility
       $value = $options['match_solr'];
-      if ($options['match_operator_solr'] !== '=') {
-        $value = $value . '%';
-        if ($options['match_operator_solr'] != 'STARTS_WITH') {
-          $value = '%' . $value;
-        }
-      }
 
       // Multiple search fields are OR'd together.
       $match_condition_group = $search_api_query->createConditionGroup('OR');
