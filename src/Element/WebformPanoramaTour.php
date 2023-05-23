@@ -1327,7 +1327,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         // Means it was something inside the button
       }
       else {
-        error_log('Clear our redundant values');
         $form_state->unsetValue([$element['#name'], 'scene']);
         $form_state->unsetValue([$element['#name'], 'hotspots']);
         $form_state->unsetValue([$element['#name'], 'hotspots_temp']);
