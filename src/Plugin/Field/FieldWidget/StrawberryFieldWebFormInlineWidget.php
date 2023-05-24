@@ -360,6 +360,16 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         ];
     }
     else {
+      if (!function_exists('array_is_list')) {
+        function array_is_list(array $arr)
+        {
+          if ($arr === []) {
+            return true;
+          }
+          return array_keys($arr) === range(0, count($arr) - 1);
+        }
+      }
+
       $data['data'] = $data_defaults + json_decode($stored_value, TRUE);
 
       // In case the saved data is "single valued" for a key
@@ -374,6 +384,9 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
             $elements_in_datum['#webform_multiple'] !== FALSE) {
             //@TODO should we log this operation for admins?
             $data['data'][$key] = (array) $data['data'][$key];
+            if (!array_is_list($data['data'][$key])) {
+              $data['data'][$key] = [ $data['data'][$key] ];
+            }
           }
         }
       }
