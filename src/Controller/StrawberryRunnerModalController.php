@@ -161,6 +161,15 @@ class StrawberryRunnerModalController extends ControllerBase
         ];
     }
     else {
+      if (!function_exists('array_is_list')) {
+        function array_is_list(array $arr)
+        {
+          if ($arr === []) {
+            return true;
+          }
+          return array_keys($arr) === range(0, count($arr) - 1);
+        }
+      }
       $data['data'] = $data_defaults + json_decode($stored_value,true);
       // In case the saved data is "single valued" for a key
       // But the corresponding webform element is not
@@ -173,6 +182,9 @@ class StrawberryRunnerModalController extends ControllerBase
           if (isset($elements_in_datum['#webform_multiple']) &&
             $elements_in_datum['#webform_multiple']!== FALSE) {
             $data['data'][$key] = (array) $data['data'][$key];
+            if (!array_is_list($data['data'][$key])) {
+              $data['data'][$key] = [ $data['data'][$key] ];
+            }
           }
         }
       }
