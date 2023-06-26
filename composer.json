@@ -1,6 +1,6 @@
 {
     "name": "strawberryfield/webform_strawberryfield",
-    "description": "A Webform/strawberryfield integration module for Drupal 8",
+    "description": "A Webform/strawberryfield integration module for Drupal 9",
     "type": "drupal-module",
     "license": "GPL-2.0+",
     "homepage": "https://github.com/esmero/webform_strawberryfield",
@@ -13,13 +13,11 @@
         }
     ],
     "require": {
-        "php": ">=7.2",
+        "php": ">=7.4",
         "ext-json": "*",
-        "ml/json-ld": "^1.2",
-        "mtdowling/jmespath.php":"^2.5",
-        "strawberryfield/strawberryfield":"1.0.0.x-dev",
-        "strawberryfield/format_strawberryfield":"1.0.0.x-dev",
-        "drupal/webform": "^5.23 || ^6.0",
+        "strawberryfield/strawberryfield":"1.1.0.x-dev",
+        "strawberryfield/format_strawberryfield":"1.1.0.x-dev",
+        "drupal/webform": "^6.1.4",
         "ramsey/uuid": "^4"
     }
 }
