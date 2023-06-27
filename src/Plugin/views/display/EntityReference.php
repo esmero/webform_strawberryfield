@@ -197,8 +197,8 @@ class EntityReference extends DisplayPluginBase {
           $match_condition_group->addCondition($realfieldname, $value, '=');
         }
       }
-
-      $search_api_query->addConditionGroup($match_condition_group, 'MATCH');
+      // Removed deprecated in Search API 1.24+ string as condition group/tag.
+      $search_api_query->addConditionGroup($match_condition_group);
     }
     // Add an IN condition for validation.
     if (!empty($options['ids_solr'])) {
