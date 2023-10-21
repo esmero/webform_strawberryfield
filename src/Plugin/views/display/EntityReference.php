@@ -175,9 +175,20 @@ class EntityReference extends DisplayPluginBase {
     $id_table = $this->view->storage->get('base_table');
     $this->id_field_alias = $search_api_query->addField($id_table, $id_field);
 
-    $options = $this->getOption('entity_reference_options');
+    $options = $this->getOption('entity_reference_options') ?? [];
+    // The entity_reference_options are typically set during a call to
+    // Drupal\views\Plugin\EntityReferenceSelection\ViewsSelection::initializeView().
+    // If any entity_reference_options are not yet set, we apply the same
+    // default values that would typically be added by that method.
+    $default_options = [
+      'match_solr' => NULL,
+      'limit' => 0,
+      'ids_solr' => NULL,
+    ];
+    $options += $default_options;
+
     // Restrict the autocomplete options based on what's been typed already.
-    if (isset($options['match_solr'])) {
+    if (isset($options['match_solr']) && !empty($options['match_solr'])) {
       $style_options = $this->getOption('style');
       // See if we need to use some escape mechanism from here
       // @see \Drupal\search_api_solr\Utility\Utility
