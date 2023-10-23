@@ -343,8 +343,6 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
       PATHINFO_EXTENSION
     );
 
-    $url = Url::fromUri(file_create_url($uri));
-
     if (!$file->isTemporary()) {
 
       $iiifserversettings = \Drupal::config(
