@@ -17,6 +17,7 @@
         "ext-json": "*",
         "strawberryfield/strawberryfield":"1.1.0.x-dev",
         "strawberryfield/format_strawberryfield":"1.1.0.x-dev",
+        "drupal/jquery_ui_datepicker": "^2.0",
         "drupal/webform": "^6.1.4",
         "ramsey/uuid": "^4"
     }

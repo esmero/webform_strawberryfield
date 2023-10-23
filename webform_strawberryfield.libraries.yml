@@ -37,6 +37,6 @@ webform_strawberryfield.element.metadatadate:
   js:
     js/webform_strawberryfield.element.metadatadate.js: {}
   dependencies:
-    - core/drupal.date
+    - jquery_ui_datepicker/datepicker
     - core/drupalSettings
 
