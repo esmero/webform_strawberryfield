@@ -2,11 +2,12 @@ name: Strawberry Field Webform Integration
 description: Provides Webform integrations to feed a field of Strawberries.
 package: Archipelago
 type: module
-core_version_requirement: ^8.8 || ^9
-php: 7.1
+core_version_requirement: ^9.5 || ^10
+php: 8
 dependencies:
   - 'drupal:field'
   - 'drupal:file'
   - 'drupal:user'
   - 'strawberryfield'
-  - 'webform:webform (>= 8.x-5.19)'
+  - 'webform'
+  - 'jquery_ui_datepicker'
