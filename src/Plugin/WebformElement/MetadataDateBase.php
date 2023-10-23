@@ -84,7 +84,7 @@ abstract class MetadataDateBase extends WebformElementBase {
     // Display datepicker button.
     if (!empty($element['#datepicker_button']) || !empty($element['#date_date_datepicker_button'])) {
       $element['#attributes']['data-datepicker-button'] = TRUE;
-      $element['#attached']['drupalSettings']['webform']['datePicker']['buttonImage'] = base_path() . drupal_get_path('module', 'webform') . '/images/elements/date-calendar.png';
+      $element['#attached']['drupalSettings']['webform']['datePicker']['buttonImage'] = base_path() . \Drupal::service('extension.list.module')->getPath('webform') . '/images/elements/date-calendar.png';
     }
 
     // Set first day according to admin/config/regional/settings.
