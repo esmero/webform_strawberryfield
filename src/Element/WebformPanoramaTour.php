@@ -902,7 +902,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
 
     } else {
       // Do we alert the user? Form needs to be restarted
-      static::messenger()->addError(t('Something bad happened with the Tour builder, sadly you will have you restart your session.'));
+      \Drupal::messenger()->addError(t('Something bad happened with the Tour builder, sadly you will have you restart your session.'));
       // We could set a form_state value and render it when the form rebuilds?
     }
 
@@ -1327,7 +1327,6 @@ class WebformPanoramaTour extends WebformCompositeBase {
         // Means it was something inside the button
       }
       else {
-        error_log('Clear our redundant values');
         $form_state->unsetValue([$element['#name'], 'scene']);
         $form_state->unsetValue([$element['#name'], 'hotspots']);
         $form_state->unsetValue([$element['#name'], 'hotspots_temp']);

@@ -10,7 +10,7 @@ use Drupal\Component\Utility\Html;
 
 
 /**
- * Provides a webform element for a wikidata element.
+ * Provides a webform element for a LoC based Agents with Roles.
  *
  * @FormElement("webform_metadata_multiagent")
  */
@@ -43,9 +43,7 @@ class WebformMultiAgent extends WebformCompositeBase {
     $class = '\Drupal\webform_strawberryfield\Element\WebformMultiAgent';
 
     $vocab_personal_name = 'names';
-    $rdftype_personal_name = 'thing'; // In case we need a default for WIKIDATA
-    $vocab_corporate_name = 'names';
-    $rdftype_corporate_name = 'CorporateName';
+    $rdftype_personal_name = 'thing';
     $role_type = 'loc';
 
     if (isset($element['#vocab_personal_name'])) {
@@ -74,7 +72,6 @@ class WebformMultiAgent extends WebformCompositeBase {
     $elements['name_label'] = [
       '#type' => 'textfield',
       '#title' => t('Agent Name'),
-      //'#title_display' => 'invisible',
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
       '#autocomplete_route_parameters' => ['auth_type' => 'loc', 'vocab' => $vocab_personal_name, 'rdftype'=> $rdftype_personal_name ,'count' => 10],
       '#attributes' => [
@@ -86,14 +83,12 @@ class WebformMultiAgent extends WebformCompositeBase {
     $elements['name_uri'] = [
       '#type' => 'url',
       '#title' => t('Agent URL'),
-      //'#title_display' => 'invisible',
       '#attributes' => ['data-strawberry-autocomplete-value' => TRUE]
     ];
 
     $elements['role_label'] = [
       '#type' => 'textfield',
       '#title' => t('Role'),
-      //'#title_display' => 'invisible',
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
       '#autocomplete_route_parameters' => [
         'auth_type' => $role_type,
@@ -129,7 +124,6 @@ class WebformMultiAgent extends WebformCompositeBase {
    *   An associative array containing entity reference details element.
    */
   public static function ajaxCallbackChangeType(array $form, FormStateInterface $form_state) {
-    $trigger_name = $form_state->getTriggeringElement()['#name'];
     $select = $form_state->getTriggeringElement();
     // Interesting... i can actually pass arguments via the original #ajax callback
     // Any argument passed will become a new thing!
@@ -157,9 +151,11 @@ class WebformMultiAgent extends WebformCompositeBase {
     // Called everytime now since we unset
     // at \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformMultiAgent::getDefaultProperties
     $vocab_personal_name = 'names';
-    $rdftype_personal_name = 'thing'; // In case we need a default for WIKIDATA
+    $vocab_family_name = 'names';
     $vocab_corporate_name = 'names';
     $rdftype_corporate_name = 'CorporateName';
+    $rdftype_family_name = 'FamilyName';
+    $rdftype_personal_name = 'thing'; // In case we need a default for WIKIDATA
     $role_type = 'loc';
 
     $element = parent::processWebformComposite($element, $form_state, $complete_form);
@@ -182,22 +178,38 @@ class WebformMultiAgent extends WebformCompositeBase {
     if (isset($element['#vocab_personal_name'])) {
       $vocab_personal_name = $element['#vocab_personal_name'];
     }
-    if (($vocab_personal_name == 'rdftype') && isset($element['#rdftype_personal_name'])) {
-      $rdftype_personal_name = trim($element['#rdftype_personal_name']);
-    }
-
     if (isset($element['#vocab_family_name'])) {
       $vocab_family_name = $element['#vocab_family_name'];
     }
-    if (($vocab_family_name == 'rdftype') && isset($element['#rdftype_family_name'])) {
-      $rdftype_family_name = trim($element['#rdftype_family_name']);
-    }
-
     if (isset($element['#vocab_corporate_name'])) {
       $vocab_corporate_name = $element['#vocab_corporate_name'];
     }
+
+    if (($vocab_personal_name == 'rdftype') && isset($element['#rdftype_personal_name'])) {
+      $rdftype_personal_name = !empty(trim($element['#rdftype_personal_name'])) ? trim($element['#rdftype_personal_name']) : $rdftype_personal_name;
+    }
+    else {
+      // Defaults to full name LoC endpoint
+      $vocab_personal_name = 'names';
+      $rdftype_personal_name = 'thing';
+    }
+
+    if (($vocab_family_name == 'rdftype') && isset($element['#rdftype_family_name'])) {
+      $rdftype_family_name = !empty(trim($element['#rdftype_family_name'])) ? trim($element['#rdftype_family_name']) : $rdftype_family_name;
+    }
+    else {
+      // Defaults to full name LoC endpoint
+      $vocab_family_name = 'names';
+      $rdftype_family_name = 'thing';
+    }
+
     if (($vocab_corporate_name == 'rdftype') && isset($element['#rdftype_corporate_name'])) {
-      $rdftype_corporate_name = trim($element['#rdftype_corporate_name']);
+      $rdftype_corporate_name = !empty(trim($element['#rdftype_corporate_name'])) ? trim($element['#rdftype_corporate_name']) : $rdftype_corporate_name;
+    }
+    else {
+      // Defaults to full name LoC endpoint
+      $vocab_corporate_name = 'names';
+      $rdftype_corporate_name = 'thing';
     }
 
     $autocomplete_label_default =  ['auth_type' => 'loc', 'vocab' => $vocab_personal_name, 'rdftype'=> $rdftype_personal_name ,'count' => 10];
@@ -242,7 +254,7 @@ class WebformMultiAgent extends WebformCompositeBase {
     $element['name_label']['#suffix'] = '</div>';
 
     $element['role_label']['#autocomplete_route_parameters'] =
-      ['auth_type' => $role_type, 'vocab' => 'relators','rdftype' => 'thing',  'count' => 10];
+      ['auth_type' => $role_type, 'vocab' => 'relators', 'rdftype' => 'thing',  'count' => 10];
 
     return $element;
   }
