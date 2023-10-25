@@ -13,11 +13,11 @@
         }
     ],
     "require": {
-        "php": ">=7.4",
+        "php": ">=8",
         "ext-json": "*",
-        "strawberryfield/strawberryfield":"1.1.0.x-dev",
-        "strawberryfield/format_strawberryfield":"1.1.0.x-dev",
-        "drupal/webform": "^6.1.4",
+        "strawberryfield/strawberryfield":"1.2.0.x-dev",
+        "strawberryfield/format_strawberryfield":"1.2.0.x-dev",
+        "drupal/webform": "^6.1.5",
         "ramsey/uuid": "^4"
     }
 }
