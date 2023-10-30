@@ -3,7 +3,7 @@
  * Override polyfill for HTML5 date input and provide support for custom date formats.
  */
 
-(function ($, Modernizr, Drupal) {
+(function ($, Modernizr, once, Drupal) {
 
   'use strict';
 
@@ -26,8 +26,8 @@
    */
   Drupal.behaviors.date = {
     attach: function (context, settings) {
-      var $context = $(context);
-      $context.find('input[data-drupal-date-format]').once('datePicker').each(function () {
+      const elementsToAttach = once('datepicker_attache','input[data-drupal-date-format]', context);
+      $(elementsToAttach).each(function (index, value) {
         var $input = $(this);
 
         // Skip if date inputs are supported by the browser and input is not a text field.
@@ -110,7 +110,6 @@
         // @see https://gist.github.com/niksumeiko/360164708c3b326bd1c8
         var isChrome = (/chrom(e|ium)/.test(window.navigator.userAgent.toLowerCase()));
         $input.attr('autocomplete', (isChrome) ? 'chrome-off-' + Math.floor(Math.random() * 100000000) : 'off');
-        console.log(options);
         $input.datepicker(options);
       });
     }
@@ -126,4 +125,4 @@
     */
   };
 
-})(jQuery, Modernizr, Drupal);
+})(jQuery, Modernizr, once, Drupal);

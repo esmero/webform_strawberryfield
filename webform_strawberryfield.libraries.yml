@@ -3,6 +3,7 @@ webform_strawberryfield.metadataauth.autocomplete:
     js/metadataauth-webform_strawberryfield.js: {}
   dependencies:
     - core/drupal.autocomplete
+    - core/once
 webform_strawberryfield.nodeactions.toggle:
   js:
     js/hidenodeaction-webform_strawberryfield.js: {minified: false}
@@ -11,6 +12,7 @@ webform_strawberryfield.nodeactions.toggle:
     - core/drupal
     - core/drupalSettings
     - core/drupal.form
+    - core/once
 webform_strawberryfield.nodeactions.cameraroll:
   js:
     js/cameraroll-webform_strawberryfield.js : {minified: false}
@@ -19,6 +21,7 @@ webform_strawberryfield.nodeactions.cameraroll:
     - core/drupal
     - core/drupalSettings
     - core/drupal.form
+    - core/once
 scenebuilder_pannellum_strawberry:
   version: 1.0
   js:
@@ -32,6 +35,7 @@ scenebuilder_pannellum_strawberry:
     - core/drupalSettings
     - format_strawberryfield/pannellum
     - format_strawberryfield/iiif_pannellum_strawberry
+    - core/once
 webform_strawberryfield.element.metadatadate:
   version: VERSION
   js:
@@ -39,4 +43,5 @@ webform_strawberryfield.element.metadatadate:
   dependencies:
     - jquery_ui_datepicker/datepicker
     - core/drupalSettings
+    - core/once
 
