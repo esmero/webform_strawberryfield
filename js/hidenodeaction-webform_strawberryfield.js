@@ -3,7 +3,7 @@
  * Expands the behaviour of the default autocompletion to fill 2 fields.
  */
 
-(function ($, Drupal, drupalSettings) {
+(function ($, Drupal, once, drupalSettings) {
 
     'use strict';
 
@@ -40,15 +40,14 @@
                    $('.node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').hide();
                    $('.node-form div[data-drupal-selector="edit-footer"]').not('.webform-actions').hide();
                }
-               var $moderationstate = $('select[data-drupal-selector="edit-moderation-state-0-state"]', context).once('show-hide-actions');
+
+               const elementsToAttach = once('show-hide-actions', 'select[data-drupal-selector="edit-moderation-state-0-state"', context);
+               var $moderationstate =  $(elementsToAttach);
                if ($moderationstate.length) {
-
-                   /* var $select = $moderationstate.on('change', function () {
-                       $('.path-node .node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').show();
-
-                   }); */
+                    // Nothing so far.
                 }
-                var $nodetitle = $('input[data-drupal-selector="edit-title-0-value"]', context).once('show-hide-actions');
+                const elementsToAttach2 = once('show-hide-actions2', 'input[data-drupal-selector="edit-title-0-value"]', context);
+                var $nodetitle = $(elementsToAttach2);
                 if ($nodetitle.length) {
                     var $select = $nodetitle.on('input', function () {
                         $('.node-form div[data-drupal-selector="edit-actions"]').not('.webform-actions').show();
@@ -57,4 +56,4 @@
             }
         }
     }
-})(jQuery, Drupal, drupalSettings);
+})(jQuery, Drupal, once, drupalSettings);

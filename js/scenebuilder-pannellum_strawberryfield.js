@@ -1,4 +1,4 @@
-(function ($, Drupal, drupalSettings, pannellum) {
+(function ($, Drupal, once, drupalSettings, pannellum) {
 
 
 
@@ -64,8 +64,8 @@
 
     Drupal.behaviors.webform_strawberryfield_pannellum_editor = {
         attach: function(context, settings) {
-            $('.strawberry-panorama-item[data-iiif-image]').once('attache_pne')
-                .each(function (index, value) {
+            const elementsToAttach = once('attache_pne', '.strawberry-panorama-item[data-iiif-image]', context);
+            $(elementsToAttach).each(function (index, value) {
                     var hotspots = [];
                     // Get the node uuid for this element
                     var element_id = $(this).attr("id");
@@ -127,4 +127,4 @@
 
                 })}}
 
-})(jQuery, Drupal, drupalSettings, window.pannellum);
+})(jQuery, Drupal, once, drupalSettings, window.pannellum);
