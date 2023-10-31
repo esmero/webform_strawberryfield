@@ -3,7 +3,7 @@
  * Expands the behaviour of the default autocompletion to fill 2 fields.
  */
 
-(function ($, Drupal, drupalSettings) {
+(function ($, Drupal, once, drupalSettings) {
 
     'use strict';
 
@@ -132,10 +132,8 @@
     Drupal.behaviors.webformstrawberryAutocomplete = {
         attach: function (context, settings) {
             // Find all our fields with autocomplete settings
-            $(context)
-                .find('.ui-autocomplete-input[data-strawberry-autocomplete]')
-                .once('strawberry-autocomplete-auth')
-                .each(function () {
+            const elementsToAttach = once('strawberry-autocomplete-auth', '.ui-autocomplete-input[data-strawberry-autocomplete]', context);
+            $(elementsToAttach).each(function (index, value) {
                     var uiAutocomplete = $(this).data('ui-autocomplete');
                     if (!uiAutocomplete) {
                         return;
@@ -204,4 +202,4 @@
 
     Drupal.webformstrawberryAutocomplete = autocomplete;
 
-})(jQuery, Drupal, drupalSettings);
+})(jQuery, Drupal, once, drupalSettings);

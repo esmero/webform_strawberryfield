@@ -104,7 +104,6 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
     }
     $uri = $file->getFileUri();
     //read csv headers
-    ini_set('auto_detect_line_endings', TRUE);
     setlocale(LC_CTYPE, 'en_US.UTF-8');
 
     $index = 0;
@@ -193,7 +192,6 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
 
       $uri = $file->getFileUri();
       //read csv headers
-      ini_set('auto_detect_line_endings', TRUE);
       setlocale(LC_CTYPE, 'en_US.UTF-8');
 
       $index = 0;
