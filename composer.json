@@ -15,10 +15,10 @@
     "require": {
         "php": ">=8.0",
         "ext-json": "*",
-        "strawberryfield/strawberryfield":"1.2.0.x-dev",
-        "strawberryfield/format_strawberryfield":"1.2.0.x-dev",
+        "strawberryfield/strawberryfield":"1.3.0.x-dev",
+        "strawberryfield/format_strawberryfield":"1.3.0.x-dev",
         "drupal/jquery_ui_datepicker": "^2.0",
-        "drupal/webform": "^6.1",
+        "drupal/webform": "^6.2",
         "ramsey/uuid": "^4"
     }
 }
