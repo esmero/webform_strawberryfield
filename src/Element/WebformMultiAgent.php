@@ -28,6 +28,8 @@ class WebformMultiAgent extends WebformCompositeBase {
         '#vocab_corporate_name' => 'names',
         '#rdftype_corporate_name' => 'CorporateName',
         '#role_type' => 'loc',
+        '#name_label' => 'name_label',
+        '#name_uri' => 'name_uri',
       ];
     return $info;
   }
@@ -46,6 +48,14 @@ class WebformMultiAgent extends WebformCompositeBase {
     $rdftype_personal_name = 'thing';
     $role_type = 'loc';
 
+
+    $name_label_key = $element['#name_label'] ?? 'name_label';
+    $name_uri_key = $element['#name_uri'] ?? 'name_uri';
+    $name_label_key = trim($name_label_key);
+    $name_uri_key = trim($name_uri_key);
+
+
+
     if (isset($element['#vocab_personal_name'])) {
       $vocab_personal_name = $element['#vocab_personal_name'];
     }
@@ -61,6 +71,9 @@ class WebformMultiAgent extends WebformCompositeBase {
       '#type' => 'select',
       '#title' => t('Agent Type'),
       '#title_display' => 'invisible',
+      '#attributes' => [
+        'data-source-strawberry-autocomplete-key' => $name_label_key,
+        ],
       '#options' => [
         'corporate' => 'Corporate',
         'personal' => 'Personal',
@@ -69,18 +82,18 @@ class WebformMultiAgent extends WebformCompositeBase {
       '#default_value' => 'Personal'
     ];
 
-    $elements['name_label'] = [
+    $elements[$name_label_key] = [
       '#type' => 'textfield',
       '#title' => t('Agent Name'),
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
       '#autocomplete_route_parameters' => ['auth_type' => 'loc', 'vocab' => $vocab_personal_name, 'rdftype'=> $rdftype_personal_name ,'count' => 10],
       '#attributes' => [
-        'data-source-strawberry-autocomplete-key' => 'name_label',
-        'data-target-strawberry-autocomplete-key' => 'name_uri'
+        'data-source-strawberry-autocomplete-key' => $name_label_key,
+        'data-target-strawberry-autocomplete-key' => $name_uri_key
       ],
 
     ];
-    $elements['name_uri'] = [
+    $elements[$name_uri_key] = [
       '#type' => 'url',
       '#title' => t('Agent URL'),
       '#attributes' => ['data-strawberry-autocomplete-value' => TRUE]
@@ -107,7 +120,7 @@ class WebformMultiAgent extends WebformCompositeBase {
       '#title' => t('Role URL'),
       '#attributes' => ['data-strawberry-autocomplete-value' => TRUE]
     ];
-    $elements['name_label']['#process'][] =  [$class, 'processAutocomplete'];
+    $elements[$name_label_key]['#process'][] =  [$class, 'processAutocomplete'];
     $elements['role_label']['#process'][] =  [$class, 'processAutocomplete'];
     return $elements;
   }
@@ -131,7 +144,7 @@ class WebformMultiAgent extends WebformCompositeBase {
     // Argments to the array on the caller element.
 
     $to_return_parents = array_slice($select['#array_parents'], 0, -1);
-    $to_return_parents[] = 'name_label';
+    $to_return_parents[] = $select['#attributes']['data-source-strawberry-autocomplete-key'] ?? 'name_label';
     $to_return = NestedArray::getValue($form, $to_return_parents);
     $to_return['#autocomplete_route_parameters'] =
       [
@@ -169,6 +182,13 @@ class WebformMultiAgent extends WebformCompositeBase {
       'wrapper' => $unique_id,
       'event' => 'change',
     ];
+    $name_label_key = $element['#name_label'] ?? 'name_label';
+    $name_uri_key = $element['#name_uri'] ?? 'name_uri';
+    $name_label_key = trim($name_label_key);
+    $name_uri_key = trim($name_uri_key);
+
+
+
     $element['agent_type']['#ajax'] = $ajax;
 
     if (isset($element['#role_type'])) {
@@ -248,10 +268,10 @@ class WebformMultiAgent extends WebformCompositeBase {
       }
     }
 
-    $element['name_label']['#autocomplete_route_parameters'] = $autocomplete_label_default;
+    $element[$name_label_key]['#autocomplete_route_parameters'] = $autocomplete_label_default;
 
-    $element['name_label']['#prefix'] = '<div id="'.$unique_id.'">';
-    $element['name_label']['#suffix'] = '</div>';
+    $element[$name_label_key]['#prefix'] = '<div id="'.$unique_id.'">';
+    $element[$name_label_key]['#suffix'] = '</div>';
 
     $element['role_label']['#autocomplete_route_parameters'] =
       ['auth_type' => $role_type, 'vocab' => 'relators', 'rdftype' => 'thing',  'count' => 10];
