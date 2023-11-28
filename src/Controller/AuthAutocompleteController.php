@@ -916,24 +916,31 @@ SPARQL;
       return $results;
     }
 
-    $input = rawurlencode($input);
-    $urlindex = "/mesh/lookup/{$vocab}?label=" . $input .'&limit=10&match=' . $rdftype;
-    $baseurl = 'https://id.nlm.nih.gov';
-    $remoteUrl = $baseurl . $urlindex;
-    $options['headers'] = ['Accept' => 'application/json'];
-    $body = $this->getRemoteJsonData($remoteUrl, $options);
-    $results = [];
-    $jsondata = json_decode($body, TRUE);
-    $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
-      if (count($jsondata) > 1) {
-        foreach ($jsondata as $entry) {
-          $results[] = [
-            'value' => $entry['resource'],
-            'label' => $entry['label'],
-          ];
-        }
+$input_encoded = rawurlencode($input);
+$urlindex = "/mesh/lookup/{$vocab}?label=" . $input_encoded .'&limit=10&match=' . $rdftype;
+$baseurl = 'https://id.nlm.nih.gov';
+$remoteUrl = $baseurl . $urlindex;
+$options['headers'] = ['Accept' => 'application/json'];
+$body = $this->getRemoteJsonData($remoteUrl, $options);
+$results = [];
+$jsondata = json_decode($body, TRUE);
+$json_error = json_last_error();
+if ($json_error == JSON_ERROR_NONE) {
+  if (count($jsondata) > 0) {
+    foreach ($jsondata as $entry) {
+      if (strtolower(trim($entry['label'] ?? '')) == strtolower($input)) {
+        array_unshift($results, [
+          'value' => $entry['resource'],
+          'label' => $entry['label'],
+        ]);
+      } else {
+        $results[] = [
+          'value' => $entry['resource'],
+          'label' => $entry['label'],
+        ];
       }
+    }
+  }
       else {
         $results[] = [
           'value' => NULL,
