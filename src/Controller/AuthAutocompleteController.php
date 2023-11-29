@@ -930,22 +930,22 @@ SPARQL;
         foreach ($jsondata as $entry) {
           if (strtolower(trim($entry['label'] ?? '')) == strtolower($input)) {
             array_unshift($results, [
-            'value' => $entry['resource'],
-            'label' => $entry['label'],
+              'value' => $entry['resource'],
+              'label' => $entry['label'],
             ]);
           } 
           else {
             $results[] = [
-            'value' => $entry['resource'],
-            'label' => $entry['label'],
+              'value' => $entry['resource'],
+              'label' => $entry['label'],
             ];
           }
         }
       }
       else {
         $results[] = [
-        'value' => NULL,
-        'label' => "Sorry no match from MeSH for {$vocab}",
+          'value' => NULL,
+          'label' => "Sorry no match from MeSH for {$vocab}",
         ];
       }
       return $results;
