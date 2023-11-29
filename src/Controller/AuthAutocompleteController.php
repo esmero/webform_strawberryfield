@@ -925,26 +925,27 @@ SPARQL;
     $results = [];
     $jsondata = json_decode($body, TRUE);
     $json_error = json_last_error();
-      if ($json_error == JSON_ERROR_NONE) {
+    if ($json_error == JSON_ERROR_NONE) {
       if (count($jsondata) > 0) {
-      foreach ($jsondata as $entry) {
-      if (strtolower(trim($entry['label'] ?? '')) == strtolower($input)) {
-        array_unshift($results, [
-          'value' => $entry['resource'],
-          'label' => $entry['label'],
-        ]);
-      } else {
-        $results[] = [
-          'value' => $entry['resource'],
-          'label' => $entry['label'],
-        ];
+        foreach ($jsondata as $entry) {
+          if (strtolower(trim($entry['label'] ?? '')) == strtolower($input)) {
+            array_unshift($results, [
+            'value' => $entry['resource'],
+            'label' => $entry['label'],
+            ]);
+          } 
+          else {
+            $results[] = [
+            'value' => $entry['resource'],
+            'label' => $entry['label'],
+            ];
+          }
+        }
       }
-    }
-  }
       else {
         $results[] = [
-          'value' => NULL,
-          'label' => "Sorry no match from MeSH for {$vocab}",
+        'value' => NULL,
+        'label' => "Sorry no match from MeSH for {$vocab}",
         ];
       }
       return $results;
