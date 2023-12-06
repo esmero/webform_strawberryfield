@@ -359,9 +359,9 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     $json_error = json_last_error();
     if ($json_error == JSON_ERROR_NONE) {
       //WIKIdata will give is an success key will always return at least one, the query string
-      if (count($jsondata) > 1) {
-        if ($jsondata['success'] == 1) {
-          foreach ($jsondata['search'] as $key => $item) {
+      if (count($jsondata) > 0) {
+        if (($jsondata['success'] ?? 0) == 1) {
+          foreach (($jsondata['search'] ?? []) as $key => $item) {
             $desc = (isset($item['description'])) ? '(' . $item['description'] . ')' : NULL;
             $results[] = [
               $label = empty($desc) ? $item['label'] : $item['label'] . ' ' . $desc,
@@ -496,11 +496,12 @@ SPARQL;
         $search_terms = str_replace($toremove, ' ', $clean_input);
         $search_terms = array_map('trim', $search_terms);
         $search_terms = array_filter($search_terms);
+        $original_search = $search_terms;
         if (count($search_terms) > 0) {
           $search_terms = strtolower(implode('* ', $search_terms));
           $search_terms = $search_terms.'*'; //adds an extra * for the last term
         }
-        $original_search = $search_terms;
+
         $query_terms = <<<SPARQL
         select distinct ?S ?T ?P ?Note {
           ?S a gvp:Concept; luc:term !searchterm; skos:inScheme <http://vocab.getty.edu/!vocab/>.
@@ -530,7 +531,6 @@ SPARQL;
           '!number' => 10
         ]);
       }
-
 
       $bodies = [];
       $baseurl = 'http://vocab.getty.edu/sparql.json';
@@ -573,18 +573,35 @@ SPARQL;
         $json_error = json_last_error();
         if ($json_error == JSON_ERROR_NONE) {
           if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
+            if (is_array($original_search)) {
+              $original_search_string = implode(" ", $original_search);
+            }
+            else {
+              $original_search_string = $original_search;
+            }
             foreach ($jsondata['results']['bindings'] as $key => $item) {
               // We reapply original search because i had no luck with SPARQL binding the search for exact
               // So we have no T
-              $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search;
+              $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search_string;
               $parent = isset($item['P']['value']) ? ' | Parent of: ' . $item['P']['value'] : '';
               $note = isset($item['Note']['value']) ? ' | (' . $item['Note']['value'] . ')' : '';
               $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
-              $results[] = [
-                'value' => $uri,
-                'label' => $term . $parent . $note,
-                'desc' => $parent . $note,
-              ];
+              if ((strtolower(trim($term ?? '')) == strtolower($original_search_string)) ||
+                str_starts_with(strtolower(trim($term ?? '')), strtolower($original_search_string))
+              ) {
+                array_unshift($results, [
+                  'value' => $uri,
+                  'label' => $term . $parent . $note,
+                  'desc' => $parent . $note,
+                ]);
+              }
+              else {
+                $results[] = [
+                  'value' => $uri,
+                  'label' => $term . $parent . $note,
+                  'desc' => $parent . $note,
+                ];
+              }
             }
           }
         }
@@ -632,8 +649,7 @@ SPARQL;
     $jsondata = json_decode($body, TRUE) ?? [];
     $json_error = json_last_error();
     if ($json_error == JSON_ERROR_NONE) {
-      //WIKIdata will give is an success key will always return at least one, the query string
-      if (count($jsondata) > 1) {
+      if (count($jsondata) > 0) {
         if (isset($jsondata['result']) && is_array($jsondata['result']) && count($jsondata['result']) >= 1) {
           foreach ($jsondata['result'] as $key => $item) {
             $desc = (isset($item['nametype'])) ? '(' . $item['nametype'] . ')' : NULL;
@@ -933,7 +949,7 @@ SPARQL;
               'value' => $entry['resource'],
               'label' => $entry['label'],
             ]);
-          } 
+          }
           else {
             $results[] = [
               'value' => $entry['resource'],
