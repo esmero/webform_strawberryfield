@@ -222,11 +222,11 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     if ($results && is_array($results)) {
       // Cut the results to the desired number
       // Easier than dealing with EACH API's custom return options
+      // Sort by levenstein
+      usort($results, fn($a, $b) => levenshtein($input, $a['label'] ?? '') <=> levenshtein($input, $b['label'] ?? ''));
       if (count($results) > $count) {
         $results = array_slice($results, 0, $count);
       }
-      // Sort by levenstein
-      usort($results, fn($a, $b) => levenshtein($input, $a['label'] ?? '') <=> levenshtein($input, $b['label'] ?? ''));
 
       //setting cache for anonymous or logged in
       if (!$is_internal) {
