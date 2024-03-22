@@ -219,11 +219,11 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       }
     }
     // DO not cache NULL or FALSE. Those will be 401/403/500;
-    if ($results && is_array($results)) {
+    if ($results && is_array($results) && $input) {
       // Cut the results to the desired number
       // Easier than dealing with EACH API's custom return options
-      // Sort by levenstein
-      usort($results, fn($a, $b) => levenshtein($input, $a['label'] ?? '') <=> levenshtein($input, $b['label'] ?? ''));
+      // Sort by levenstein. I need to substract the 'desc' if present. Sorry Allison...
+      usort($results, fn($a, $b) => levenshtein($input, substr($a['label'] ?? '',0,strlen($a['desc'] ?? '') * (-1) )) <=> levenshtein($input, substr($b['label'] ?? '',0,strlen($b['desc'] ?? '')* (-1) )));
       if (count($results) > $count) {
         $results = array_slice($results, 0, $count);
       }
