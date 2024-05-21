@@ -165,10 +165,7 @@ class EntityReference extends DisplayPluginBase {
     $search_api_query = $this->view->query;
 
     $this->id_field_alias = $this->view->query->addField($id_table, $id_field);
-    if (!empty($this->view->live_preview)) {
-      // We hate blind Views on the UI. Give it a starting Match so we can
-      // see the logic happening
-    }
+
 
     // Make sure the id field is included in the results.
     $id_field = $this->view->storage->get('base_field');
@@ -185,7 +182,13 @@ class EntityReference extends DisplayPluginBase {
       'limit' => 0,
       'ids_solr' => NULL,
     ];
+
     $options += $default_options;
+    if (!empty($this->view->live_preview)) {
+      // Reduce the limit bc if Search API Server (solr) has a higher limit, e.g 10K for VBO
+      // the the preview will fail
+      if (!$options['limit' ]) { $options['limit' ] = 10; }
+    }
 
     // Restrict the autocomplete options based on what's been typed already.
     if (isset($options['match_solr']) && !empty($options['match_solr'])) {
@@ -215,7 +218,10 @@ class EntityReference extends DisplayPluginBase {
     if (!empty($options['ids_solr'])) {
       $search_api_query->addWhere(0, $id_field, $options['ids_solr'], 'IN');
     }
-    $this->view->setItemsPerPage($options['limit']);
+    // If someone programaticall already set (e.g Open API) a limit, don't set 0 as limit
+    if (!$this->view->getItemsPerPage()) {
+      $this->view->setItemsPerPage($options['limit']);
+    }
   }
 
   /**
