@@ -83,58 +83,21 @@ class strawberryFieldhandPicker extends WebformHandlerBase
      */
     protected $entityTypeBundleInfo;
 
-  /**
-   * strawberryFieldharvester constructor.
-   *
-   * @param array $configuration
-   * @param $plugin_id
-   * @param $plugin_definition
-   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
-   * @param \Drupal\webform\WebformSubmissionConditionsValidatorInterface $conditions_validator
-   * @param \Drupal\webform\WebformTokenManagerInterface $token_manager
-   * @param \Drupal\Core\File\FileSystemInterface $file_system
-   * @param \Drupal\file\FileUsage\FileUsageInterface $file_usage
-   * @param \Drupal\Component\Transliteration\TransliterationInterface $transliteration
-   * @param \Drupal\Core\Language\LanguageManagerInterface $language_manager
-   * @param \Drupal\Core\Field\FieldTypePluginManager $fieldtype_pluginmanager
-   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface $entitytype_bundleinfo
-   */
-    public function __construct(array $configuration, $plugin_id, $plugin_definition, LoggerChannelFactoryInterface $logger_factory, ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entity_type_manager, WebformSubmissionConditionsValidatorInterface $conditions_validator, WebformTokenManagerInterface $token_manager, FileSystemInterface $file_system, FileUsageInterface $file_usage, TransliterationInterface $transliteration, LanguageManagerInterface $language_manager, FieldTypePluginManager $fieldtype_pluginmanager, EntityTypeBundleInfoInterface $entitytype_bundleinfo) {
-        parent::__construct($configuration, $plugin_id, $plugin_definition, $logger_factory, $config_factory,  $entity_type_manager,  $conditions_validator);
-        $this->entityTypeManager = $entity_type_manager;
-        $this->tokenManager = $token_manager;
-        $this->fileSystem = $file_system;
-        $this->fileUsage = $file_usage;
-        $this->transliteration = $transliteration;
-        $this->languageManager = $language_manager;
-        $this->fieldTypePluginManager = $fieldtype_pluginmanager;
-        $this->entityTypeBundleInfo = $entitytype_bundleinfo;
-    }
-
-
     /**
      * {@inheritdoc}
      */
     public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-        return new static(
-          $configuration,
-          $plugin_id,
-          $plugin_definition,
-          $container->get('logger.factory'),
-          $container->get('config.factory'),
-          $container->get('entity_type.manager'),
-          $container->get('webform_submission.conditions_validator'),
-          $container->get('webform.token_manager'),
-          $container->get('file_system'),
-          // Soft depend on "file" module so this service might not be available.
-          $container->get('file.usage'),
-          $container->get('transliteration'),
-          $container->get('language_manager'),
-          $container->get('plugin.manager.field.field_type'),
-          $container->get('entity_type.bundle.info')
-        );
+
+      $instance = parent::create($container, $configuration, $plugin_id, $plugin_definition);
+      $instance->entityTypeManager =  $container->get('entity_type.manager');
+      $instance->tokenManager =  $container->get('webform.token_manager');
+      $instance->fileSystem = $container->get('file_system');
+      $instance->fileUsage = $container->get('file.usage');
+      $instance->transliteration =  $container->get('transliteration');
+      $instance->languageManager = $container->get('language_manager');
+      $instance->fieldTypePluginManager = $container->get('plugin.manager.field.field_type');
+      $instance->entityTypeBundleInfo = $container->get('entity_type.bundle.info');
+      return $instance;
     }
 
 
