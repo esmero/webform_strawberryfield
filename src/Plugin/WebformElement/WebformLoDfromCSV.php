@@ -85,6 +85,11 @@ class WebformLoDfromCSV extends WebformCompositeBase {
       $element['#element']['#webform_composite_elements']['label']['#autocomplete_route_name'] = $autocomplete_route;
       $element['#element']['#webform_composite_elements']['label']['#autocomplete_route_parameters'] = $autocomplete_route_params;
     }
+    elseif (isset($element['#webform_multiple']) && $element['#webform_multiple'] == FALSE && isset($element['#webform_composite_elements']['label'])) {
+      // Not a multiple one. So assign the Autocomplete route directly to the composite children.
+      $element['#webform_composite_elements']['label']['#autocomplete_route_name'] = $autocomplete_route;
+      $element['#webform_composite_elements']['label']['#autocomplete_route_parameters'] = $autocomplete_route_params;
+    }
 
     // For some reason i can not understand, when multiples are using
     // Tables, the #webform_composite_elements -> 'label' is not used...
