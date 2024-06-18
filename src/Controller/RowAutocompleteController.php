@@ -67,7 +67,7 @@ class RowAutocompleteController extends ControllerBase {
    * Filters against Labels
    *
    */
-  public function handleAutocomplete(Request $request, ContentEntityInterface $node, $label_header, $url_header) {
+  public function handleAutocomplete(Request $request, ContentEntityInterface $node, $label_header, $url_header, $match = 'STARTS_WITH', $limit = 10, $min = 2) {
     $results = [];
     $input = $request->query->get('q');
     $input = Xss::filter($input);
@@ -76,14 +76,15 @@ class RowAutocompleteController extends ControllerBase {
 
     // Find a CSV file in this ADO.
     // Get the typed string from the URL, if it exists.
-    if (!$input) {
+    if (!$input && strlen(trim($input)) < $min) {
       return new JsonResponse($results);
     }
+
     $file = null;
     if ($sbf_fields = \Drupal::service('strawberryfield.utility')->bearsStrawberryfield($node)) {
       $files = $node->get('field_file_drop')->getValue();
-      foreach($files as $offset => $fileinfo) {
-        /** @var \Drupal\file\FileInterface $file|null */
+      foreach ($files as $offset => $fileinfo) {
+        /** @var \Drupal\file\FileInterface $file |null */
         $file = $this->entityTypeManager
           ->getStorage('file')
           ->load($fileinfo['target_id']);
@@ -98,18 +99,31 @@ class RowAutocompleteController extends ControllerBase {
         $label_original_index = array_search($label_header, $column_keys);
         $url_original_index = array_search($url_header, $column_keys);
         $i = 0;
-        if ($label_original_index !== FALSE && $url_original_index !== FALSE ) {
+        if ($label_original_index !== FALSE && $url_original_index !== FALSE) {
           foreach ($file_data_all['data'] as $id => &$row) {
-            if (isset($row[$label_original_index]) && stripos($row[$label_original_index], $input) === 0) {
-              $i++;
+            if (isset($row[$label_original_index])) {
 
-              $results[] = [
-                'value' => $row[$url_original_index],
-                'label' => $row[$label_original_index],
-              ];
-              if ($i == 10) {
-                break;
-              }
+              if ($match == 'STARTS_WITH' && stripos($row[$label_original_index], $input) === 0) {
+                $i++;
+
+                $results[] = [
+                  'value' => $row[$url_original_index],
+                  'label' => $row[$label_original_index],
+                ];
+                if ($i == $limit) {
+                  break;
+                }
+              } else
+                if ($match == 'CONTAINS' && stripos($row[$label_original_index], $input) !== FALSE) {
+                  $i++;
+                  $results[] = [
+                    'value' => $row[$url_original_index],
+                    'label' => $row[$label_original_index],
+                  ];
+                  if ($i == $limit) {
+                    break;
+                  }
+                }
             }
           }
         }

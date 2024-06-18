@@ -66,6 +66,9 @@ class WebformLoDfromCSV extends WebformCompositeBase {
         'node' =>  $element['#autocomplete_items'],
         'label_header' => $element['#autocomplete_label_header'] ?? $properties['autocomplete_label_header'],
         'url_header' => $element['#autocomplete_url_header'] ?? $properties['autocomplete_url_header'],
+        'match' => $element['#autocomplete_match_operator'] ?? $properties['autocomplete_match_operator'],
+        'limit' => $element['#autocomplete_limit'] ?? $properties['autocomplete_limit'],
+        'min' => $element['#autocomplete_match'] ?? $properties['autocomplete_match'],
       ];
     }
   }

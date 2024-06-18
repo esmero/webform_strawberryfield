@@ -60,7 +60,7 @@ webform_strawberryfield.element.autocomplete:
     _entity_access: 'webform.submission_create'
 
 webform_strawberryfield.rowsbylabel.autocomplete:
-  path: '/webform_strawberry/csv_autocomplete/{node}/{label_header}/{url_header}'
+  path: '/webform_strawberry/csv_autocomplete/{node}/{label_header}/{url_header}/{match}/{limit}/{min}'
   options:
     parameters:
       node:
@@ -70,6 +70,9 @@ webform_strawberryfield.rowsbylabel.autocomplete:
   defaults:
     label_header: 'label'
     url_header: 'url'
+    match: 'STARTS_WITH'
+    limit: 10
+    min: 2
     _controller: '\Drupal\webform_strawberryfield\Controller\RowAutocompleteController::handleAutocomplete'
     _format: json
   requirements:
