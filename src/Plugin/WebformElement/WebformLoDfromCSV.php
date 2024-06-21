@@ -41,6 +41,7 @@ class WebformLoDfromCSV extends WebformCompositeBase {
         'autocomplete_match' => 3,
         'autocomplete_label_header' => 'label',
         'autocomplete_url_header' => 'url',
+        'autocomplete_desc_headers' => '',
         'autocomplete_match_operator' => 'CONTAINS',
       ] + parent::defineDefaultProperties()
       + $this->defineDefaultMultipleProperties();
@@ -62,6 +63,16 @@ class WebformLoDfromCSV extends WebformCompositeBase {
 
     if (isset($element['#webform_key'])) {
       $element['#autocomplete_route_name'] = 'webform_strawberryfield.rowsbylabel.autocomplete';
+      $desc = $element['#autocomplete_desc_headers'] ?? $properties['autocomplete_desc_headers'];
+      if (is_string($desc) && strlen(trim($desc)) > 0 ) {
+        $desc = explode(',', $desc);
+        $desc = array_slice($desc, 0, 2);
+        $desc = array_map('trim', $desc);
+        $desc = implode(',', $desc);
+      }
+      else {
+        $desc = '';
+      }
       $element['#autocomplete_route_parameters'] = [
         'node' =>  $element['#autocomplete_items'],
         'label_header' => $element['#autocomplete_label_header'] ?? $properties['autocomplete_label_header'],
@@ -69,6 +80,7 @@ class WebformLoDfromCSV extends WebformCompositeBase {
         'match' => $element['#autocomplete_match_operator'] ?? $properties['autocomplete_match_operator'],
         'limit' => $element['#autocomplete_limit'] ?? $properties['autocomplete_limit'],
         'min' => $element['#autocomplete_match'] ?? $properties['autocomplete_match'],
+        'desc_headers' =>  $desc,
       ];
     }
   }
@@ -160,6 +172,11 @@ class WebformLoDfromCSV extends WebformCompositeBase {
       '#type' => 'textfield',
       '#title' => $this->t('The CSV column(header name) that will be used for the URL value'),
       '#required' => TRUE,
+    ];
+    $form['autocomplete']['autocomplete_desc_headers'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('The CSV columns(header names), separated by a comma, that will be used for additional context/description. Leave empty if not used. It has a limited of 2 headers. Any extra ones will be ignored.'),
+      '#required' => FALSE,
     ];
     $form['autocomplete']['autocomplete_limit'] = [
       '#type' => 'number',
