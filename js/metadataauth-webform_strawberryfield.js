@@ -64,7 +64,69 @@
         return settings;
     };
 
+  /**
+   * Overrides Drupal.autocomplete.options.source so we can avoid the opinionated cache
+   */
+
+  Drupal.autocomplete.options.source = function sourceData(request, response) {
+    const elementId = this.element.attr('id');
+    var options = Drupal.autocomplete.options;
+    const is_sbf = this.element.data('strawberry-autocomplete');
+
+    if (!(elementId in  Drupal.autocomplete.cache)) {
+      Drupal.autocomplete.cache[elementId] = {};
+    }
+
     /**
+     * Filter through the suggestions removing all terms already tagged and
+     * display the available terms to the user.
+     *
+     * @param {object} suggestions
+     *   Suggestions returned by the server.
+     */
+    function showSuggestions(suggestions) {
+      const tagged =  Drupal.autocomplete.splitValues(request.term);
+      const il = tagged.length;
+      for (let i = 0; i < il; i++) {
+        const index = suggestions.indexOf(tagged[i]);
+        if (index >= 0) {
+          suggestions.splice(index, 1);
+        }
+      }
+      response(suggestions);
+    }
+
+    // Get the desired term and construct the autocomplete URL for it.
+    const term =  Drupal.autocomplete.extractLastTerm(request.term);
+
+    /**
+     * Transforms the data object into an array and update autocomplete results.
+     *
+     * @param {object} data
+     *   The data sent back from the server.
+     */
+    function sourceCallbackHandler(data) {
+      if (!is_sbf) {
+        Drupal.autocomplete.cache[elementId][term] = data;
+      }
+
+      // Send the new string array of terms to the jQuery UI list.
+      showSuggestions(data);
+    }
+
+    // Check if the term is already cached.
+    if (Drupal.autocomplete.cache[elementId].hasOwnProperty(term) && !is_sbf) {
+      showSuggestions(Drupal.autocomplete.cache[elementId][term]);
+    } else {
+      const options = $.extend(
+        { success: sourceCallbackHandler, data: { q: term } },
+        Drupal.autocomplete.ajax,
+      );
+      $.ajax(this.element.attr('data-autocomplete-path'), options);
+    }
+  }
+
+  /**
      * Overrides  Drupal.autocomplete.options.search for no splitting of terms
      *
      * This is the only function where even is present, means we can decide per instance
