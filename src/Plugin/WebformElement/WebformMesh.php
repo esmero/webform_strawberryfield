@@ -84,6 +84,15 @@ class WebformMesh extends WebformCompositeBase {
           'count' => 10
         ];
     }
+    elseif (isset($element['#webform_multiple']) && $element['#webform_multiple'] == FALSE && isset($element['#webform_composite_elements']['label'])) {
+      $element['#webform_composite_elements']['label']["#autocomplete_route_parameters"] =
+        [
+          'auth_type' => 'mesh',
+          'vocab' => $vocab,
+          'rdftype' => $matchtype,
+          'count' => 10
+        ];
+    }
     // For some reason i can not understand, when multiples are using
     // Tables, the #webform_composite_elements -> 'label' is not used...
     if (isset($element["#multiple__header"]) && $element["#multiple__header"] == true) {
