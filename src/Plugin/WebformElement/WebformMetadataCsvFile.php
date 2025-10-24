@@ -111,7 +111,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
     //@TODO. Can we require a list of headers? Check against a list?
 
     if (($handle = fopen($uri, "r")) !== FALSE) {
-      while (($csvdata = fgetcsv($handle, "2048", ",")) !== FALSE) {
+      while (($csvdata = fgetcsv($handle, 0, ",")) !== FALSE) {
         $index++;
         if ($index < 2) {
           foreach ($csvdata as $values) {
@@ -198,7 +198,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
       $headers = [];
       //@TODO. Can we require a list of headers? Check against a list?
       if (($handle = fopen($uri, "r")) !== FALSE) {
-        while (($csvdata = fgetcsv($handle, "2048", ",")) !== FALSE) {
+        while (($csvdata = fgetcsv($handle, 0, ",")) !== FALSE) {
           $index++;
           if ($index < 2) {
             foreach ($csvdata as $values) {
