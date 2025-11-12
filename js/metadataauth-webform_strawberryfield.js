@@ -16,6 +16,8 @@
      * Override of Drupal.autocomplete.splitValues to deal with metadata that contains ',' like names.
      */
     function autocompleteDoNotSplitValues(value) {
+        // RE-implement deprecated in JQUERY 4.x trim.
+        $.trim = text => String(text ?? "").trim();
         var result = [];
         var quote = false;
         var current = '';
@@ -27,6 +29,7 @@
             current += character;
         }
         if (value.length > 0) {
+            $.trim = text => String(text ?? "").trim();
             result.push($.trim(current));
         }
 
