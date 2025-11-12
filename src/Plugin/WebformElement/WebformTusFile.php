@@ -106,7 +106,7 @@ class WebformTusFile extends WebformManagedFileBase {
     // Deprecated in Drupal 10.2+
     //$element['#upload_validators']['file_validate_size'] = [$this->getMaxFileSizeTus($element)];
     $element['#upload_validators']['FileSizeLimit'] =  ['fileLimit' => $this->getMaxFileSizeTus($element)];
-    $element['#upload_validators']['file_validate_extensions'] = [$this->getFileExtensions($element)];
+    $element['#upload_validators']['FileExtension'] = ['extensions' => $this->getFileExtensions($element)];
     // Define 'webform_file_validate_extensions' which allows file
     // extensions within webforms to be comma-delimited. The
     // 'webform_file_validate_extensions' will be ignored by file_validate().
@@ -121,7 +121,7 @@ class WebformTusFile extends WebformManagedFileBase {
     // file upload help only.
     $upload_validators = $element['#upload_validators'];
     if ($file_limit) {
-      $upload_validators['webform_file_limit'] = [Bytes::toNumber($file_limit)];
+      $upload_validators['webform_file_limit'] = Bytes::toNumber($file_limit);
     }
     $file_upload_help = [
       '#theme' => 'file_upload_help',
@@ -195,7 +195,7 @@ class WebformTusFile extends WebformManagedFileBase {
     // Element.
     $url = Url::fromRoute('webform_strawberryfield.tus.upload', ['webform' => $element['#webform'],'key' => $element['#webform_key']],  ['absolute' => TRUE]);
     $token = \Drupal::csrfToken()->get(\Drupal\Core\Access\CsrfRequestHeaderAccessCheck::TOKEN_KEY);
-    $valid_extensions = $element['#upload_validators']['file_validate_extensions'][0] ?? '';
+    $valid_extensions = $element['#upload_validators']['FileExtension']['extensions'] ?? '';
     $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['url'] =  $url->toString();
     $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['X-CSRF-Token'] = $token;
     $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['X-TUS-Extensions'] = $valid_extensions;
