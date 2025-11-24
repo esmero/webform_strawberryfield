@@ -164,7 +164,6 @@
     var originalextractLastTerm = Drupal.autocomplete.extractLastTerm;
 
     Drupal.autocomplete.splitValues = function autocompleteSplitValues(value) {
-        console.log('our own splitValues');
         // If global class flag set, use our own.
         // Global is only way i found here. I have no context of the element here
         // But also, since humans can only use one mouse at the time
@@ -178,7 +177,6 @@
     }
 
     Drupal.autocomplete.extractLastTerm = function extractLastTerm(terms) {
-        console.log('our own extractLastTerm');
         if (Drupal.autocomplete.options.sbf) {
             return autocompleteDoNotSplitValues(terms).pop()
         } else {
@@ -222,7 +220,6 @@
                         // Invert value/label. Put label inside autocomplete, value in the next uri input
                         // This piece helps users disambiguate if the handler gives us a description too.
                         if ((ui.item.desc) && (ui.item.desc.length)) {
-                            console.log('Additional Description is :' + ui.item.desc);
                             ui.item.label = ui.item.label.substring(0, ui.item.label.indexOf(ui.item.desc));
                         }
                         var tempvalue = ui.item.value.trim();
