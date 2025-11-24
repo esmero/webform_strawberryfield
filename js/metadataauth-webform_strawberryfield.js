@@ -153,7 +153,7 @@
 
         var term = Drupal.autocomplete.extractLastTerm(event.target.value);
 
-        if (term.length > 0 && options.firstCharacterBlacklist.indexOf(term[0]) !== -1) {
+        if (term.length > 0 && options.firstCharacterDenyList.indexOf(term[0]) !== -1) {
             return false;
         }
 
