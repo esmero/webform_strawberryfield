@@ -1,0 +1,6 @@
+entity.webform_sbf_lod_endpoint.add_form:
+  route_name: entity.webform_sbf_lod_endpoint.add_form
+  title: 'Add Custom LoD Endpoint'
+  appears_on:
+    - entity.webform_sbf_lod_endpoint.collection
+

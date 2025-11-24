@@ -33,6 +33,7 @@ class WebformMultiAgent extends WebformCompositeBase {
         '#agent_type' => 'agent_type',
         '#role_label' => 'role_label',
         '#role_uri' => 'role_uri',
+        '#role_custom_lod' => '',
       ];
     return $info;
   }
@@ -70,6 +71,21 @@ class WebformMultiAgent extends WebformCompositeBase {
     if (isset($element['#role_type'])) {
       $role_type = $element['#role_type'];
     }
+    $role_label_route_name = 'webform_strawberryfield.auth_autocomplete';
+    $role_label_route_parameters = [
+      'auth_type' => $role_type,
+      'vocab' => 'relators',
+      'rdftype' => 'thing',
+      'count' => 10
+    ];
+
+    if ($role_type == "customlod" && isset($element['#role_custom_lod'])) {
+      $role_label_route_name = 'webform_strawberryfield.custom_lod';
+      $role_label_route_parameters = [
+        'custom_lod_entity_id' => $element['#role_custom_lod']
+      ];
+    }
+
 
     $elements[$agent_type_key] = [
       '#type' => 'select',
@@ -130,13 +146,8 @@ class WebformMultiAgent extends WebformCompositeBase {
       '#help' => $element['#role_label__help'] ?? '',
       '#required' => $element['#role_label__required'] ?? FALSE,
       '#other__placeholder' => $element['#role_label__placeholder'] ?? '',
-      '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
-      '#autocomplete_route_parameters' => [
-        'auth_type' => $role_type,
-        'vocab' => 'relators',
-        'rdftype' => 'thing',
-        'count' => 10
-      ],
+      '#autocomplete_route_name' => $role_label_route_name,
+      '#autocomplete_route_parameters' => $role_label_route_parameters,
       '#attributes' => [
         'data-source-strawberry-autocomplete-key' => $role_label_key,
         'data-target-strawberry-autocomplete-key' => $role_uri_key
@@ -313,14 +324,6 @@ class WebformMultiAgent extends WebformCompositeBase {
     $element[$name_label_key]['#prefix'] = '<div id="' . $unique_id . '">';
     $element[$name_label_key]['#suffix'] = '</div>';
 
-    $element['role_label']['#autocomplete_route_parameters'] =
-      [
-        'auth_type' => $role_type,
-        'vocab' => 'relators',
-        'rdftype' => 'thing',
-        'count' => 10
-      ];
-
     return $element;
   }
 
@@ -351,11 +354,11 @@ class WebformMultiAgent extends WebformCompositeBase {
     // Because this is called recursively, chances are the key mappings won't exist
     // at deeper levels, so we check with an isset().
     $key_mappings = [
-      trim($element['#name_label'] ?? '') ?? 'name_label '=> 'name_label',
-      trim($element['#name_uri'] ?? '') ?? 'name_uri' => 'name_uri',
-      trim($element['#agent_type'] ?? '') ?? 'agent_type' => 'agent_type',
-      trim($element['#role_label'] ?? '') ?? 'role_label' =>  'role_label',
-      trim($element['#role_uri'] ?? '') ?? 'role_uri' => 'role_uri',
+        trim($element['#name_label'] ?? '') ?? 'name_label '=> 'name_label',
+        trim($element['#name_uri'] ?? '') ?? 'name_uri' => 'name_uri',
+        trim($element['#agent_type'] ?? '') ?? 'agent_type' => 'agent_type',
+        trim($element['#role_label'] ?? '') ?? 'role_label' =>  'role_label',
+        trim($element['#role_uri'] ?? '') ?? 'role_uri' => 'role_uri',
     ];
     // $composite_elements already holds the new keys
     foreach ($composite_elements as $composite_key => &$composite_element) {
