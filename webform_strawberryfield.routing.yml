@@ -112,5 +112,20 @@ webform_strawberryfield.tus.upload_complete:
     uuid: '[a-zA-Z0-9\-]+'
   options:
     no_cache: TRUE
-    webform:
-      type: 'entity:webform'
+    parameters:
+      webform:
+        type: 'entity:webform'
+
+webform_strawberryfield.custom_lod:
+  path: '/webform_strawberry/custom_lod_autocomplete/{custom_lod_entity_id}'
+  defaults:
+    _controller: '\Drupal\webform_strawberryfield\Controller\CustomLoDendpointController::handleAutocomplete'
+    _format: json
+    count: 1
+  requirements:
+    _permission: 'access content'
+    _csrf_token: 'TRUE'
+  options:
+    parameters:
+      custom_lod_entity_id:
+        type: 'entity:webform_sbf_lod_endpoint'
