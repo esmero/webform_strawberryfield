@@ -62,6 +62,10 @@ class WebformLoDfromCustomLod extends WebformSBFLoD {
    *   An element.
    */
   protected function prepareMultipleWrapper(array &$element) {
+    $element['#autocomplete_route_name'] = 'webform_strawberryfield.custom_lod';
+    $element['#autocomplete_route_parameters'] = [
+      'custom_lod_entity_id' => $element['#custom_lod'],
+    ];
     $autocomplete_route =  $element['#autocomplete_route_name'];
     $autocomplete_route_params = $element['#autocomplete_route_parameters'];
     parent::prepareMultipleWrapper($element);
