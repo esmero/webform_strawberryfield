@@ -1,6 +1,6 @@
 {
     "name": "strawberryfield/webform_strawberryfield",
-    "description": "A Webform/strawberryfield integration module for Drupal 10/11",
+    "description": "A Webform/strawberryfield integration module for Drupal 11",
     "type": "drupal-module",
     "license": "GPL-2.0+",
     "homepage": "https://github.com/esmero/webform_strawberryfield",
@@ -15,9 +15,9 @@
     "require": {
         "php": ">=8.1",
         "ext-json": "*",
-        "strawberryfield/strawberryfield":"1.6.0.x-dev",
-        "strawberryfield/format_strawberryfield":"1.6.0.x-dev",
-        "drupal/jquery_ui_datepicker": "^2.0",
+        "strawberryfield/strawberryfield":"2.0.0.x-dev",
+        "strawberryfield/format_strawberryfield":"2.0.0.x-dev",
+        "drupal/jquery_ui_datepicker": "^2.1",
         "drupal/webform": "^6.2",
         "ramsey/uuid": "^4",
         "ankitpokhrel/tus-php": "^2"
