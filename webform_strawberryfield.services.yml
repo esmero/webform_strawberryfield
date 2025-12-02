@@ -10,4 +10,6 @@ services:
   webform_strawberryfield.tus.server:
     class: Drupal\webform_strawberryfield\WebformStrawberryTusServerService
     arguments: ['@token', '@file.usage', '@entity_type.manager', '@file_system', '@config.factory', '@current_user', '@event_dispatcher', '@webform_strawberryfield.tus.cache']
-
+  webform_strawberryfield.custom_lod_endpoint_manager:
+    class: Drupal\webform_strawberryfield\Plugin\CustomLoDendpointManager
+    parent: default_plugin_manager

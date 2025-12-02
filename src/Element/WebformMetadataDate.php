@@ -87,9 +87,9 @@ class WebformMetadataDate extends FormElement {
       '#description_display',
       '#help_title',
       '#help_display',
-      '#title_display',
-      '#label_display',
     ];
+    // The fact that date_from used to have label display and title display in 1.5.0
+    // disables the form required class! Damn drupal. Removed.
 
     $date_from_value = NULL;
     $date_to_value = NULL;
@@ -326,9 +326,42 @@ class WebformMetadataDate extends FormElement {
         ]
       ];
     }
+    // If the whole element is set as required, we move from Form validation
+    // to JS/States one (bc the form itself can't act on modals here
+    // and we unrequire all children.
+    // We re-add them using the input type later down there.
+    if (isset($element['#required']) && $element['#required'] == TRUE) {
+      $element['date_from']['#required'] = FALSE;
+      $element['date_to']['#required'] = FALSE;
+      $element['date_free']['#required'] = FALSE;
+      $element['date_from']['#states']['required'] = [
+        [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_point']],
+        'or',
+        [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_range']],
+      ];
+      $element['date_to']['#states']['required'] = [
+        [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_range']],
+      ];
+      $element['date_free']['#states']['required'] = [
+        [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_free']],
+        'or',
+        [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_edtf']],
+      ];
+      if (in_array($type, ["date_point", "date_range"])) {
+          $element['date_from']['#required'] = TRUE;
+      }
+      if (in_array($type, ["date_range"])) {
+        $element['date_to']['#required'] = TRUE;
+      }
+      if (in_array($type, ["date_free", "date_edtf"])) {
+        $element['date_free']['#required'] = TRUE;
+      }
+    }
+    // Sadly, this will mark them as required but won't do a thing
+   // @see https://www.drupal.org/project/webform/issues/3110324
 
     // Don't require the main element.
-    $element['#required'] = FALSE;
+    //$element['#required'] = FALSE;
 
     // Remove properties that are being applied to the sub elements.
     unset(
@@ -384,7 +417,8 @@ class WebformMetadataDate extends FormElement {
         $makeshift_element['#parents'] = $multi_item_parents;
         $form_state->setValueForElement($makeshift_element, NULL);
       }
-    } else {
+    }
+    else {
       if (!empty($element['#value'])) {
         $value = $form_state->getValue($element['#parents'], []);
         $filtered_value = array_filter($value);
@@ -394,7 +428,8 @@ class WebformMetadataDate extends FormElement {
         // that case.
         if (count($filtered_value) == 1 && isset($filtered_value['date_type'])) {
           $element['#value'] = [];
-        } else {
+        }
+        else {
           if (in_array($value['date_type'], ['date_edtf', 'date_free'])) {
             unset($value['date_from']);
             unset($value['date_to']);
@@ -406,7 +441,7 @@ class WebformMetadataDate extends FormElement {
     }
 
     // Perform edtf validation on freeform date if so configured.
-    if((!empty($metadatadate_element['#edtf_validateme']) || ($element['#value']['date_type'] == 'date_edtf')) && !empty($element['#value']['date_free'])) {
+    if((!empty($metadatadate_element['#edtf_validateme']) || ($metadatadate_element['#value']['date_type'] == 'date_edtf')) && !empty($metadatadate_element['#value']['date_free'])) {
       $validator = EdtfFactory::newValidator();
       if (!$validator->isValidEdtf($element['#value']['date_free'])) {
         $form_state->setError($element['date_free'],
@@ -414,6 +449,9 @@ class WebformMetadataDate extends FormElement {
             [
               '@name' => $element['#title'],
             ]));
+      }
+      else {
+        $element['#validated'] = TRUE;
       }
     }
   }
