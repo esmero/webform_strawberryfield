@@ -1,0 +1,6 @@
+entity.webform_sbf_lod_endpoint.collection:
+  title: 'Webform Strawberryfield Custom LoD Endpoints'
+  route_name: entity.webform_sbf_lod_endpoint.collection
+  description: 'Custom LoD configured Endpoints'
+  parent: system.admin_structure
+  weight: 99

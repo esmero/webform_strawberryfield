@@ -16,6 +16,8 @@
      * Override of Drupal.autocomplete.splitValues to deal with metadata that contains ',' like names.
      */
     function autocompleteDoNotSplitValues(value) {
+        // RE-implement deprecated in JQUERY 4.x trim.
+        $.trim = text => String(text ?? "").trim();
         var result = [];
         var quote = false;
         var current = '';
@@ -27,6 +29,7 @@
             current += character;
         }
         if (value.length > 0) {
+            $.trim = text => String(text ?? "").trim();
             result.push($.trim(current));
         }
 
@@ -150,7 +153,7 @@
 
         var term = Drupal.autocomplete.extractLastTerm(event.target.value);
 
-        if (term.length > 0 && options.firstCharacterBlacklist.indexOf(term[0]) !== -1) {
+        if (term.length > 0 && options.firstCharacterDenyList.indexOf(term[0]) !== -1) {
             return false;
         }
 
@@ -161,7 +164,6 @@
     var originalextractLastTerm = Drupal.autocomplete.extractLastTerm;
 
     Drupal.autocomplete.splitValues = function autocompleteSplitValues(value) {
-        console.log('our own splitValues');
         // If global class flag set, use our own.
         // Global is only way i found here. I have no context of the element here
         // But also, since humans can only use one mouse at the time
@@ -175,7 +177,6 @@
     }
 
     Drupal.autocomplete.extractLastTerm = function extractLastTerm(terms) {
-        console.log('our own extractLastTerm');
         if (Drupal.autocomplete.options.sbf) {
             return autocompleteDoNotSplitValues(terms).pop()
         } else {
@@ -219,7 +220,6 @@
                         // Invert value/label. Put label inside autocomplete, value in the next uri input
                         // This piece helps users disambiguate if the handler gives us a description too.
                         if ((ui.item.desc) && (ui.item.desc.length)) {
-                            console.log('Additional Description is :' + ui.item.desc);
                             ui.item.label = ui.item.label.substring(0, ui.item.label.indexOf(ui.item.desc));
                         }
                         var tempvalue = ui.item.value.trim();

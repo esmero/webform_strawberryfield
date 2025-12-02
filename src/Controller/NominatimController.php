@@ -6,6 +6,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Site\Settings;
+use GuzzleHttp\ClientInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
@@ -36,9 +37,9 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
   /**
    * NominatimController constructor.
    *
-   * @param \GuzzleHttp\Client $httpClient
+   * @param \GuzzleHttp\ClientInterface $httpClient
    */
-  public function __construct(Client $httpClient) {
+  public function __construct(ClientInterface $httpClient) {
     $this->httpClient = $httpClient;
   }
 
