@@ -27,11 +27,6 @@ class RowAutocompleteController extends ControllerBase {
   protected $entityTypeManager;
 
   /**
-   * @var \Drupal\ami\AmiUtilityService
-   */
-  protected $AmiUtilityService;
-
-  /**
    * The Strawberry Field Utility Service.
    *
    * @var \Drupal\strawberryfield\StrawberryfieldUtilityService
@@ -39,7 +34,7 @@ class RowAutocompleteController extends ControllerBase {
   protected $strawberryfieldUtility;
 
   /**
-   * Constructs a AmiMultiStepIngestBaseForm.
+   * Constructs a CSV Row Autocomplete Controller.
    *
    * @param \Drupal\ami\AmiUtilityService                         $ami_utility
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface        $entity_type_manager
@@ -47,7 +42,6 @@ class RowAutocompleteController extends ControllerBase {
    */
   public function __construct(AmiUtilityService $ami_utility,  EntityTypeManagerInterface $entity_type_manager, StrawberryfieldUtilityService $sbf_utility) {
     $this->entityTypeManager = $entity_type_manager;
-    $this->AmiUtilityService = $ami_utility;
     $this->strawberryfieldUtility = $sbf_utility;
   }
 
@@ -56,7 +50,6 @@ class RowAutocompleteController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('ami.utility'),
       $container->get('entity_type.manager'),
       $container->get('strawberryfield.utility')
     );
@@ -87,7 +80,7 @@ class RowAutocompleteController extends ControllerBase {
     }
 
     $file = null;
-    if ($sbf_fields = \Drupal::service('strawberryfield.utility')->bearsStrawberryfield($node)) {
+    if ($sbf_fields = $this->strawberryfieldUtility->bearsStrawberryfield($node)) {
       $files = $node->get('field_file_drop')->getValue();
       foreach ($files as $offset => $fileinfo) {
         /** @var \Drupal\file\FileInterface $file |null */
@@ -100,7 +93,7 @@ class RowAutocompleteController extends ControllerBase {
         }
       }
       if ($file) {
-        $file_data_all = $this->AmiUtilityService->csv_read($file, 0, 0, TRUE);
+        $file_data_all = $this->strawberryfieldUtility->csv_read($file, 0, 0, TRUE, TRUE, 'strawberryfield_webform');
         $column_keys = $file_data_all['headers'] ?? [];
         $label_original_index = array_search($label_header, $column_keys);
         $url_original_index = array_search($url_header, $column_keys);

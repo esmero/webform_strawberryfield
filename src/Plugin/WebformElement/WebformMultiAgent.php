@@ -26,24 +26,25 @@ use Drupal\Core\Render\Element;
  *   states_wrapper = TRUE,
  * )
  */
-class WebformMultiAgent extends WebformCompositeBase {
+class WebformMultiAgent extends WebformSBFLoD {
 
 
   protected function defineDefaultBaseProperties() {
     return [
-      'vocab_personal_name' => '',
-      'rdftype_personal_name' => '',
-      'vocab_family_name' => '',
-      'rdftype_family_name' => '',
-      'vocab_corporate_name' => '',
-      'rdftype_corporate_name' => '',
-      'agent_type' => '',
-      'role_type' => '',
-      'name_label' => '',
-      'name_uri' => '',
-      'role_label' => '',
-      'role_uri' => '',
-    ] + parent::defineDefaultBaseProperties();
+        'vocab_personal_name' => '',
+        'rdftype_personal_name' => '',
+        'vocab_family_name' => '',
+        'rdftype_family_name' => '',
+        'vocab_corporate_name' => '',
+        'rdftype_corporate_name' => '',
+        'agent_type' => '',
+        'role_type' => '',
+        'role_custom_lod' => '',
+        'name_label' => '',
+        'name_uri' => '',
+        'role_label' => '',
+        'role_uri' => '',
+      ] + parent::defineDefaultBaseProperties();
   }
 
   public function getDefaultProperties() {
@@ -56,6 +57,7 @@ class WebformMultiAgent extends WebformCompositeBase {
         'vocab_corporate_name' => '',
         'rdftype_corporate_name' => '',
         'role_type' => '',
+        'role_custom_lod' => '',
         'name_label' => 'name_label',
         'name_uri' => 'name_uri',
         'agent_type' => 'agent_type',
@@ -178,7 +180,7 @@ class WebformMultiAgent extends WebformCompositeBase {
       '#title' => $this->t("What LoC Autocomplete Source Provider to use for Personal Names."),
       '#description' => $this->t('See <a href="http://id.loc.gov">Linked Data Service</a>. If the link is to an Authority at http://id.loc.gov/authorities/names then the value to use there is <em>names</em>'),
     ];
-     $form['composite']['rdftype_personal_name'] = [
+    $form['composite']['rdftype_personal_name'] = [
       '#type' => 'textfield',
       '#title' => $this->t("What RDF type to use as filter for Personal Names"),
       '#description' => $this->t('See <a href="http://id.loc.gov/ontologies/madsrdf/v1.html">Use one of the Classes listed here</a>. Defaults to <em>FullName</em>'),
@@ -192,7 +194,7 @@ class WebformMultiAgent extends WebformCompositeBase {
     // PLEASE NEVER FORGET!!!
     // If the value saved is the default
     // as in  \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformMultiAgent::getDefaultProperties
-    // the  it is actually not saved!
+    // the it is actually not saved!
     // Which really is so silly...
     // So we set defaults to empty
     // Or getting them on the actual element implies reinitializing the webform
@@ -238,6 +240,8 @@ class WebformMultiAgent extends WebformCompositeBase {
         ],
       ],
     ];
+
+
     $form['composite']['role_type'] = [
       '#title' => $this->t("What Source to use for Role Definition"),
       '#type' => 'select',
@@ -248,6 +252,25 @@ class WebformMultiAgent extends WebformCompositeBase {
       '#description' => $this->t('What source is to be used for Role assignment to Agents'),
       '#default_value' => 'loc',
     ];
+    $custom_lod_endpoints = $this->getCustomLoDEndpoints(TRUE);
+    if (!empty($custom_lod_endpoints)) {
+      $form['composite']['role_type'] ['#options']['customlod'] = 'Custom LoD Endpoint';
+      $form['composite']['role_custom_lod'] = [
+        '#title' => $this->t("Which Custom LoD Endpoint for Roles"),
+        '#type' => 'select',
+        '#options' => $custom_lod_endpoints,
+        '#empty_option' => 'Select an Active Custom LoD endpoint',
+        '#description' => $this->t('What Custom LoD Endpoint is to be used for Role assignment to Agents'),
+        '#states' => [
+          'visible' => [
+            ':input[name="properties[role_type]"]' => ['value' => 'customlod'],
+          ],
+          'required' => [
+            ':input[name="properties[role_type]"]' => ['value' => 'customlod'],
+          ],
+        ],
+      ];
+    }
 
     return $form;
   }
