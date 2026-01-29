@@ -402,7 +402,6 @@ class WebformMetadataDate extends MetadataDateBase {
         $newvalue = $value;
       }
     }
-    error_log(print_r($newvalue, true));
     $webform_submission->setElementData($key,$newvalue);
   }
 }
