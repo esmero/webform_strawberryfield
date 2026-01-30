@@ -33,16 +33,22 @@ class WebformEdftDate extends Textfield {
    * Validates EDTF
    */
   public static function validateMetadataDates(&$element, FormStateInterface $form_state, &$complete_form) {
-    $validator = EdtfFactory::newValidator();
-    if (!$validator->isValidEdtf($element['#value'])) {
-      $form_state->setError($element,
-        t('The extended date time format string for the @name field is invalid.',
-          [
-            '@name' => $element['#title'],
-          ]));
+    // Don't validate empties.
+    if (empty($element['#value'])) {
+      $element['#validated'] = TRUE;
     }
     else {
-      $element['#validated'] = TRUE;
+      $validator = EdtfFactory::newValidator();
+      if (!$validator->isValidEdtf($element['#value'])) {
+        $form_state->setError($element,
+          t('The extended date time format string for the @name field is invalid.',
+            [
+              '@name' => $element['#title'],
+            ]));
+      }
+      else {
+        $element['#validated'] = TRUE;
+      }
     }
   }
 }
