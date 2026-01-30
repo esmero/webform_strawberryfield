@@ -14,6 +14,7 @@ use Drupal\webform\Element\WebformMessage as WebformMessageElement;
 use Drupal\webform\Plugin\WebformElementBase;
 use Drupal\webform\Utility\WebformArrayHelper;
 use Drupal\webform\Utility\WebformDateHelper;
+use Drupal\webform\WebformSubmissionConditionsValidator;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\WebformInterface;
 
@@ -598,4 +599,66 @@ abstract class MetadataDateBase extends WebformElementBase {
     return $date_formatter->format($timestamp ?: time(), 'custom', $custom_format);
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function getElementSelectorInputValue($selector, $trigger, array $element, WebformSubmissionInterface $webform_submission) {
+    $input_name = WebformSubmissionConditionsValidator::getSelectorInputName($selector);
+    // Multivalued ones will have a different structure:
+    //   e.g. date_webform_key[items][0][_item_][date_type]
+    // Single Valued will be in the form of
+    //   e.g.  date_webform_key[date_type]
+    // Which if not processed correctly will give us as $composite_key items
+    $delta = NULL;
+    $composite_key = NULL;
+    if ($this->hasMultipleValues($element) === FALSE) {
+      // If not multiple, this is faster.
+      $composite_key = WebformSubmissionConditionsValidator::getInputNameAsArray($input_name, 1);
+    }
+    else {
+      // Multivalued, so we have potentially items, delta and _item_
+      $allkeys = WebformSubmissionConditionsValidator::getInputNameAsArray($input_name);
+      if (is_array($allkeys)) {
+        if (count($allkeys) <= 1) {
+          // Means we got either the top element or nothing.
+          return NULL;
+        }
+        else {
+          // Remove the element webform key
+          array_shift($allkeys);
+          // Reorder so we can fetch by index.
+          $allkeys = array_values(array_diff($allkeys, ['items', '_item_']));
+          // Now we need to have max two keys, a delta + composite key or this won't work
+          $composite_key = count($allkeys) == 2 ? $allkeys[1] : NULL;
+          $delta = count($allkeys) == 2 ? (is_numeric($allkeys[0]) ? (integer) ($allkeys[0]) : NULL) : NULL;
+        }
+      }
+      else {
+        // We got a string. Means also it will only match the top
+        // This will lead to an array value, so bail out.
+        return NULL;
+      }
+    }
+    if ($composite_key) {
+      $options =  ['composite_key' => $composite_key];
+      if ($delta !== NULL) {
+        $options['delta'] = $delta;
+      }
+      $raw = $this->getRawValue($element, $webform_submission, $options);
+      if (empty($raw)) {
+        $raw = NULL;
+      }
+      elseif (is_array($raw)) {
+        $raw = $raw[0] ?? NULL;
+        if ($raw!== NULL && !is_scalar($raw)) {
+          $raw = NULL;
+        }
+      }
+      // last pass. Never, at least for this element, return an Array.
+      return !is_array($raw) ? $raw : NULL;
+    }
+    else {
+      return NULL;
+    }
+  }
 }
