@@ -735,5 +735,28 @@ function webform_strawberryfield_element_info_alter(array &$info): void {
   if (isset($info['webform_tus_file'])) {
     $info['webform_metadata_csv_file']['#value_callback'] = ['\Drupal\webform_strawberryfield\Element\WebformStrawberryFieldManagedFile', 'valueCallback'];
   }
+  // These element's have a "trim" in their validators, breaking with any other "empty" input
+  // In a bad way.
+  if (isset($info['url'])) {
+    $validate = $info['url']['#element_validate'] ?? [];
+    array_unshift(  $validate, ['\Drupal\webform_strawberryfield\ElementHelper', 'prevalidateForStringAndEmpty']);
+    $info['url']['#element_validate'] = array_values($validate);
+  }
+  if (isset($info['email'])) {
+    $validate = $info['email']['#element_validate'] ?? [];
+    array_unshift(  $validate, ['\Drupal\webform_strawberryfield\ElementHelper', 'prevalidateForStringAndEmpty']);
+    $info['email']['#element_validate'] = array_values($validate);
+  }
+  if (isset($info['color'])) {
+    $validate = $info['color']['#element_validate'] ?? [];
+    array_unshift(  $validate, ['\Drupal\webform_strawberryfield\ElementHelper', 'prevalidateForStringAndEmpty']);
+    $info['color']['#element_validate'] = array_values($validate);
+  }
+
+  if (isset($info['webform_email_multiple'])) {
+    $validate = $info['webform_email_multiple']['#element_validate'] ?? [];
+    array_unshift(  $validate, ['\Drupal\webform_strawberryfield\ElementHelper', 'prevalidateForStringAndEmpty']);
+    $info['webform_email_multiple']['#element_validate'] = array_values($validate);
+  }
 }
 
