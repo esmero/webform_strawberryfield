@@ -59,10 +59,8 @@ class WebformTusFile extends WebformManagedFileBase {
       return;
     }
     $element['#webform_managed_file_processed'] = TRUE;
-
     // Must come after #element_validate hook is defined.
     parent::prepare($element, $webform_submission);
-
     // Check if the URI scheme exists and can be used the upload location.
     $scheme_options = static::getVisibleStreamWrappers();
     $uri_scheme = $this->getUriScheme($element);
@@ -179,7 +177,7 @@ class WebformTusFile extends WebformManagedFileBase {
     // @see \Drupal\webform\Plugin\WebformElementBase::preRenderFixFlexboxWrapper
     $request_params = \Drupal::request()->request->all();
     if (\Drupal::request()->request->get('_drupal_ajax')
-      && (!empty($request_params['files']) || !empty($request_params[$element['#webform_key']]))) {
+      && (!empty($request_params['files']) || (isset($element['#webform_key']) && !empty($request_params[$element['#webform_key']])))) {
       $element['#webform_wrapper'] = FALSE;
     }
 
@@ -188,22 +186,31 @@ class WebformTusFile extends WebformManagedFileBase {
     // additional #process callbacks.
     $this->setElementDefaultCallback($element, 'process');
     $element['#process'][] = [get_class($this), 'processManagedFile'];
-    // Adds TUS JS.
-    $element['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.tus_integration';
-    // PASS the CSFR Token
-    // @TODO. This element should skip anonymous users at all. We should default to the standard upload
-    // Element.
-    $url = Url::fromRoute('webform_strawberryfield.tus.upload', ['webform' => $element['#webform'],'key' => $element['#webform_key']],  ['absolute' => TRUE]);
-    $token = \Drupal::csrfToken()->get(\Drupal\Core\Access\CsrfRequestHeaderAccessCheck::TOKEN_KEY);
-    $valid_extensions = $element['#upload_validators']['FileExtension']['extensions'] ?? '';
-    $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['url'] =  $url->toString();
-    $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['X-CSRF-Token'] = $token;
-    $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['X-TUS-Extensions'] = $valid_extensions;
-    $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['chunksize'] = $element['#chunksize'] ?? 0;
-    // Not multiple means at least one? Also, unlimited means == true, we are handling that undirectly (and it works) in the JS but might be good
-    // to be super explicit.
-    $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$element['#webform_key']]['file_limit'] = $element['#multiple'] ?? 1;
-
+    // Adds TUS JS.  Unknown to Me but the webform_key could be missing?
+    // Reported by a user. So before attaching any JS and extra logic, since
+    // our route requires an upload place
+    // we will check if there is a key
+    $key = $element['#webform_key'] ?? ($element['#webform_composite_key'] ?? NULL);
+    if ($key && ($element['#webform'] ?? FALSE)) {
+      $element['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.tus_integration';
+      // PASS the CSFR Token
+      // @TODO. This element should skip anonymous users at all. We should default to the standard upload
+      // Element.
+      $url = Url::fromRoute('webform_strawberryfield.tus.upload', [
+        'webform' => $element['#webform'],
+        'key' => $key
+      ], ['absolute' => TRUE]);
+      $token = \Drupal::csrfToken()
+        ->get(\Drupal\Core\Access\CsrfRequestHeaderAccessCheck::TOKEN_KEY);
+      $valid_extensions = $element['#upload_validators']['FileExtension']['extensions'] ?? '';
+      $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$key]['url'] = $url->toString();
+      $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$key]['X-CSRF-Token'] = $token;
+      $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$key]['X-TUS-Extensions'] = $valid_extensions;
+      $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$key]['chunksize'] = $element['#chunksize'] ?? 0;
+      // Not multiple means at least one? Also, unlimited means == true, we are handling that undirectly (and it works) in the JS but might be good
+      // to be super explicit.
+      $element['#attached']['drupalSettings']['webform_strawberryfield']['tus'][$key]['file_limit'] = $element['#multiple'] ?? 1;
+    }
 
     // Add managed file upload tracking.
     if ($this->moduleHandler->moduleExists('file')) {
