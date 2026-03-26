@@ -121,7 +121,7 @@ class CustomLoDendpointFromCSV extends CustomLoDendpointBase {
             }
           }
           if ($file) {
-            $file_data_all = \Drupal::service('strawberryfield.utility')->csv_read($file, 0, 0, TRUE, TRUE, 'webform_strawberryfield');
+            $file_data_all = \Drupal::service('strawberryfield.utility')->csv_read($file, 0, 0, TRUE, FALSE, 'webform_strawberryfield');
             $column_keys = $file_data_all['headers'] ?? [];
             $label_original_index = array_search($label_header, $column_keys);
             $url_original_index = array_search($url_header, $column_keys);
