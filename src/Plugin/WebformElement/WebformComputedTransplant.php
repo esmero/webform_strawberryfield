@@ -148,7 +148,7 @@ class WebformComputedTransplant extends WebformComputedBase {
     $json_error = json_last_error();
     //This will end with all data in an [0] index.
     $data = $webform_submission->getData();
-    // We are forcely setting this one in case its not there
+    // We are forcely setting this one in case it is not there
     // Will never be there if not saved as submission
 
     $originaldata = $webform_submission->getOriginalData();

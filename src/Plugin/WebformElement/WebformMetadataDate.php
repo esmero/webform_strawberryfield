@@ -24,8 +24,7 @@ use Drupal\webform\Plugin\WebformElement\DateBase;
 use Drupal\webform\Utility\WebformDateHelper;
 
 /**
- * Provides a 'file element that can import into the submission/ process other
- * formats' element.
+ * Provides a Custom Metadata aware multi entry Date field.
  *
  * @WebformElement(
  *   id = "webform_metadata_date",

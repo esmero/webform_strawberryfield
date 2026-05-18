@@ -103,7 +103,7 @@ class WebformScholarlyAgent extends WebformCompositeBase {
    */
   protected function prepareMultipleWrapper(array &$element) {
     // We do not need a Multi Wrapper custom call because
-    // By unsetting $properties['multiple__header'] we gain controll
+    // By unsetting $properties['multiple__header'] we gain control
     // Over our original Element class again and
     // \Drupal\webform_strawberryfield\Element\WebformMultiAgent::processWebformComposite
     // Is called even in multiple scenario cases
@@ -231,7 +231,7 @@ class WebformScholarlyAgent extends WebformCompositeBase {
     // PLEASE NEVER FORGET!!!
     // If the value saved is the default
     // as in  \Drupal\webform_strawberryfield\Plugin\WebformElement\WebformMultiAgent::getDefaultProperties
-    // the  it is actually not saved!
+    // then it is actually not saved!
     // Which really is so silly...
     // So we set defaults to empty
     // Or getting them on the actual element implies reinitializing the webform
