@@ -1,5 +1,6 @@
 <?php
 
+use Drupal\Core\Database\Database;
 /**
  * Implements hook_uninstall().
  */
@@ -53,5 +54,20 @@ function webform_strawberryfield_update_8001() {
     $message = \Drupal::translation()->translate('Updated Webform Strawberryfield handlers in webform configs: @ids', ['@ids' => implode(', ', array_unique($update_webforms))]);
     return $message;
   }
+}
 
+/**
+ * Install webform_sbf_lod_endpoint is not already installed.
+ */
+function webform_strawberryfield_update_8002() {
+  $schema = Database::getConnection()->schema();
+  // Always start by testing if the entity is already deployed.
+  if (!$schema->tableExists('webform_sbf_lod_endpoint')) {
+    \Drupal::entityTypeManager()->clearCachedDefinitions();
+    \Drupal::entityDefinitionUpdateManager()
+      ->installEntityType(\Drupal::entityTypeManager()
+        ->getDefinition('webform_sbf_lod_endpoint'));
+    $message = \Drupal::translation()->translate('Webform Strawberryfield Custom LoD Endpoint successfully installed.');
+    return $message;
+  }
 }
