@@ -550,7 +550,7 @@ SPARQL;
       }
 
       $bodies = [];
-      $baseurl = 'http://vocab.getty.edu/sparql.json';
+      $baseurl = 'https://vocab.getty.edu/sparql.json';
       // I leave this as an array in case we want to combine modes in the future.
       foreach($queries as $query) {
         $options = ['query' => ['query' => $query]];
