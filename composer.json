@@ -15,8 +15,8 @@
     "require": {
         "php": ">=8.1",
         "ext-json": "*",
-        "strawberryfield/strawberryfield":"2.0.0.x-dev",
-        "strawberryfield/format_strawberryfield":"2.0.0.x-dev",
+        "strawberryfield/strawberryfield":"2.1.0.x-dev",
+        "strawberryfield/format_strawberryfield":"2.1.0.x-dev",
         "drupal/jquery_ui_datepicker": "^2.1",
         "drupal/webform": "^6.2",
         "ramsey/uuid": "^4",
