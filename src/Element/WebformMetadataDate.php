@@ -441,7 +441,7 @@ class WebformMetadataDate extends FormElement {
     }
 
     // Perform edtf validation on freeform date if so configured.
-    if((!empty($metadatadate_element['#edtf_validateme']) || ($metadatadate_element['#value']['date_type'] == 'date_edtf')) && !empty($metadatadate_element['#value']['date_free'])) {
+    if((!empty($metadatadate_element['#edtf_validateme']) || (($metadatadate_element['#value']['date_type'] ?? NULL) == 'date_edtf')) && !empty($metadatadate_element['#value']['date_free'])) {
       $validator = EdtfFactory::newValidator();
       if (!$validator->isValidEdtf($element['#value']['date_free'])) {
         $form_state->setError($element['date_free'],
