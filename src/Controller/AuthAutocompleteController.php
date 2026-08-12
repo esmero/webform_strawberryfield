@@ -322,11 +322,9 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
-    $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    $jsondata = $this->decodeRemoteJsonData($body, $remoteUrl);
+    if ($jsondata !== NULL) {
       //LoC will always return at least one, the query string
       if (count($jsondata) > 1) {
         foreach ($jsondata[1] as $key => $label) {
@@ -344,14 +342,6 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       }
       return $results;
     }
-    $this->messenger()->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-        [
-          '@url' => $remoteUrl,
-          '@jsonerror' => $json_error,
-        ]
-      )
-    );
     return [];
   }
 
@@ -370,11 +360,9 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
-    $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    $jsondata = $this->decodeRemoteJsonData($body, $remoteUrl);
+    if ($jsondata !== NULL) {
       //WIKIdata will give is an success key will always return at least one, the query string
       if (count($jsondata) > 0) {
         if (($jsondata['success'] ?? 0) == 1) {
@@ -397,14 +385,6 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       }
       return $results;
     }
-    $this->messenger()->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-        [
-          '@url' => $remoteUrl,
-          '@jsonerror' => $json_error,
-        ]
-      )
-    );
     return [];
   }
 
@@ -557,7 +537,11 @@ SPARQL;
         $url = Url::fromUri($baseurl, $options);
         $remoteUrl = $url->toString() . '&_implicit=false&implicit=true&_equivalent=false&_form=%2Fsparql';
         $options['headers'] = ['Accept' => 'application/sparql-results+json'];
-        $bodies[] = $this->getRemoteJsonData($remoteUrl, $options);
+        // Keep the URL next to its body so a failing query can be named.
+        $bodies[] = [
+          'url' => $remoteUrl,
+          'body' => $this->getRemoteJsonData($remoteUrl, $options),
+        ];
       }
       // This is how a result here looks like
       /*
@@ -584,11 +568,9 @@ SPARQL;
     }
        */
 
-      $jsonfail = FALSE;
-      foreach($bodies as $body) {
-        $jsondata = json_decode($body, TRUE);
-        $json_error = json_last_error();
-        if ($json_error == JSON_ERROR_NONE) {
+      foreach($bodies as $fetched) {
+        $jsondata = $this->decodeRemoteJsonData($fetched['body'], $fetched['url']);
+        if ($jsondata !== NULL) {
           if (isset($jsondata['results']) && count($jsondata['results']['bindings']) > 0) {
             if (is_array($original_search)) {
               $original_search_string = implode(" ", $original_search);
@@ -622,9 +604,6 @@ SPARQL;
             }
           }
         }
-        else {
-          $jsonfail = TRUE;
-        }
       }
       if (empty($results)) {
         $results[] = [
@@ -632,16 +611,6 @@ SPARQL;
           'label' => 'Sorry no Match from Getty ' . $vocab . ' Vocabulary',
           'desc' => NULL,
         ];
-      }
-      if ($jsonfail) {
-        $this->messenger()->addError(
-          $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-            [
-              '@url' => $remoteUrl,
-              '@jsonerror' => $json_error,
-            ]
-          )
-        );
       }
     }
     return $results;
@@ -661,11 +630,9 @@ SPARQL;
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE) ?? [];
-    $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    $jsondata = $this->decodeRemoteJsonData($body, $remoteUrl);
+    if ($jsondata !== NULL) {
       if (count($jsondata) > 0) {
         if (isset($jsondata['result']) && is_array($jsondata['result']) && count($jsondata['result']) >= 1) {
           foreach ($jsondata['result'] as $key => $item) {
@@ -687,14 +654,6 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger()->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-        [
-          '@url' => $remoteUrl,
-          '@jsonerror' => $json_error,
-        ]
-      )
-    );
     return [];
   }
 
@@ -741,9 +700,8 @@ SPARQL;
     $options['headers'] = ['Accept' => 'application/ld+json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
     $results = [];
-    $jsondata = json_decode($body, TRUE);
-    $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    $jsondata = $this->decodeRemoteJsonData($body, $remoteUrl);
+    if ($jsondata !== NULL) {
       /*
        {
       "@context": [
@@ -801,14 +759,6 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger()->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-        [
-          '@url' => $remoteUrl,
-          '@jsonerror' => $json_error,
-        ]
-      )
-    );
     return [];
   }
 
@@ -958,11 +908,9 @@ SPARQL;
     ];
     $body = $this->getRemoteJsonData($remoteUrl, $options, 'PUT');
 
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
-    $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    $jsondata = $this->decodeRemoteJsonData($body, $remoteUrl);
+    if ($jsondata !== NULL) {
       if (!empty($jsondata['results']) &&  ($jsondata['total'] ?? 0) >= 1) {
         foreach ($jsondata['results'] as $key => $entry) {
           $nameEntry = reset($entry['nameEntries']);
@@ -980,14 +928,6 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger()->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-        [
-          '@url' => $remoteUrl,
-          '@jsonerror' => $json_error,
-        ]
-      )
-    );
     return [];
   }
 
@@ -1052,9 +992,8 @@ SPARQL;
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
     $results = [];
-    $jsondata = json_decode($body, TRUE);
-    $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    $jsondata = $this->decodeRemoteJsonData($body, $remoteUrl);
+    if ($jsondata !== NULL) {
       if (count($jsondata) > 0) {
         foreach ($jsondata as $entry) {
           if (strtolower(trim($entry['label'] ?? '')) == strtolower($input)) {
@@ -1079,14 +1018,6 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger()->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-        [
-          '@url' => $remoteUrl,
-          '@jsonerror' => $json_error,
-        ]
-      )
-    );
     return [];
   }
 
@@ -1171,6 +1102,52 @@ SPARQL;
   }
 
   /**
+   * Decodes a response body previously fetched by ::getRemoteJsonData().
+   *
+   * ::getRemoteJsonData() returns NULL when the remote endpoint could not be
+   * reached at all: an empty or invalid URL, a timeout, or a 4xx/5xx answer.
+   * Passing that NULL straight to json_decode() is deprecated since PHP 8.1
+   * and becomes a TypeError in PHP 9, so it is dealt with here once instead of
+   * at every call site. It also means a Vocabulary/Authority service that is
+   * simply down is no longer reported back to the user as malformed JSON.
+   *
+   * @param string|null $body
+   *   The raw body returned by ::getRemoteJsonData().
+   * @param string $remoteUrl
+   *   The URL $body was fetched from. Only used to build the error message.
+   *
+   * @return array|null
+   *   The decoded JSON as an array, or NULL when there was nothing to decode.
+   */
+  protected function decodeRemoteJsonData(?string $body, string $remoteUrl): ?array {
+    if ($body === NULL || trim($body) === '') {
+      $this->messenger()->addError(
+        $this->t('We could not fetch any data from @url. The remote service might be down or timing out. Please try again later.',
+          [
+            '@url' => $remoteUrl,
+          ]
+        )
+      );
+      return NULL;
+    }
+    $jsondata = json_decode($body, TRUE);
+    if (json_last_error() != JSON_ERROR_NONE) {
+      $this->messenger()->addError(
+        $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+          [
+            '@url' => $remoteUrl,
+            '@jsonerror' => json_last_error_msg(),
+          ]
+        )
+      );
+      return NULL;
+    }
+    // A remote can legitimately answer with a JSON scalar or with `null`, but
+    // every caller here expects something it can count() and iterate over.
+    return is_array($jsondata) ? $jsondata : [];
+  }
+
+  /**
    * @return bool
    */
   public function isNotAllowed(): bool {
@@ -1219,7 +1196,10 @@ SPARQL;
     //"scope":"/read-public","orcid":null} &*/ or null/empt it wrong.
 
     $response = $this->getRemoteJsonData($remoteOrCIDAuthUrl, $options, 'POST');
-    $orcd_id_token_response = json_decode($response, TRUE);
+    // ::getRemoteJsonData() answers NULL when ORCID could not be reached, and
+    // json_decode() does not take NULL anymore. An empty string decodes to the
+    // same JSON_ERROR_SYNTAX, so the failure is still reported right below.
+    $orcd_id_token_response = json_decode($response ?? '', TRUE);
 
     $json_error = json_last_error();
 
