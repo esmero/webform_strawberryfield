@@ -8,6 +8,11 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\WebformElement;
 
+use Drupal\Component\Utility\Crypt;
+use Drupal\Component\Utility\NestedArray;
+use Drupal\file\Element\ManagedFile;
+use Drupal\file\Entity\File;
+use Drupal\webform\WebformSubmissionForm;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Plugin\WebformElement\WebformManagedFileBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -15,6 +20,7 @@ use Drupal\Core\Render\Element;
 use Drupal\file\FileInterface;
 use Drupal\strawberryfield\Tools\JsonSimpleXMLElementDecorator;
 use Drupal\strawberryfield\Tools\SimpleXMLtoArray;
+use Drupal\webform_strawberryfield\Element\WebformStrawberryFieldManagedFile;
 
 /**
  * Provides a 'file element that can import into the submission/ process other formats' element.
@@ -238,6 +244,134 @@ class WebformMetadataFile extends WebformManagedFileBase {
       return mb_convert_encoding($mixed, "UTF-8", "UTF-8");
     }
     return $mixed;
+  }
+
+  /**
+   * Form API callback. Validates managed file input before processing uploads.
+   *
+   * Overrides \Drupal\webform\Plugin\WebformElement\WebformManagedFileBase::valueCallback
+   * and used via a hook_webform_element_alter for every derived Element type
+   *
+   * @param array $element
+   *   A managed file element.
+   * @param mixed $input
+   *   The submitted input.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array
+   *   The processed managed file value.
+   *
+   * @see \Drupal\file\Element\ManagedFile::valueCallback()
+   * @see \Drupal\webform_strawberryfield\Element\WebformStrawberryFieldManagedFile::valueCallback()
+   * @see \Drupal\webform\Plugin\WebformElement\WebformManagedFileBase::valueCallback
+   */
+  public static function valueCallback(array &$element, $input, FormStateInterface $form_state) {
+    $form_object = $form_state->getFormObject();
+    $fids = [];
+    $valid_fids  = [];
+    if ($input !== FALSE
+      && !empty($input['fids'])
+      && $form_object instanceof WebformSubmissionForm
+      && $form_object->getOperation() === 'add') {
+      $fids = array_map('intval', array_filter(explode(' ', $input['fids'])));
+      $valid_fids = $fids;
+      // Important Note. Default values won't be sent via INPUT
+      // except during multi page next/prev
+      // Which means on a fresh load ADO attached files won't
+      // be detecte by this as being SBF, but
+      // WebformStrawberryFieldManagedFile::valueCallback will keep them safe.
+      foreach ($fids as $key => $fid) {
+        $file = File::load($fid);
+        $is_sbf = FALSE;
+        $current_user = \Drupal::currentUser();
+        $usage_list = $file ? \Drupal::service('file.usage')->listUsage($file) : [];
+        $combined_usage = array_merge($usage_list['strawberryfield'] ?? [], $usage_list['file'] ?? []);
+        $combined_usage = array_filter($combined_usage);
+        if ($file && $file->isPermanent() && !empty($combined_usage)) {
+          $referencing_entity_is_accessible = FALSE;
+          foreach ($combined_usage as $entity_type => $entity_ids) {
+            $referencing_entities = \Drupal::entityTypeManager()
+              ->getStorage($entity_type)
+              ->loadMultiple(array_keys($entity_ids));
+            /** @var \Drupal\Core\Entity\EntityInterface $referencing_entity */
+            foreach ($referencing_entities as $referencing_entity) {
+              if ($referencing_entity->access('edit', NULL, TRUE)
+                ->isAllowed()) {
+                $referencing_entity_is_accessible = TRUE;
+                $is_sbf = TRUE;
+                break 2;
+              }
+            }
+          }
+          if (!$referencing_entity_is_accessible) {
+            $is_sbf = FALSE;
+          }
+        }
+
+        if (!$is_sbf) {
+          $is_invalid = (!$file || !$file->isTemporary() || !$file->access('download'));
+          if (!$is_invalid && $file->getOwnerId() != \Drupal::currentUser()
+              ->id()) {
+            $is_invalid = TRUE;
+          }
+          if (!$is_invalid && \Drupal::currentUser()->isAnonymous()) {
+            // Use core's HMAC check for anonymous temporary file reuse.
+            // @see \Drupal\file\Element\ManagedFile::valueCallback()
+            $parents = array_merge($element['#parents'], [
+              'file_' . $file->id(),
+              'fid_token'
+            ]);
+            $token = NestedArray::getValue($form_state->getUserInput(), $parents);
+            $file_hmac = Crypt::hmacBase64('file-' . $file->id(), \Drupal::service('private_key')
+                ->get() . Settings::getHashSalt());
+            $is_invalid = ($token === NULL || !hash_equals($file_hmac, $token));
+          }
+          if ($is_invalid) {
+            // Do not include the file name because doing so confirms that a
+            // tampered file id maps to an existing managed file.
+            $form_state->setError($element, t('An uploaded file is invalid and was removed from the list.'));
+            // We can't unset, we need to NULL-i-fy to keep the original INDEX
+            $valid_fids[$key] = NULL;
+            // Note here we restore the input as a string only with the valid values
+            // removing anything that did not match.
+            $input['fids'] = implode(" ", array_filter($valid_fids));
+            break;
+          }
+        }
+      }
+    }
+
+    $result = WebformStrawberryFieldManagedFile::valueCallback($element, $input, $form_state);
+
+    // Drupal 11.4.5 filters default file IDs using file download access.
+    // Webform authorizes private files through their associated submission, so
+    // restore trusted default IDs to allow their file names to be displayed.
+    // Submitted IDs are validated above, and private file downloads continue to
+    // be protected by Webform's submission-aware access checks.
+    // @see \Drupal\webform\Hook\WebformHooks::fileAccess()
+    // @see ::accessFileDownload()
+    // @see \Drupal\Tests\webform\Functional\Element\WebformElementManagedFilePreviewTest
+    // @see https://www.drupal.org/project/drupal/issues/3593472
+    // This is different than the base logic. Because we have a less destructive FID removal, $result['fids']
+    // could be just less than the original one, but not empty.
+    if (empty($result['fids'])
+      && $input === FALSE
+      && !empty($element['#default_value'])
+      && !empty($element['#webform_key'])
+      && $form_object instanceof WebformSubmissionForm
+    ) {
+      /** @var \Drupal\webform\WebformSubmissionInterface $webform_submission */
+      $webform_submission = $form_object->getEntity();
+      $element_data = $webform_submission->getElementData($element['#webform_key']);
+      if ($element_data) {
+        $element_fids = (array) $element_data;
+        $default_fids = $element['#default_value'];
+        $result['fids'] = array_values(array_intersect($default_fids, $element_fids));
+      }
+    }
+
+    return $result;
   }
 
 }
