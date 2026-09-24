@@ -18,11 +18,12 @@
         "strawberryfield/strawberryfield":"2.1.0.x-dev",
         "strawberryfield/format_strawberryfield":"2.1.0.x-dev",
         "drupal/jquery_ui_datepicker": "^2.1",
-        "drupal/webform": "^6.2",
+        "drupal/webform": "^6.3",
         "ramsey/uuid": "^4",
         "ankitpokhrel/tus-php": "^2"
     },
     "conflict": {
-      "drupal/core":"<10.3"
+      "drupal/core":"<11.4",
+      "drupal/webform": "<6.3.1"
     }
 }
