@@ -283,34 +283,12 @@ class WebformMetadataFile extends WebformManagedFileBase {
       // WebformStrawberryFieldManagedFile::valueCallback will keep them safe.
       foreach ($fids as $key => $fid) {
         $file = File::load($fid);
-        $is_sbf = FALSE;
-        $current_user = \Drupal::currentUser();
-        $usage_list = $file ? \Drupal::service('file.usage')->listUsage($file) : [];
-        $combined_usage = array_merge($usage_list['strawberryfield'] ?? [], $usage_list['file'] ?? []);
-        $combined_usage = array_filter($combined_usage);
-        if ($file && $file->isPermanent() && !empty($combined_usage)) {
-          $referencing_entity_is_accessible = FALSE;
-          foreach ($combined_usage as $entity_type => $entity_ids) {
-            $referencing_entities = \Drupal::entityTypeManager()
-              ->getStorage($entity_type)
-              ->loadMultiple(array_keys($entity_ids));
-            /** @var \Drupal\Core\Entity\EntityInterface $referencing_entity */
-            foreach ($referencing_entities as $referencing_entity) {
-              if ($referencing_entity->access('edit', NULL, TRUE)
-                ->isAllowed()) {
-                $referencing_entity_is_accessible = TRUE;
-                $is_sbf = TRUE;
-                break 2;
-              }
-            }
-          }
-          if (!$referencing_entity_is_accessible) {
-            $is_sbf = FALSE;
-          }
-        }
+        $is_sbf = $file ? WebformStrawberryFieldManagedFile::hasAccessViaADO($file) : FALSE;
 
         if (!$is_sbf) {
           $is_invalid = (!$file || !$file->isTemporary() || !$file->access('download'));
+          // This was preserved from Webform 3.2.1 I do not like the logic
+          // But that is their security fix.
           if (!$is_invalid && $file->getOwnerId() != \Drupal::currentUser()
               ->id()) {
             $is_invalid = TRUE;
@@ -333,9 +311,10 @@ class WebformMetadataFile extends WebformManagedFileBase {
             $form_state->setError($element, t('An uploaded file is invalid and was removed from the list.'));
             // We can't unset, we need to NULL-i-fy to keep the original INDEX
             $valid_fids[$key] = NULL;
-            // Note here we restore the input as a string only with the valid values
+            // This is different than original logic,
+            //  here we restore the input as a string only with the valid values
             // removing anything that did not match.
-            $input['fids'] = implode(" ", array_filter($valid_fids));
+            $input['fids'] = implode(' ', array_filter($valid_fids));
             break;
           }
         }
@@ -343,6 +322,9 @@ class WebformMetadataFile extends WebformManagedFileBase {
     }
 
     $result = WebformStrawberryFieldManagedFile::valueCallback($element, $input, $form_state);
+
+    // NOTE: the following comment does not apply to ADO managed files.
+    // There is no submission, but we kept if for complenetness.
 
     // Drupal 11.4.5 filters default file IDs using file download access.
     // Webform authorizes private files through their associated submission, so
