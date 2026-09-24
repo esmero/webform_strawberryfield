@@ -9,7 +9,7 @@ class ElementHelper {
 
     /**
      * Form element validation handler for Core elements that require a string
-     * E.g Url, Email, Color.
+     * E.g. Url, Email, Color.
      *
      * When passed a non string See \Drupal\Core\Render\Element\Url::validateUrl
      * A 500 is returned. Our RAW JSON can contain empties as arrays.
