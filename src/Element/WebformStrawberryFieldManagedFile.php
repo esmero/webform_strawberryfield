@@ -136,32 +136,35 @@ class WebformStrawberryFieldManagedFile extends ManagedFile {
     // default value.
     if ($input === FALSE) {
       // Confirm that the file exists when used as a default value.
-      // Keep any file that we have no access to but is in the defaults
-      // Keep any file we have access to
+      // - Keep any file that we have no access to but is in the defaults
+      // - Keep any file we have access to
       // Remove from the defaults the difference only if we detected a change in the input?
       // So no $input === FALSE
       if (!empty($default_fids)) {
         // This covers the use case of just keeping the Files if they exist
-        // But no changes are requested. I don't like it, but it is core
-        // And might make sense if in our CASE an ADO user is not touching
-        // The existing (even no access) Files setup by a previous user
-        // That did have access. So kinda safe?
-
+        // But no changes are requested. We use the hasAccessViaADO check
+        // Wich includes can Download.
         $fids = [];
         foreach ($default_fids as $fid) {
           if ($file = File::load($fid)) {
-            $fids[] = $file->id();
+            if (static::hasAccessViaADO($file)) {
+              $fids[] = $file->id();
+            }
           }
         }
       }
     }
     elseif ($force_clean_defaults) {
+      // This is an exception. Where we had in the 'Input' Forbidden
+      // Files. So we restore Forbidden ones but in the defaults only
+      // Plus the ones already checked as valid.
+      // Only keep the ones we don't have access. I know it reads strange
+      // But we should not be able, via a Webform element to change what was set by a previous/authorized user
+      // The mitigation here is that we are already under a webform that has an ADO handler attached
       $fids = $fids_with_access ?? [];
       if (!empty($default_fids)) {
         $pre_existing_fids_not_passed = array_diff($default_fids, $fids_with_access);
         foreach ($pre_existing_fids_not_passed as $fid_to_check) {
-          // Only keep the ones we don't have access. I know it reads strange
-          // But we should not be able, via a Webform element to change what was set by a previous/authorized user
           if ($file = File::load($fid_to_check)) {
             if ($file->access('download', \Drupal::currentUser(), TRUE)->isForbidden()) {
               // restore the Explicitly forbidden one. No temporary/strangeness allowed to persist though
@@ -175,6 +178,53 @@ class WebformStrawberryFieldManagedFile extends ManagedFile {
 
     $return['fids'] = $fids;
     return $return;
+  }
+
+  public static function hasAccessViaADO(File $file):bool {
+    $current_user = \Drupal::currentUser();
+    // Bail out early for anonymous users.
+
+    if ($current_user->isAnonymous()) {
+      return FALSE;
+    }
+
+    // Skip complex logic if the there is already an override/access grant
+    if ($file->access('download')) {
+      return TRUE;
+    }
+
+    $usage_list = \Drupal::service('file.usage')->listUsage($file);
+    // @note: Normally "strawberryfield" will be a usage "key",
+    // but i found that if one removes a file, saves, restores the revision that had that file and saves,
+    // the usage bound to "strawberryfield" is not restored. That will be solved in strawberryfield 2.2.0
+    $combined_usage = array_merge($usage_list['strawberryfield'] ?? [], $usage_list['file'] ?? []);
+    $combined_usage = array_filter($combined_usage);
+    if ($file->isPermanent() && !empty($combined_usage)) {
+      $referencing_entity_is_accessible = FALSE;
+      foreach ($combined_usage as $entity_type => $entity_ids) {
+        $referencing_entities = \Drupal::entityTypeManager()
+          ->getStorage($entity_type)
+          ->loadMultiple(array_keys($entity_ids));
+        /** @var \Drupal\Core\Entity\EntityInterface $referencing_entity */
+        foreach ($referencing_entities as $referencing_entity) {
+          if ($referencing_entity->access('edit', NULL, TRUE)
+            ->isAllowed()) {
+            $referencing_entity_is_accessible = TRUE;
+            return TRUE;
+          }
+        }
+      }
+      if (!$referencing_entity_is_accessible) {
+        return FALSE;
+      }
+    }
+    elseif ($file->isPermanent() && $file->getOwnerId() == $current_user
+        ->id()) {
+      // We keep this because the File might not be in a downloadable
+      // stream, but we need to preserve it, and the user owns it
+      return TRUE;
+    }
+    return FALSE;
   }
 
 
