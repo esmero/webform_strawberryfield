@@ -16,6 +16,7 @@ use Drupal\image\Entity\ImageStyle;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\Component\Render\FormattableMarkup;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\webform_strawberryfield\Plugin\WebformElement\WebformMetadataFile;
 use Drupal\webform_strawberryfield\Plugin\WebformHandler\strawberryFieldharvester;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -467,7 +468,7 @@ function webform_strawberryfield_preprocess_webform_element_image_file(
 
     $is_image = in_array(
       $fileextension,
-      ['gif', 'png', 'jpg', 'jpeg', 'jp2', 'tiff']
+      ['gif', 'png', 'jpg', 'jpeg', 'jp2', 'tiff', 'tif']
     );
 
     // Build image.
@@ -714,6 +715,7 @@ function webform_strawberryfield_recursive_set_default_value(&$form_elements, ar
  * Implements hook_element_info_alter().
  */
 function webform_strawberryfield_element_info_alter(array &$info): void {
+
   if (isset($info['webform_document_file'])) {
     $info['webform_document_file']['#value_callback'] = ['\Drupal\webform_strawberryfield\Element\WebformStrawberryFieldManagedFile', 'valueCallback'];
   }
@@ -733,7 +735,7 @@ function webform_strawberryfield_element_info_alter(array &$info): void {
     $info['webform_metadata_csv_file']['#value_callback'] = ['\Drupal\webform_strawberryfield\Element\WebformStrawberryFieldManagedFile', 'valueCallback'];
   }
   if (isset($info['webform_tus_file'])) {
-    $info['webform_metadata_csv_file']['#value_callback'] = ['\Drupal\webform_strawberryfield\Element\WebformStrawberryFieldManagedFile', 'valueCallback'];
+    $info['webform_tus_file']['#value_callback'] = ['\Drupal\webform_strawberryfield\Element\WebformStrawberryFieldManagedFile', 'valueCallback'];
   }
   // These element's have a "trim" in their validators, breaking with any other "empty" input
   // In a bad way.
@@ -759,4 +761,42 @@ function webform_strawberryfield_element_info_alter(array &$info): void {
     $info['webform_email_multiple']['#element_validate'] = array_values($validate);
   }
 }
-
+/**
+ * Implements hook_webform_element_alter().
+ */
+function webform_strawberryfield_webform_element_alter(array &$element, FormStateInterface $form_state, array $context) {
+  // Overrides Webform 6.3.1+ and 6.2.12 File Validity Checks that kill existing
+  // files during ADO editing.
+  $override_element_types = [
+    'managed_file',
+    'webform_image_file',
+    'webform_document_file',
+    'webform_audio_file',
+    'webform_video_file',
+    'webform_metadata_file',
+    'webform_metadata_csv_file'
+  ];
+  if (isset($element['#type']) && in_array($element['#type'],$override_element_types)) {
+    // To avoid touching any other webform that is not driving ADOs
+    // We will check if the webform itself is thata
+    /** @var \Drupal\webform\WebformSubmissionForm $form_object */
+    $form_object = $form_state->getFormObject();
+    $webform_submission = $form_object->getEntity();
+    $webform = $webform_submission->getWebform();
+    $valid_sbf_handlers = ['strawberryField_webform_handler', 'strawberryFieldandNode_webform_handler'];
+    $is_sbf_webform = FALSE;
+    foreach($webform->getHandlers()->getIterator() as $webform_handler) {
+      if (in_array($webform_handler->getPluginId(), $valid_sbf_handlers) && $webform_handler->isEnabled()) {
+        $is_sbf_webform = TRUE;
+        break;
+      }
+    }
+    // Only override elements under a valid ADO handling Webform.
+    if ($is_sbf_webform) {
+      $element['#value_callback'] = [
+        WebformMetadataFile::class,
+        'valueCallback'
+      ];
+    }
+  }
+}
