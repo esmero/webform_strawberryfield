@@ -207,7 +207,7 @@ class WebformStrawberryFieldManagedFile extends ManagedFile {
           ->loadMultiple(array_keys($entity_ids));
         /** @var \Drupal\Core\Entity\EntityInterface $referencing_entity */
         foreach ($referencing_entities as $referencing_entity) {
-          if ($referencing_entity->access('edit', NULL, TRUE)
+          if ($referencing_entity->access('update', NULL, TRUE)
             ->isAllowed()) {
             $referencing_entity_is_accessible = TRUE;
             return TRUE;
