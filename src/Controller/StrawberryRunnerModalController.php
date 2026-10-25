@@ -8,6 +8,8 @@
 
 namespace Drupal\webform_strawberryfield\Controller;
 
+use Drupal\Core\Ajax\HtmlCommand;
+use Drupal\Core\Ajax\InvokeCommand;
 use Drupal\webform\WebformInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\OpenModalDialogCommand;
@@ -33,7 +35,7 @@ class StrawberryRunnerModalController extends ControllerBase {
    * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
    *   Thrown when not be accessible.
    */
-  public function openModalForm(WebformInterface $webform = NULL, Request $request) {
+  public function openModalForm(WebformInterface $webform = NULL, ?Request $request = null) {
 
     // @see \Drupal\archipel\Plugin\Field\FieldWidget\StrawberryFieldWebFormWidget::formElement
     //  Request Arguments we are expecting:
@@ -43,7 +45,7 @@ class StrawberryRunnerModalController extends ControllerBase {
     // Check!
 
 
-    $source_entity_types = $request->get('source_entity_types');
+    $source_entity_types = $request->query->get('source_entity_types');
 
     [$source_entity_type, $bundle] = explode(':', $source_entity_types);
     $access = \Drupal::entityTypeManager()->getAccessControlHandler('node')->createAccess($bundle);
@@ -52,9 +54,9 @@ class StrawberryRunnerModalController extends ControllerBase {
     }
 
     //@TODO allow some type of per bundle hook?
-    $state = $request->get('state');
-    $modal = $request->get('modal') ? $request->get('modal') : FALSE;
-    $clear_saved = $request->get('clear_saved') ? $request->get('clear_saved') : NULL;
+    $state =  $request->query->get('state');
+    $modal =  $request->query->get('modal') ?: FALSE;
+    $clear_saved =  $request->query->get('clear_saved') ?: NULL;
 
     // with $uuid the uuid of the entity that is being edited and for which
     // a widget is being openend in the form of a webform
@@ -79,7 +81,7 @@ class StrawberryRunnerModalController extends ControllerBase {
           ->loadByProperties(['uuid' => $source_uuid]);
         // IF this does not work, either the entity is new! or it does not exist at all.
       }
-      catch (\Exception $e) {
+      catch (\Exception) {
         // @todo really make some fuzz if this happens.
         // @todo we need to be super responsive about all the errors
         // I image two layers, simple to follow issues with a code for endusers
@@ -121,7 +123,7 @@ class StrawberryRunnerModalController extends ControllerBase {
       }
     }
 
-    $data = array();
+    $data = [];
 
     // Stores our original field data
     // @TODO i know it needs to have a base value
@@ -176,8 +178,8 @@ class StrawberryRunnerModalController extends ControllerBase {
       $elements_in_data = array_intersect_key($webform_elements, $data['data']);
       // In case the saved data is "single valued" for a key
       // But the corresponding webform element is not
-      // we cast to it multi valued so it can be read/updated
-      // If the element itself does not allow multiple, is not a composite and we are passing an indexed array
+      // we cast to it multivalued so it can be read/updated
+      // If the element itself does not allow multiple, is not a composite, and we are passing an indexed array
       // we need to re-write data (take the first) to avoid a Render array error in Drupal 10.3
       // But also tell the user this form is not safe to use.
       if (is_array($elements_in_data) && count($elements_in_data) > 0) {
@@ -264,7 +266,7 @@ class StrawberryRunnerModalController extends ControllerBase {
         $tempstore->delete($clear_saved.'-draft');
         $tempstore->delete($clear_saved.'-errors');
         // Selector us built using the field name and the delta.
-        $response->addCommand(new \Drupal\Core\Ajax\HtmlCommand('#' . $selector  .' > .fieldset-wrapper',
+        $response->addCommand(new HtmlCommand('#' . $selector  .' > .fieldset-wrapper',
           $lawebforma));
       }
       else {
@@ -273,8 +275,8 @@ class StrawberryRunnerModalController extends ControllerBase {
       }
       $selector2 = '[data-drupal-selector="'.$selector .'-strawberry-webform-open-modal"]';
       $selector3 = '[data-drupal-selector="'.$selector .'-strawberry-webform-close-modal"]';
-      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector2, 'toggleClass', ['js-hide']));
-      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector3, 'toggleClass', ['js-hide']));
+      $response->addCommand(new InvokeCommand($selector2, 'toggleClass', ['js-hide']));
+      $response->addCommand(new InvokeCommand($selector3, 'toggleClass', ['js-hide']));
     }
     return $response;
 
@@ -288,9 +290,8 @@ class StrawberryRunnerModalController extends ControllerBase {
    */
   public function closeModalForm(Request $request)
   {
-
-    $state = $request->get('state');
-    $modal = $request->get('modal') ? $request->get('modal') : FALSE;
+    $state = $request->query->get('state');
+    $modal = $request->query->get('modal') ?: FALSE;
 
     // with $uuid the uuid of the entity that is being edited and for which
     // a widget is being openend in the form of a webform
@@ -311,11 +312,11 @@ class StrawberryRunnerModalController extends ControllerBase {
       $response->addCommand(new \Drupal\Core\Ajax\RemoveCommand('#'.$selector. ' .webform-ajax-form-wrapper'));
       $selector2 = '[data-drupal-selector="'.$selector .'-strawberry-webform-open-modal"]';
       $selector3 = '[data-drupal-selector="'.$selector .'-strawberry-webform-close-modal"]';
-      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector2, 'toggleClass', ['js-hide']));
-      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand($selector3, 'toggleClass', ['js-hide']));
+      $response->addCommand(new InvokeCommand($selector2, 'toggleClass', ['js-hide']));
+      $response->addCommand(new InvokeCommand($selector3, 'toggleClass', ['js-hide']));
       /// Shows the Save buttons back.
       /// @TODO this should go into Drupal.behaviors.webformstrawberryHideNodeActions JS
-      $response->addCommand(new \Drupal\Core\Ajax\InvokeCommand('.path-node .node-form div[data-drupal-selector="edit-actions"]', 'show', []));
+      $response->addCommand(new InvokeCommand('.path-node .node-form div[data-drupal-selector="edit-actions"]', 'show', []));
 
     }
     return $response;
