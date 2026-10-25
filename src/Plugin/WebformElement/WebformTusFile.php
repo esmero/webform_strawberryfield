@@ -101,8 +101,6 @@ class WebformTusFile extends WebformManagedFileBase {
     $element['#attributes']['class'][] = 'webform_strawberryfield_tus';
     // Upload validators.
     // @see webform_preprocess_file_upload_help
-    // Deprecated in Drupal 10.2+
-    //$element['#upload_validators']['file_validate_size'] = [$this->getMaxFileSizeTus($element)];
     $element['#upload_validators']['FileSizeLimit'] =  ['fileLimit' => $this->getMaxFileSizeTus($element)];
     $element['#upload_validators']['FileExtension'] = ['extensions' => $this->getFileExtensions($element)];
     // Define 'webform_file_validate_extensions' which allows file
