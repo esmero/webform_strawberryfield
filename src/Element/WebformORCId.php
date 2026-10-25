@@ -38,7 +38,7 @@ class WebformORCId extends WebformCompositeBase {
       $matchtype = $element['#matchtype'];
     }
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformORCId';
+    $class = \Drupal\webform_strawberryfield\Element\WebformORCId::class;
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('ORCID Personal Names'),

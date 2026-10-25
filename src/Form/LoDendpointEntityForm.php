@@ -61,7 +61,7 @@ class LoDendpointEntityForm extends EntityForm {
     ];
 
     $ajax = [
-      'callback' => [get_class($this), 'ajaxCallback'],
+      'callback' => [static::class, 'ajaxCallback'],
       'wrapper' => 'lodendpointentity-ajax-container',
     ];
     /* @var \Drupal\webform_strawberryfield\Plugin\CustomLoDendpointManager $plugin_definitions */
@@ -133,18 +133,14 @@ class LoDendpointEntityForm extends EntityForm {
     $LoDendpointEntity = $this->entity;
     $status = $LoDendpointEntity->save();
 
-    switch ($status) {
-      case SAVED_NEW:
-        $this->messenger->addStatus($this->t('Created the %label LoD Endpoint.', [
+    match ($status) {
+        SAVED_NEW => $this->messenger->addStatus($this->t('Created the %label LoD Endpoint.', [
           '%label' => $LoDendpointEntity->label(),
-        ]));
-        break;
-
-      default:
-        $this->messenger->addStatus($this->t('Saved the %label LoD Endpoint.', [
+        ])),
+        default => $this->messenger->addStatus($this->t('Saved the %label LoD Endpoint.', [
           '%label' => $LoDendpointEntity->label(),
-        ]));
-    }
+        ])),
+    };
     $form_state->setRedirectUrl($LoDendpointEntity->toUrl('collection'));
   }
 

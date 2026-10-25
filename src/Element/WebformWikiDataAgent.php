@@ -28,13 +28,13 @@ class WebformWikiDataAgent extends WebformWikiData {
    */
   public static function getCompositeElements(array $element) {
     $elements = [];
-    $class = '\Drupal\webform_strawberryfield\Element\WebformWikiData';
+    $class = \Drupal\webform_strawberryfield\Element\WebformWikiData::class;
     $elements['name_label'] = [
       '#type' => 'textfield',
       '#title' => t('Agent/Person Name'),
       //'#title_display' => 'invisible',
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
-      '#autocomplete_route_parameters' => array('auth_type' => 'wikidata', 'count' => 10),
+      '#autocomplete_route_parameters' => ['auth_type' => 'wikidata', 'count' => 10],
       '#attributes' => [
         'data-source-strawberry-autocomplete-key' => 'name_label',
         'data-target-strawberry-autocomplete-key' => 'name_uri'
@@ -53,7 +53,7 @@ class WebformWikiDataAgent extends WebformWikiData {
       '#title' => t('Role'),
       //'#title_display' => 'invisible',
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
-      '#autocomplete_route_parameters' => array('auth_type' => 'wikidata', 'count' => 10),
+      '#autocomplete_route_parameters' => ['auth_type' => 'wikidata', 'count' => 10],
       '#attributes' => [
         'data-source-strawberry-autocomplete-key' => 'role_label',
         'data-target-strawberry-autocomplete-key' => 'role_uri'

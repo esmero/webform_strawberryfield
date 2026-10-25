@@ -38,7 +38,7 @@ class WebformGetty extends WebformCompositeBase {
       $matchtype = $element['#matchtype'];
     }
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformGetty';
+    $class = \Drupal\webform_strawberryfield\Element\WebformGetty::class;
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('Getty Term Label'),

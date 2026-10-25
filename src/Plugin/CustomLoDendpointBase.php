@@ -53,13 +53,6 @@ abstract class CustomLoDendpointBase extends PluginBase implements CustomLoDendp
    */
   protected $messenger;
 
-  /**
-   * The current user.
-   *
-   * @var \Drupal\Core\Session\AccountInterface
-   */
-  protected AccountInterface $currentUser;
-
 
   public function __construct(
     array $configuration,
@@ -71,7 +64,10 @@ abstract class CustomLoDendpointBase extends PluginBase implements CustomLoDendp
     EntityFieldManagerInterface $entityFieldManager,
     Client $httpClient,
     MessengerInterface $messenger,
-    AccountInterface $current_user
+    /**
+     * The current user.
+     */
+    protected AccountInterface $currentUser
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->entityTypeBundleInfo = $entityTypeBundleInfo;
@@ -81,7 +77,6 @@ abstract class CustomLoDendpointBase extends PluginBase implements CustomLoDendp
     $this->setConfiguration($configuration);
     $this->httpClient = $httpClient;
     $this->messenger = $messenger;
-    $this->currentUser = $current_user;
 
 
   }

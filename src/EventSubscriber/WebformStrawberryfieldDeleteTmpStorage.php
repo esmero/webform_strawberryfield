@@ -47,27 +47,21 @@ class WebformStrawberryfieldDeleteTmpStorage implements EventSubscriberInterface
   protected $tempStoreFactory;
 
   /**
-   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
-   */
-  private LoggerChannelFactoryInterface $loggerFactory;
-
-  /**
    * StrawberryfieldEventInsertSubscriberDepositDO constructor.
    *
    * @param \Drupal\Core\StringTranslation\TranslationInterface $string_translation
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger
-   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
+   * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $loggerFactory
    * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
    */
   public function __construct(
     TranslationInterface $string_translation,
     MessengerInterface $messenger,
-    LoggerChannelFactoryInterface $logger_factory,
+    private LoggerChannelFactoryInterface $loggerFactory,
     PrivateTempStoreFactory $temp_store_factory
   ) {
     $this->stringTranslation = $string_translation;
     $this->messenger = $messenger;
-    $this->loggerFactory = $logger_factory;
     $this->tempStoreFactory = $temp_store_factory;
 
   }
@@ -76,7 +70,7 @@ class WebformStrawberryfieldDeleteTmpStorage implements EventSubscriberInterface
   /**
    * {@inheritdoc}
    */
-  public static function getSubscribedEvents() {
+  public static function getSubscribedEvents(): array {
 
     // @TODO check event priority and adapt to future D9 needs.
     $events[StrawberryfieldEventType::SAVE][] = ['onEntitySave', static::$priority];
@@ -99,7 +93,7 @@ class WebformStrawberryfieldDeleteTmpStorage implements EventSubscriberInterface
     // Means a new Entity
     // Our storage key will be quite generic named
 
-    $current_class = get_called_class();
+    $current_class = static::class;
     $entity = $event->getEntity();
     $sbf_fields = $event->getFields();
 
@@ -143,7 +137,7 @@ class WebformStrawberryfieldDeleteTmpStorage implements EventSubscriberInterface
     // Means an existing Entity
     // Our storage key will be less generic, using the actual uuid.
 
-    $current_class = get_called_class();
+    $current_class = static::class;
     $entity = $event->getEntity();
     $sbf_fields = $event->getFields();
 

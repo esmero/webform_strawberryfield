@@ -85,15 +85,15 @@ class WebformTusFile extends WebformManagedFileBase {
     // Validate callbacks.
     $element_validate = [];
     // Convert File entities into file ids (akk fids).
-    $element_validate[] = [get_class($this), 'validateManagedFile'];
+    $element_validate[] = [static::class, 'validateManagedFile'];
     // Check file upload limit.
     if ($file_limit) {
-      $element_validate[] = [get_class($this), 'validateManagedFileLimit'];
+      $element_validate[] = [static::class, 'validateManagedFileLimit'];
     }
     // NOTE: Using array_splice() to make sure that static::validateManagedFile
     // is executed before all other validation hooks are executed but after
     // \Drupal\file\Element\ManagedFile::validateManagedFile.
-    $element['#element_validate'] = $element['#element_validate'] ?? [];
+    $element['#element_validate'] ??= [];
     array_splice($element['#element_validate'], 1, 0, $element_validate);
 
 
@@ -185,7 +185,7 @@ class WebformTusFile extends WebformManagedFileBase {
     // Set element's #process callback so that is not replaced by
     // additional #process callbacks.
     $this->setElementDefaultCallback($element, 'process');
-    $element['#process'][] = [get_class($this), 'processManagedFile'];
+    $element['#process'][] = [static::class, 'processManagedFile'];
     // Adds TUS JS.  Unknown to Me but the webform_key could be missing?
     // Reported by a user. So before attaching any JS and extra logic, since
     // our route requires an upload place

@@ -21,7 +21,7 @@ class WebformMetadataDate extends FormElement {
    */
   public function getInfo() {
 
-    $class = get_class($this);
+    $class = static::class;
     $info['#input'] = TRUE;
     $info['#size'] = 60;
     $info['#required'] = FALSE;
@@ -42,7 +42,7 @@ class WebformMetadataDate extends FormElement {
       return $input;
     }
     else {
-     $value = isset($element['#default_value']) ? $element['#default_value'] : NULL;
+     $value = $element['#default_value'] ?? NULL;
       if (!isset($value)) {
         $element['#has_garbage_value'] = TRUE;
       }
@@ -102,9 +102,9 @@ class WebformMetadataDate extends FormElement {
         // This is the default. When stored value is present
         $type = $element['#default_value']['date_type'] ?? $type;
         $type = trim($type);
-        $date_from_value = isset($element['#default_value']['date_from']) ? $element['#default_value']['date_from'] : $date_from_value;
-        $date_to_value = isset($element['#default_value']['date_to']) ? $element['#default_value']['date_to'] : $date_to_value;
-        $date_free_value = isset($element['#default_value']['date_free']) ? $element['#default_value']['date_free'] : $date_free_value;
+        $date_from_value = $element['#default_value']['date_from'] ?? $date_from_value;
+        $date_to_value = $element['#default_value']['date_to'] ?? $date_to_value;
+        $date_free_value = $element['#default_value']['date_free'] ?? $date_free_value;
       }
       else {
         // Means we are reading a string and we are parsing it depending on the format into
@@ -297,7 +297,7 @@ class WebformMetadataDate extends FormElement {
     $element['date_free']['#default_value'] = $date_free_value;
     $element['date_free']['#type'] = 'textfield';
     $element['date_free']['#webform_element'] = TRUE;
-    $element['date_free']['#size'] =  isset($element['#size']) ? $element['#size'] : '60';
+    $element['date_free']['#size'] =  $element['#size'] ?? '60';
 
     $element['date_to']['#states'] = [
       'invisible' => [

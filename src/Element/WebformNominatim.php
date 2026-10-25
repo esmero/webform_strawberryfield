@@ -122,9 +122,9 @@ class WebformNominatim extends WebformLocationBase {
       '#type' => 'submit',
       '#value' => t('Search OpenStreet Maps'),
       '#name' => $element['#name'] . '_reconciliate_button',
-      '#submit' => [[get_called_class(), 'nominatimFetchSubmit']],
+      '#submit' => [[static::class, 'nominatimFetchSubmit']],
       '#ajax' => [
-        'callback' => [get_called_class(), 'nominatimCallBack'],
+        'callback' => [static::class, 'nominatimCallBack'],
       ],
       '#button_type' => 'default',
       '#visible' => 'true',
@@ -180,7 +180,7 @@ class WebformNominatim extends WebformLocationBase {
           '#multiple' => FALSE,
           '#ajax' => [
             'trigger_as' => ['name' => $element['#name'] . '_select_button'],
-            'callback' => [get_called_class(), 'nominatimSelectCallBack'],
+            'callback' => [static::class, 'nominatimSelectCallBack'],
           ],
 
         ];
@@ -192,9 +192,9 @@ class WebformNominatim extends WebformLocationBase {
         '#type' => 'submit',
         '#value' => t('Select Best Match'),
         '#name' => $element['#name'] . '_select_button',
-        '#submit' => [[get_called_class(), 'nominatimTableSubmit']],
+        '#submit' => [[static::class, 'nominatimTableSubmit']],
         '#ajax' => [
-          'callback' => [get_called_class(), 'nominatimSelectCallBack'],
+          'callback' => [static::class, 'nominatimSelectCallBack'],
         ],
         '#button_type' => 'default',
         '#limit_validation_errors' => [],
@@ -425,15 +425,15 @@ class WebformNominatim extends WebformLocationBase {
           'display_name' => $nominatim_features[$selected_option]->label,
           'osm_id' => $nominatim_features[$selected_option]->value->properties->osm_id,
           'osm_type' => $nominatim_features[$selected_option]->value->properties->osm_type,
-          'neighbourhood' => isset($normalized_address['neighbourhood']) ? $normalized_address['neighbourhood'] : '',
-          'locality' => isset($normalized_address['locality']) ? $normalized_address['locality'] : '',
-          'city' => isset($normalized_address['city']) ? $normalized_address['city'] : '',
-          'county' => isset($normalized_address['county']) ? $normalized_address['county'] : '',
-          'state_district' => isset($normalized_address['state_district']) ? $normalized_address['state_district'] : '',
-          'state' => isset($normalized_address['state']) ? $normalized_address['state'] : '',
-          'postcode' => isset($normalized_address['postcode']) ? $normalized_address['postcode'] : '',
-          'country' => isset($normalized_address['country']) ? $normalized_address['country'] : '',
-          'country_code' => isset($normalized_address['country_code']) ? $normalized_address['country_code'] : '',
+          'neighbourhood' => $normalized_address['neighbourhood'] ?? '',
+          'locality' => $normalized_address['locality'] ?? '',
+          'city' => $normalized_address['city'] ?? '',
+          'county' => $normalized_address['county'] ?? '',
+          'state_district' => $normalized_address['state_district'] ?? '',
+          'state' => $normalized_address['state'] ?? '',
+          'postcode' => $normalized_address['postcode'] ?? '',
+          'country' => $normalized_address['country'] ?? '',
+          'country_code' => $normalized_address['country_code'] ?? '',
         ];
         $geojson_field = array_slice($button['#parents'], 0, -2);
         NestedArray::setValue(

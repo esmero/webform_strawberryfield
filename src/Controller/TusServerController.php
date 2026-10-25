@@ -58,19 +58,13 @@ class TusServerController extends ControllerBase implements ContainerInjectionIn
   protected $serializerFormats = [];
 
   /**
-   * @var \Drupal\Core\File\FileSystemInterface
-   */
-  private FileSystemInterface $fileSystem;
-
-  /**
    * Constructs a new TusController object.
    */
-  public function __construct(WebformStrawberryTusServerService $tus_server, Serializer $serializer, array $serializer_formats, WebformElementManagerInterface $webformManager, FileSystemInterface $filesystem) {
+  public function __construct(WebformStrawberryTusServerService $tus_server, Serializer $serializer, array $serializer_formats, WebformElementManagerInterface $webformManager, private readonly FileSystemInterface $fileSystem) {
     $this->tusServerService = $tus_server;
     $this->serializer = $serializer;
     $this->serializerFormats = $serializer_formats;
     $this->webformElementManager = $webformManager;
-    $this->fileSystem = $filesystem;
   }
 
 
@@ -131,7 +125,7 @@ class TusServerController extends ControllerBase implements ContainerInjectionIn
 
     // UUID is passed on PATCH and other certain calls, or as the
     // header upload-key on others.
-    $uuid = $uuid ?? $request->headers->get('upload-key') ?? '';
+    $uuid ??= $request->headers->get('upload-key') ?? '';
     $server = $this->tusServerService->getServer($current_path, $uuid, $meta_values);
 
     if (strtolower($server->getRequest()->method()) === 'post') {

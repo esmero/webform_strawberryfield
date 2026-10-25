@@ -152,7 +152,7 @@ class strawberryFieldhandPicker extends WebformHandlerBase
 
         // Define #ajax callback.
         $ajax = [
-          'callback' => [get_class($this), 'ajaxCallback'],
+          'callback' => [static::class, 'ajaxCallback'],
           'wrapper' => 'webform-handler-ajax-container',
         ];
 
@@ -217,7 +217,7 @@ class strawberryFieldhandPicker extends WebformHandlerBase
         $element_options = [];
         $elements = $this->webform->getElementsInitializedFlattenedAndHasValue();
         foreach ($elements as $element_key => $element) {
-            $element_options[$element_key] = (isset($element['#title'])) ? $element['#title'] : $element_key;
+            $element_options[$element_key] = $element['#title'] ?? $element_key;
         }
 
         // Get field options.
@@ -243,7 +243,7 @@ class strawberryFieldhandPicker extends WebformHandlerBase
                         'Please select which fields webform submission data should be mapped to'
                       ),
                       '#description_display' => 'before',
-                      '#default_value' => isset($this->configuration['fields']) ? $this->configuration['fields'] : null,
+                      '#default_value' => $this->configuration['fields'] ?? null,
                       '#required' => true,
                       '#parents' => ['settings', 'fields'],
                       '#source' => $element_options,

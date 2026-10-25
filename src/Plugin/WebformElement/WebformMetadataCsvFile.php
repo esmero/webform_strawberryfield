@@ -82,7 +82,7 @@ class WebformMetadataCsvFile extends WebformMetadataFile {
     // Only validate if utf8 validation is enabled. If not we will clean up.
     if ($this->getElementProperty($element, 'utf8')) {
       $element['#element_validate'][] = [
-        get_class($this),
+        static::class,
         'validateManagedUTF8Csv',
       ];
     }

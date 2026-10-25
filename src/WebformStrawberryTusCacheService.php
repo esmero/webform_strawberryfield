@@ -15,17 +15,11 @@ class WebformStrawberryTusCacheService extends AbstractCache {
   /**
    * @var \Drupal\Core\TempStore\SharedTempStore
    */
-  private SharedTempStore $tempStore;
-
-  /**
-   * @var \Drupal\Core\Database\Connection
-   */
-  private Connection $db;
+  private readonly SharedTempStore $tempStore;
 
 
-  public function __construct(SharedTempStoreFactory $tempStoreFactory, Connection $db) {
+  public function __construct(SharedTempStoreFactory $tempStoreFactory, private readonly Connection $db) {
     $this->tempStore = $tempStoreFactory->get(static::COLLECTION);
-    $this->db = $db;
   }
 
   public function get(string $key, bool $withExpired = FALSE) {
@@ -54,7 +48,7 @@ class WebformStrawberryTusCacheService extends AbstractCache {
     try {
       $this->tempStore->set($key, $data);
     }
-    catch (\Exception $exception) {
+    catch (\Exception) {
       //@TODO: log errors here. Worried about locks.
       return;
     }
@@ -72,7 +66,7 @@ class WebformStrawberryTusCacheService extends AbstractCache {
       $this->tempStore->delete($key);
       return TRUE;
     }
-    catch (\Exception $exception) {
+    catch (\Exception) {
       //@TODO: log errors here. Worried about locks.
       return FALSE;
     }

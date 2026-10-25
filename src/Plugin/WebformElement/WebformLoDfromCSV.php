@@ -67,7 +67,7 @@ class WebformLoDfromCSV extends WebformCompositeBase {
       if (is_string($desc) && strlen(trim($desc)) > 0 ) {
         $desc = explode(',', $desc);
         $desc = array_slice($desc, 0, 2);
-        $desc = array_map('trim', $desc);
+        $desc = array_map(trim(...), $desc);
         $desc = implode(',', $desc);
       }
       else {
