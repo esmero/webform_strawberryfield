@@ -113,7 +113,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
     // "https://nominatim.openstreetmap.org/search?q=West+87th+Street,NY&limit=5&format=geojson&addressdetails=1";
     $remoteUrl = 'https://nominatim.openstreetmap.org/search';
     $custom_user_agent = Settings::get('webform_strawberryfield.nominatim_user_agent', NULL);
-    $custom_user_agent = $custom_user_agent ?? static::USER_AGENT;
+    $custom_user_agent ??= static::USER_AGENT;
     $options['headers']=['Accept' => 'application/json', 'Accept-Language' => $lang, 'User-Agent' => $custom_user_agent];
     $options['query'] = [
       'q' => $input,
@@ -139,7 +139,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
     // "https://nominatim.openstreetmap.org/reverse?format=geojson&lat=44.50155&lon=11.33989";
     $remoteUrl = 'https://nominatim.openstreetmap.org/reverse';
     $custom_user_agent = Settings::get('webform_strawberryfield.nominatim_user_agent', NULL);
-    $custom_user_agent = $custom_user_agent ?? static::USER_AGENT;
+    $custom_user_agent ??= static::USER_AGENT;
     $options['headers']=['Accept' => 'application/json', 'Accept-Language' => $lang, 'User-Agent' => $custom_user_agent];
     $options['query'] = [
       'lat' => $lat,
@@ -176,7 +176,7 @@ class NominatimController extends ControllerBase implements ContainerInjectionIn
           foreach ($jsondata['features'] as $feature) {
             if ($feature["type"] == "Feature") {
               $results[] = [
-                'label' => isset($feature["properties"]["display_name"]) ? $feature["properties"]["display_name"] : $this->t('unknown name for place'),
+                'label' => $feature["properties"]["display_name"] ?? $this->t('unknown name for place'),
                 'value' => $feature,
               ];
             }

@@ -184,7 +184,7 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
     if ($input) {
       $rdftype_str = $rdftype ?? 'null';
       $apikey_hash = $eu_apikey ?? 'null';
-      $count = $count ?? 10;
+      $count ??= 10;
       $cache_var = md5($auth_type.$input.$vocab.$rdftype_str.$count.$apikey_hash);
       $cache_id = 'webform_strawberry:auth_lod:' . $cache_var;
       $cached = $this->cacheGet($cache_id);
@@ -458,12 +458,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
       if (in_array($mode, ["subjects","fuzzy"])) {
         $toremove = ['-', '.', '(', ')', '|' . '+', '$', '#', '@', '*'];
         $search = str_replace($toremove, ' ', $clean_input);
-        $search = array_map('trim', $search);
+        $search = array_map(trim(...), $search);
         $search = array_filter($search);
         $original_search = $search;
-        $search = array_map(function ($value) {
-          return strtolower($value) . '*';
-        }, $search);
+        $search = array_map(fn($value) => strtolower($value) . '*', $search);
         $search = implode(' AND ', $search);
         // Note to myself: removing order by asc(lcase(str(?T)))
         $query_fuzzy = <<<SPARQL
@@ -488,7 +486,7 @@ SPARQL;
         ]);
       }
       elseif ($mode == "exact") {
-        $search_exact = array_map('trim', $clean_input);
+        $search_exact = array_map(trim(...), $clean_input);
         $search_exact = strtolower(implode(' ', $search_exact));
         $original_search = $search_exact;
         $query_exact = <<<SPARQL
@@ -511,7 +509,7 @@ SPARQL;
       elseif ($mode == "terms") {
         $toremove = ['-', '.', '(', ')', '|' . '+', '$', '#', '@', '*'];
         $search_terms = str_replace($toremove, ' ', $clean_input);
-        $search_terms = array_map('trim', $search_terms);
+        $search_terms = array_map(trim(...), $search_terms);
         $search_terms = array_filter($search_terms);
         $original_search = $search_terms;
         if (count($search_terms) > 0) {
@@ -599,10 +597,10 @@ SPARQL;
             foreach ($jsondata['results']['bindings'] as $key => $item) {
               // We reapply original search because i had no luck with SPARQL binding the search for exact
               // So we have no T
-              $term = isset($item['T']['value']) ? $item['T']['value'] : $original_search_string;
+              $term = $item['T']['value'] ?? $original_search_string;
               $parent = isset($item['P']['value']) ? ' | Parent of: ' . $item['P']['value'] : '';
               $note = isset($item['Note']['value']) ? ' | (' . $item['Note']['value'] . ')' : '';
-              $uri = isset($item['S']['value']) ? $item['S']['value'] : '';
+              $uri = $item['S']['value'] ?? '';
               if ((strtolower(trim($term ?? '')) == strtolower($original_search_string)) ||
                 str_starts_with(strtolower(trim($term ?? '')), strtolower($original_search_string))
               ) {

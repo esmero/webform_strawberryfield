@@ -81,7 +81,7 @@ class WebformComputedTransplant extends WebformComputedBase {
         }
       }
     }
-    $form['#validate'][] = [get_called_class(), 'validateForm'];
+    $form['#validate'][] = [static::class, 'validateForm'];
   }
 
 

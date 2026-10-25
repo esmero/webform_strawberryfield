@@ -30,7 +30,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
   public function getInfo() {
     // @TODO allow user to set which View is used to populate Panoramas
     // Allow user to select which view mode is used to render inline panoramas
-    $class = get_class($this);
+    $class = static::class;
     $info = [
       '#input' => TRUE,
       '#access' => TRUE,
@@ -179,9 +179,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
       '#type' => 'submit',
       '#value' => t('Add Scene'),
       '#name' => $element['#name'] . '_select_button',
-      '#submit' => [[get_called_class(), 'selectSceneSubmit']],
+      '#submit' => [[static::class, 'selectSceneSubmit']],
       '#ajax' => [
-        'callback' => [get_called_class(), 'selectSceneCallBack'],
+        'callback' => [static::class, 'selectSceneCallBack'],
       ],
       '#button_type' => 'default',
       '#visible' => 'true',
@@ -262,10 +262,10 @@ class WebformPanoramaTour extends WebformCompositeBase {
             '#options' => $options,
             '#default_value' => (string) $node->id(),
             '#ajax' => [
-              'callback' => [get_called_class(), 'changeSceneCallBack'],
+              'callback' => [static::class, 'changeSceneCallBack'],
               'event' => 'change',
             ],
-            '#submit' => [[get_called_class(), 'changeSceneSubmit']],
+            '#submit' => [[static::class, 'changeSceneSubmit']],
           ];
         }
 
@@ -347,7 +347,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ],
           '#states' => [
             'visible' => [
-              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => array('value' => 'url'),
+              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => ['value' => 'url'],
             ],
           ]
         ];
@@ -361,7 +361,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           '#options' => $optionscenes,
           '#states' => [
             'visible' => [
-              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => array('value' => 'scene'),
+              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => ['value' => 'scene'],
             ],
           ],
           '#attributes' => [
@@ -391,7 +391,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
           ],
           '#states' => [
             'visible' => [
-              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => array('value' => 'ado'),
+              ':input[name="'.$element['#name'].'[hotspots_temp][type]"]' => ['value' => 'ado'],
             ],
           ]
         ];
@@ -405,9 +405,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
           '#type' => 'submit',
           '#value' => t('Add Hotspot'),
           '#name' => $element['#name'] . '_addhotspot_button',
-          '#submit' => [[get_called_class(), 'addHotspotSubmit']],
+          '#submit' => [[static::class, 'addHotspotSubmit']],
           '#ajax' => [
-            'callback' => [get_called_class(), 'addHotSpotCallBack'],
+            'callback' => [static::class, 'addHotSpotCallBack'],
           ],
           '#button_type' => 'default',
           '#visible' => 'true',
@@ -419,9 +419,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
           '#type' => 'submit',
           '#value' => t('Set Initial Scene Orientation'),
           '#name' => $element['#name'] . '_setsceneorientation_button',
-          '#submit' => [[get_called_class(), 'setSceneOrientation']],
+          '#submit' => [[static::class, 'setSceneOrientation']],
           '#ajax' => [
-            'callback' => [get_called_class(), 'setSceneOrientationCallBack'],
+            'callback' => [static::class, 'setSceneOrientationCallBack'],
           ],
           '#button_type' => 'default',
           '#visible' => 'true',
@@ -432,9 +432,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
           '#type' => 'submit',
           '#value' => t('Delete this Scene'),
           '#name' => $element['#name'] . '_deletescene_button',
-          '#submit' => [[get_called_class(), 'deleteScene']],
+          '#submit' => [[static::class, 'deleteScene']],
           '#ajax' => [
-            'callback' => [get_called_class(), 'deleteSceneCallBack'],
+            'callback' => [static::class, 'deleteSceneCallBack'],
           ],
           '#button_type' => 'default',
           '#visible' => 'true',
@@ -481,9 +481,9 @@ class WebformPanoramaTour extends WebformCompositeBase {
               '#value' => t('Remove'),
               '#id' => $element['#name'].'-remove-hotspot-'.$hotspot->id,
               '#name' => $element['#name'].'-remove-hotspot-'.$hotspot->id,
-              '#submit' => [[get_called_class(),'deleteHotSpot']],
+              '#submit' => [[static::class,'deleteHotSpot']],
               '#ajax' => [
-                'callback' => [ get_called_class(), 'deleteHotSpotCallback'],
+                'callback' => [ static::class, 'deleteHotSpotCallback'],
                 'wrapper' => $element['#name'].'-hotspot-list-wrapper',
               ],
             ];
@@ -532,7 +532,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
     }
     // TODO.
-    $element['#element_validate'][] = [get_called_class(), 'validatePanoramaTourElement'];
+    $element['#element_validate'][] = [static::class, 'validatePanoramaTourElement'];
 
     return $element;
   }
@@ -561,9 +561,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
       else {
         $to_return = $element['#default_value'];
-        $to_return['allscenes'] = array_filter($to_return, function($k) {
-          return is_integer($k);
-        }, ARRAY_FILTER_USE_KEY);
+        $to_return['allscenes'] = array_filter($to_return, fn($k) => is_integer($k), ARRAY_FILTER_USE_KEY);
         if (is_array($to_return['allscenes'])) {
           $to_return['allscenes'] = json_encode($to_return['allscenes']);
         }
@@ -622,7 +620,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
     }
     else {
       $current_scene = $form_state->getValue([$top_element['#name'], 'scene']);
-      $current_scene = $current_scene ? $current_scene : $form_state->getValue(
+      $current_scene = $current_scene ?: $form_state->getValue(
         [$top_element['#name'], 'currentscene']
       );
       $all_scenes_key = $top_element['#name'] . '-allscenes';

@@ -30,7 +30,7 @@ class WebformLoDfromCustomLoD extends WebformCompositeBase {
     $elements = [];
 
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformLoDfromCustomLoD';
+    $class = \Drupal\webform_strawberryfield\Element\WebformLoDfromCustomLoD::class;
     $elements['label'] = [
       '#type' => 'search',
       '#title' => t('Label'),

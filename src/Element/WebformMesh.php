@@ -38,7 +38,7 @@ class WebformMesh extends WebformCompositeBase {
       $matchtype = $element['#matchtype'];
     }
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformMesh';
+    $class = \Drupal\webform_strawberryfield\Element\WebformMesh::class;
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('MeSH @vocab Label',['@vocab' => $vocab]),

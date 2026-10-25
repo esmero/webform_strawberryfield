@@ -170,7 +170,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
 
     $options = [];
     foreach ($displays as $data) {
-      list($view_id, $display_id) = $data;
+      [$view_id, $display_id] = $data;
       $view = $view_storage->load($view_id);
       $display = $view->get('display');
       $options[$view_id . ':' . $display_id] = $view_id . ' - ' . $display[$display_id]['display_title'];
@@ -182,7 +182,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     // ideal).
     $form['view']['#element_validate'] = [
       [
-        get_called_class(),
+        static::class,
         'settingsFormValidate',
       ],
     ];
@@ -459,7 +459,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
   ) {
     // Split view name and display name from the 'view_and_display' value.
     if (!empty($element['view_and_display']['#value'])) {
-      list($view, $display) = explode(
+      [$view, $display] = explode(
         ':',
         $element['view_and_display']['#value']
       );
@@ -481,7 +481,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     }
     else {
       // array_map() is called to trim whitespaces from the arguments.
-      $arguments = array_map('trim', explode(',', $arguments_string));
+      $arguments = array_map(trim(...), explode(',', $arguments_string));
     }
 
     $value = [

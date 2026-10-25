@@ -12,38 +12,29 @@ class AddHotSpotCommand implements CommandInterface
 {
 
   /**
-   * The Hotspot
+   * Constructs an Add HotSpot Command.
    *
-   * @var \stdClass;
+   * @param $selector
+   * @param $hotspot
+   * @param $sceneid
    */
-  protected $hotspot;
-
-
-  /**
-   * The Scene ID
-   *
-   * @var string
-   */
-  protected $sceneid;
-
-  /**
-   * The JQuery() selector
-   *
-   * @var string
-   */
-  protected $selector;
-
-  /**
-   * Constructs an AlertCommand object.
-   *
-   * @param string $text
-   *   The text to be displayed in the alert box.
-   */
-  public function __construct($selector, $hotspot, $sceneid) {
-    $this->selector = $selector;
-    $this->hotspot = $hotspot;
-    $this->sceneid = $sceneid;
-
+  public function __construct(
+      /**
+       * The JQuery() selector
+       */
+      protected $selector,
+      /**
+       * The Hotspot Object
+       *
+       * @var \stdClass;
+       */
+      protected $hotspot,
+      /**
+       * The Scene ID
+       */
+      protected $sceneid
+  )
+  {
   }
 
   /**

@@ -27,7 +27,7 @@ class CustomLoDendpointManager extends DefaultPluginManager {
       $module_handler,
       CustomLoDendpointInterface::class,
       CustomLoDendpoint::class,
-      'Drupal\webform_strawberryfield\Annotation\CustomLoDendpoint'
+      \Drupal\webform_strawberryfield\Annotation\CustomLoDendpoint::class
     );
 
     $this->alterInfo('webform_strawberryfield_customlodendpoint_info');
