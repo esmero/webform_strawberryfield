@@ -35,7 +35,7 @@ class StrawberryRunnerModalController extends ControllerBase {
    * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
    *   Thrown when not be accessible.
    */
-  public function openModalForm(WebformInterface $webform = NULL, ?Request $request = null) {
+  public function openModalForm(?WebformInterface $webform = NULL, ?Request $request = null) {
 
     // @see \Drupal\archipel\Plugin\Field\FieldWidget\StrawberryFieldWebFormWidget::formElement
     //  Request Arguments we are expecting:
