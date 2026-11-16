@@ -561,7 +561,7 @@ class WebformPanoramaTour extends WebformCompositeBase {
       }
       else {
         $to_return = $element['#default_value'];
-        $to_return['allscenes'] = array_filter($to_return, fn($k) => is_integer($k), ARRAY_FILTER_USE_KEY);
+        $to_return['allscenes'] = array_filter($to_return, is_integer(...), ARRAY_FILTER_USE_KEY);
         if (is_array($to_return['allscenes'])) {
           $to_return['allscenes'] = json_encode($to_return['allscenes']);
         }
