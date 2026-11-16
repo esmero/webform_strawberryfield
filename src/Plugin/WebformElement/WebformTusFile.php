@@ -49,7 +49,7 @@ class WebformTusFile extends WebformManagedFileBase {
   /**
    * {@inheritdoc}
    */
-  public function prepare(array &$element, WebformSubmissionInterface $webform_submission = NULL) {
+  public function prepare(array &$element, ?WebformSubmissionInterface $webform_submission = NULL) {
     //parent::prepare($element, $webform_submission);
     // Track if this element has been processed because the work-around below
     // for 'Issue #2705471: Webform states File fields' which nests the
