@@ -13,11 +13,13 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\HtmlCommand;
 use Drupal\Core\Entity\EntityMalformedException;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
+use Drupal\Core\Field\Attribute\FieldWidget;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Field\WidgetBase;
 use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\node\Entity\Node;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -30,16 +32,13 @@ use Drupal\webform_strawberryfield\Controller\StrawberryRunnerModalController;
 
 /**
  * Plugin implementation of the 'strawberryfield_webform_inline_widget' widget.
- *
- * @FieldWidget(
- *   id = "strawberryfield_webform_inline_widget",
- *   label = @Translation("Strawberryfield webform based input with inline rendering"),
- *   description = @Translation("A Strawberry Field widget that uses a webform as input and renders it inline."),
- *   field_types = {
- *     "strawberryfield_field"
- *   }
- * )
  */
+#[FieldWidget(
+  id: 'strawberryfield_webform_inline_widget',
+  label: new TranslatableMarkup('Strawberryfield webform based input with inline rendering'),
+  description: new TranslatableMarkup('A Strawberry Field widget that uses a webform as input and renders it inline.'),
+  field_types: ['strawberryfield_field']
+)]
 class StrawberryFieldWebFormInlineWidget extends WidgetBase implements ContainerFactoryPluginInterface {
 
   /**
@@ -241,7 +240,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
     // So which webform to load?
     // Logic says either use the one that was used originally or fall back to some default
 
-    $my_webform_machinename = $this->getSetting('webform_id') ? $this->getSetting('webform_id') : NULL;
+    $my_webform_machinename = $this->getSetting('webform_id') ?: NULL;
 
     if (empty($my_webform_machinename)) {
       $my_webform_machinename = 'webform_strawberry_default';
@@ -267,7 +266,7 @@ class StrawberryFieldWebFormInlineWidget extends WidgetBase implements Container
         $my_webform->toUrl()->setAbsolute()->toString()
       );
     }
-    catch (EntityMalformedException $e) {
+    catch (EntityMalformedException) {
       return $this->_exceptionElement($items, $delta, $element, $form, $form_state);
     }
 
