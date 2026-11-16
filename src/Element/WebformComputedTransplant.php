@@ -8,6 +8,7 @@
 
 namespace Drupal\webform_strawberryfield\Element;
 
+use Drupal\Core\Render\Attribute\RenderElement;
 use Drupal\webform\Twig\WebformTwigExtension;
 use Drupal\webform\WebformSubmissionInterface;
 use Drupal\webform\Element\WebformComputedBase;
@@ -15,9 +16,8 @@ use Drupal\webform\Element\WebformComputedInterface;
 
 /**
  * Provides an item to display computed webform submission values using Twig.
- *
- * @RenderElement("webform_computed_transplant")
  */
+#[RenderElement('webform_computed_transplant')]
 class WebformComputedTransplant extends WebformComputedBase {
 
   /**
