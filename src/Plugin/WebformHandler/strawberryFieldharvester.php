@@ -236,7 +236,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
     // Define #ajax callback.
     $ajax_ado_enabled = [
-      'callback' => [get_class($this), 'ajaxCallbackEntity'],
+      'callback' => [static::class, 'ajaxCallbackEntity'],
       'wrapper' => 'webform-handler-ajax-ado-enabled',
     ];
 
@@ -262,7 +262,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
     // Define #ajax callback.
     $ajax = [
-      'callback' => [get_class($this), 'ajaxCallbackEntityConfig'],
+      'callback' => [static::class, 'ajaxCallbackEntityConfig'],
       'wrapper' => 'webform-handler-ajax-container',
     ];
 
@@ -308,7 +308,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
       '#access' => $this->configuration['ado_crud_enabled'] ? TRUE : FALSE,
     ];
 
-    $current_bundle = isset($this->configuration['ado_settings']['bundles']) ? $this->configuration['ado_settings']['bundles'] : NULL;
+    $current_bundle = $this->configuration['ado_settings']['bundles'] ?? NULL;
     $form['ado_settings']['container']['bundles'] = [
       '#title' => $this->t('Node types this webform handler can manipulate'),
       '#type' => 'radios',
@@ -336,7 +336,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $element_options = [];
     $elements = $this->webform->getElementsInitializedFlattenedAndHasValue();
     foreach ($elements as $element_key => $element) {
-      $element_options[$element_key] = (isset($element['#title'])) ? $element['#title'] : $element_key;
+      $element_options[$element_key] = $element['#title'] ?? $element_key;
     }
 
     // Use the passed bundles in case we are playing around
@@ -344,7 +344,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $selected_bundle = $form_state->getValue([
       'ado_settings',
       'bundles',
-    ]) ? $form_state->getValue(['ado_settings', 'bundles']) : $current_bundle;
+    ]) ?: $current_bundle;
 
     if ($selected_bundle) {
       $field_options = $this->strawberryfieldUtility->getStrawberryfieldMachineForBundle($selected_bundle);
@@ -368,7 +368,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
         ),
         '#description_display' => 'before',
         '#empty_option' => $this->t('- Do Not Map -'),
-        '#default_value' => isset($this->configuration['ado_settings']['sbf_fields']) ? $this->configuration['ado_settings']['sbf_fields'] : [],
+        '#default_value' => $this->configuration['ado_settings']['sbf_fields'] ?? [],
         '#required' => TRUE,
 
         '#parents' => ['settings', 'ado_settings', 'sbf_fields'],
@@ -380,7 +380,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $form['ado_settings']['container']['entity_revision'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Create new revision'),
-      '#default_value' => isset($this->configuration['ado_settings']['entity_revision']) ? $this->configuration['ado_settings']['entity_revision'] : FALSE,
+      '#default_value' => $this->configuration['ado_settings']['entity_revision'] ?? FALSE,
       '#access' => FALSE,
       '#parents' => [
         'settings',
@@ -481,7 +481,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
     $cleanvalues = $values;
 
     // Helper structure to keep elements that map to entities around
-    $entity_mapping_structure = isset($cleanvalues['ap:entitymapping']) ? $cleanvalues['ap:entitymapping'] : [];
+    $entity_mapping_structure = $cleanvalues['ap:entitymapping'] ?? [];
 
     // Check which elements carry files around
     $allelements = $webform_submission->getWebform()->getElementsManagedFiles();
@@ -924,7 +924,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
         $current_page = $this->getWebformSubmission()->getCurrentPage();
         $previous_errors = $tempstore->get($values['strawberry_field_widget_state_id'] . '-errors');
-        $previous_errors = $previous_errors ? $previous_errors : [];
+        $previous_errors = $previous_errors ?: [];
         $previous_errors[$current_page] = $errors;
         $tempstore->set(
           $values['strawberry_field_widget_state_id'] . '-errors',
@@ -984,7 +984,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
             $title = empty($element['#title']) ? $key : $element['#title'] . " ($key)";
             $elements_options[$which]['input:' . $key] = $title;
           }
-        } catch (\Exception $exception) {
+        } catch (\Exception) {
           // Nothing to do for now.
           // Should we alert the user? What to alert?
         }
@@ -1079,7 +1079,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
         unset($form[$this->entityTypeManager->getDefinition('node')
             ->getKey('bundle')]);
       }
-    } catch (\Exception $exception) {
+    } catch (\Exception) {
       // Nothing to do.
     }
     return $form;
@@ -1095,7 +1095,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
       // Do not act here. Widget Driven means we are ingesting using NODE/Entity form SBF widget
     }
     else {
-      $bundle = isset($this->configuration['ado_settings']['bundles']) ? $this->configuration['ado_settings']['bundles'] : NULL;
+      $bundle = $this->configuration['ado_settings']['bundles'] ?? NULL;
       if ($bundle == NULL) {
         return;
       }
@@ -1116,10 +1116,10 @@ class strawberryFieldharvester extends WebformHandlerBase {
         // Get the handler configuration and replace the values of the mapped
         // elements.
         $data = $this->configuration['ado_settings']['bundled_fields'];
-        $data = array_map('array_filter', $data);
+        $data = array_map(array_filter(...), $data);
         $data = array_filter($data);
         array_walk_recursive($data, function (&$value) use ($webform_submission) {
-          if (strpos($value, 'input:') !== FALSE) {
+          if (str_contains($value, 'input:')) {
             [, $element_key] = explode(':', $value);
             $value = $webform_submission->getElementData($element_key);
           }
@@ -1151,7 +1151,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
         try {
           $entity_id = FALSE;
           if ($this->configuration['operation'] != '_default') {
-            if (strpos($this->configuration['operation'], 'input:') !== FALSE) {
+            if (str_contains($this->configuration['operation'], 'input:')) {
               [
                 ,
                 $element_key,
@@ -1238,7 +1238,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
           // Update the entity ID.
           if ($entity &&
             $this->configuration['operation'] != '_default' &&
-            strpos($this->configuration['operation'], 'input:') !== FALSE) {
+            str_contains($this->configuration['operation'], 'input:')) {
 
             [, $element_key] = explode(':', $this->configuration['operation']);
             $webform_submission->setElementData($element_key, $entity->id());
@@ -1266,7 +1266,7 @@ class strawberryFieldharvester extends WebformHandlerBase {
 
     $cleanvalues = $values;
     // Helper structure to keep elements that map to entities around
-    $entity_mapping_structure = isset($cleanvalues['ap:entitymapping']) ? $cleanvalues['ap:entitymapping'] : [];
+    $entity_mapping_structure = $cleanvalues['ap:entitymapping'] ?? [];
     // Check which elements carry files around
     $allelements = $webform_submission->getWebform()->getElementsManagedFiles();
     $anyelement = $webform_submission->getWebform()
