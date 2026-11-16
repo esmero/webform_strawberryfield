@@ -54,7 +54,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
    */
   public function prepare(
     array &$element,
-    WebformSubmissionInterface $webform_submission = NULL
+    ?WebformSubmissionInterface $webform_submission = NULL
   ) {
     // @TODO explore this method to act on submitted data v/s element behavior
     // This only acts on upload

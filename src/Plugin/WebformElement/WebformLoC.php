@@ -49,7 +49,7 @@ class WebformLoC extends WebformCompositeBase {
 
   public function prepare(
     array &$element,
-    WebformSubmissionInterface $webform_submission = NULL
+    ?WebformSubmissionInterface $webform_submission = NULL
   ) {
 
     // @TODO explore this method to act on submitted data v/s element behavior

@@ -52,7 +52,7 @@ class WebformLoDfromOptions extends WebformCompositeBase {
 
   public function prepare(
     array &$element,
-    WebformSubmissionInterface $webform_submission = NULL
+    ?WebformSubmissionInterface $webform_submission = NULL
   ) {
     parent::prepare($element, $webform_submission);
 

@@ -70,7 +70,7 @@ class WebformMetadataDate extends MetadataDateBase {
    */
   public function prepare(
     array &$element,
-    WebformSubmissionInterface $webform_submission = NULL
+    ?WebformSubmissionInterface $webform_submission = NULL
   ) {
     // Unset unsupported date format for date elements that are not using a
     // datepicker.
