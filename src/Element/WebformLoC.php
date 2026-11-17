@@ -40,7 +40,7 @@ class WebformLoC extends WebformCompositeBase {
       $rdftype = trim($element['#rdftype']);
     }
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformLoC';
+    $class = \Drupal\webform_strawberryfield\Element\WebformLoC::class;
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('Label'),

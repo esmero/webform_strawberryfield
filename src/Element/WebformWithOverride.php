@@ -3,23 +3,22 @@
 namespace Drupal\webform_strawberryfield\Element;
 
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Render\Element\RenderElement;
+use Drupal\Core\Render\Attribute\RenderElement;
 use Drupal\webform\Entity\Webform as WebformEntity;
 use Drupal\webform\WebformInterface;
 use Drupal\webform\Element\Webform;
 
 /**
  * Provides a render element to display a webform inline as a widget.
- *
- * @RenderElement("webform_inline_fieldwidget")
  */
+#[RenderElement('webform_inline_fieldwidget')]
 class WebformWithOverride extends Webform {
 
   /**
    * {@inheritdoc}
    */
   public function getInfo() {
-    $class = get_class($this);
+    $class = static::class;
     return [
       '#pre_render' => [
         [$class, 'preRenderWebformElement'],

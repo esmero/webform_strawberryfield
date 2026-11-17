@@ -12,38 +12,29 @@ class RemoveHotSpotCommand implements CommandInterface
 {
 
   /**
-   * The Hotspot ID
+   * Constructs a Remove HotSpot Command.
    *
-   * @var string;
+   * @param $selector
+   * @param $hotspotid
+   * @param $sceneid
    */
-  protected $hotspotid;
-
-
-  /**
-   * The Scene ID
-   *
-   * @var string
-   */
-  protected $sceneid;
-
-  /**
-   * The JQuery() selector
-   *
-   * @var string
-   */
-  protected $selector;
-
-  /**
-   * Constructs an AlertCommand object.
-   *
-   * @param string $text
-   *   The text to be displayed in the alert box.
-   */
-  public function __construct($selector, $hotspotid, $sceneid) {
-    $this->selector = $selector;
-    $this->hotspotid = $hotspotid;
-    $this->sceneid = $sceneid;
-
+  public function __construct(
+      /**
+       * The JQuery() selector
+       */
+      protected $selector,
+      /**
+       * The Hotspot ID
+       *
+       * @var string;
+       */
+      protected $hotspotid,
+      /**
+       * The Scene ID
+       */
+      protected $sceneid
+  )
+  {
   }
 
   /**

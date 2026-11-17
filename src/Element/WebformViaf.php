@@ -27,12 +27,12 @@ class WebformViaf extends WebformCompositeBase {
    */
   public static function getCompositeElements(array $element) {
     $elements = [];
-    $class = '\Drupal\webform_strawberryfield\Element\WebformViaf';
+    $class = \Drupal\webform_strawberryfield\Element\WebformViaf::class;
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('Label'),
       '#autocomplete_route_name' => 'webform_strawberryfield.auth_autocomplete',
-      '#autocomplete_route_parameters' => array('auth_type' => 'viaf', 'count' => 10),
+      '#autocomplete_route_parameters' => ['auth_type' => 'viaf', 'count' => 10],
       '#attributes' => [
         'data-source-strawberry-autocomplete-key' => 'label',
         'data-target-strawberry-autocomplete-key' => 'uri'

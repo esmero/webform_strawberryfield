@@ -9,10 +9,12 @@
 namespace Drupal\webform_strawberryfield\Plugin\Field\FieldWidget;
 
 use Drupal\Core\Entity\EntityMalformedException;
+use Drupal\Core\Field\Attribute\FieldWidget;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Field\WidgetBase;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -22,16 +24,13 @@ use Drupal\webform\Entity\Webform;
 
 /**
  * Plugin implementation of the 'strawberryfield_webform_widget' widget.
- *
- * @FieldWidget(
- *   id = "strawberryfield_webform_widget",
- *   label = @Translation("Strawberryfield webform based input"),
- *   description = @Translation("A Strawberry Field widget that uses a webform as input."),
- *   field_types = {
- *     "strawberryfield_field"
- *   }
- * )
  */
+#[FieldWidget(
+  id: 'strawberryfield_webform_widget',
+  label: new TranslatableMarkup('Strawberryfield webform based input'),
+  description: new TranslatableMarkup('A Strawberry Field widget that uses a webform as input.'),
+  field_types: ['strawberryfield_field']
+)]
 class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactoryPluginInterface {
 
   /**
@@ -195,7 +194,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
     // So which webform to load?
     // Logic says either use the one that was used originally or fall back to some default
     // WEIRD. So the autocomplete field actually saves the fill entity, not the id..
-    $my_webform_machinename = $this->getSetting('webform_id') ? $this->getSetting('webform_id') : NULL;
+    $my_webform_machinename = $this->getSetting('webform_id') ?: NULL;
     //@TODO now that we have activity stream (as), we should prioritize that webform when present.
     //@TODO add a choice for admins. A) Existing Webform coming from A, B) widget webform_id
 
@@ -221,7 +220,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
         $my_webform->toUrl()->setAbsolute()->toString()
       );
     }
-    catch (EntityMalformedException $e) {
+    catch (EntityMalformedException) {
       return $this->_exceptionElement($items, $delta, $element,$form, $form_state);
     }
 
@@ -258,7 +257,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
 
     // We add 'data-drupal-selector' = 'strawberry_webform_widget'
     // To allow JS to react/jquery select on this.
-    $element += array(
+    $element += [
       '#type' => 'fieldset',
       '#attributes' => [
         'data-strawberryfield-selector' => [
@@ -268,15 +267,15 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       '#field_name' =>  $this->getSetting('placeholder')?: $items->getName(),
       '#collapsible' => FALSE,
       '#collapsed' => FALSE,
-      '#element_validate' => array(
-        array($this, 'validateWebform'),
-      ),
+      '#element_validate' => [
+        [$this, 'validateWebform'],
+      ],
       '#limit_validation_errors' => $limit_validation_errors,
-    );
+    ];
 
     $element['strawberry_webform_open_modal']  = [
       '#type' => 'link',
-      '#title' => $this->t('Edit @a', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+      '#title' => $this->t('Edit @a', ['@a' => $this->getSetting('placeholder')?: $items->getName()]),
       '#url' => $webform_controller_url,
       '#attributes' => [
         'class' => [
@@ -290,7 +289,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
 
     $element['strawberry_webform_close_modal'] = [
       '#type' => 'link',
-      '#title' => $this->t('Cancel @a editing', array('@a' => $this->getSetting('placeholder')?: $items->getName())),
+      '#title' => $this->t('Cancel @a editing', ['@a' => $this->getSetting('placeholder')?: $items->getName()]),
       '#url' => $webform_controller_url_close,
       '#attributes' => [
         'class' => [
@@ -349,7 +348,7 @@ class StrawberryFieldWebFormWidget extends WidgetBase implements ContainerFactor
       '#id' => 'webform_output_json' .  $form_state->get('strawberryfield_webform_widget_id'),
       '#default_value' => $current_value['value'],
       '#title' => $this->t('Your metadata in JSON'),
-      '#description' => $this->t('You are seeing this because the webform used to create this value does not exist',array('@webform' => $form_state->get('webform_machine_name'))),
+      '#description' => $this->t('You are seeing this because the webform used to create this value does not exist',['@webform' => $form_state->get('webform_machine_name')]),
       '#disabled' => FALSE,
       '#rows' => 15,
     ];

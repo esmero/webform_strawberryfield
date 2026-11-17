@@ -70,7 +70,7 @@ class WebformMetadataDate extends MetadataDateBase {
    */
   public function prepare(
     array &$element,
-    WebformSubmissionInterface $webform_submission = NULL
+    ?WebformSubmissionInterface $webform_submission = NULL
   ) {
     // Unset unsupported date format for date elements that are not using a
     // datepicker.
@@ -79,11 +79,9 @@ class WebformMetadataDate extends MetadataDateBase {
     }
 
     // Set default date format to HTML date.
-    if (!isset($element['#date_date_format'])) {
-      $element['#date_date_format'] = $this->getDefaultProperty(
-        'date_date_format'
-      );
-    }
+    $element['#date_date_format'] ??= $this->getDefaultProperty(
+      'date_date_format'
+    );
 
     // Set placeholder attribute.
     if (!empty($element['#placeholder'])) {

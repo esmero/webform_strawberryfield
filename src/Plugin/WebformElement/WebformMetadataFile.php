@@ -54,7 +54,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
    */
   public function prepare(
     array &$element,
-    WebformSubmissionInterface $webform_submission = NULL
+    ?WebformSubmissionInterface $webform_submission = NULL
   ) {
     // @TODO explore this method to act on submitted data v/s element behavior
     // This only acts on upload
@@ -274,7 +274,7 @@ class WebformMetadataFile extends WebformManagedFileBase {
       && !empty($input['fids'])
       && $form_object instanceof WebformSubmissionForm
       && $form_object->getOperation() === 'add') {
-      $fids = array_map('intval', array_filter(explode(' ', $input['fids'])));
+      $fids = array_map(intval(...), array_filter(explode(' ', $input['fids'])));
       $valid_fids = $fids;
       // Important Note. Default values won't be sent via INPUT
       // except during multi page next/prev

@@ -3,49 +3,52 @@
 namespace Drupal\webform_strawberryfield\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
+use Drupal\Core\Entity\Attribute\ConfigEntityType;
+use Drupal\Core\Entity\EntityViewBuilder;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\webform_strawberryfield\Form\LoDendpointEntityForm;
+use Drupal\webform_strawberryfield\LoDendpointEntityHtmlRouteProvider;
+use Drupal\webform_strawberryfield\LoDendpointEntityListBuilder;
 
 /**
  * Defines the Strawberry Key Name Providers entity.
- *
- * @ConfigEntityType(
- *   id = "webform_sbf_lod_endpoint",
- *   label = @Translation("Webform Strawberryfield Custom LoD endpoints"),
- *   handlers = {
- *     "view_builder" = "Drupal\Core\Entity\EntityViewBuilder",
- *     "list_builder" = "Drupal\webform_strawberryfield\LoDendpointEntityListBuilder",
- *     "form" = {
- *       "add" = "Drupal\webform_strawberryfield\Form\LoDendpointEntityForm",
- *       "edit" = "Drupal\webform_strawberryfield\Form\LoDendpointEntityForm",
- *       "delete" = "Drupal\webform_strawberryfield\Form\LoDendpointEntityDeleteForm"
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\webform_strawberryfield\LoDendpointEntityHtmlRouteProvider",
- *     },
- *   },
- *   config_prefix = "webform_sbf_lod",
- *   admin_permission = "administer site configuration",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "label",
- *     "uuid" = "uuid"
- *   },
- *   links = {
- *     "canonical" = "/admin/structure/webform_strawberryfield_lod/{webform_sbf_lod_endpoint}",
- *     "add-form" = "/admin/structure/webform_strawberryfield_lod/add",
- *     "edit-form" = "/admin/structure/webform_strawberryfield_lod/{webform_sbf_lod_endpoint}/edit",
- *     "delete-form" = "/admin/structure/webform_strawberryfield_lod/{webform_sbf_lod_endpoint}/delete",
- *     "collection" = "/admin/structure/webform_strawberryfield_lod"
- *   },
- *   config_export = {
- *     "id",
- *     "label",
- *     "uuid",
- *     "pluginid",
- *     "pluginconfig",
- *     "active"
- *   }
- * )
  */
+#[ConfigEntityType(
+  id: 'webform_sbf_lod_endpoint',
+  label: new TranslatableMarkup('Webform Strawberryfield Custom LoD endpoints'),
+  config_prefix: 'webform_sbf_lod',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'label',
+    'uuid' => 'uuid'
+  ],
+  handlers: [
+    'view_builder' => EntityViewBuilder::class,
+    'list_builder' => LoDendpointEntityListBuilder::class,
+    'form' => [
+      'add' => LoDendpointEntityForm::class,
+      'edit' => LoDendpointEntityForm::class,
+      'delete' => 'Drupal\webform_strawberryfield\Form\LoDendpointEntityDeleteForm'
+    ],
+    'route_provider' => [
+      'html' => LoDendpointEntityHtmlRouteProvider::class]
+  ],
+  links: [
+    'canonical' => '/admin/structure/webform_strawberryfield_lod/{webform_sbf_lod_endpoint}',
+    'add-form' => '/admin/structure/webform_strawberryfield_lod/add',
+    'edit-form' => '/admin/structure/webform_strawberryfield_lod/{webform_sbf_lod_endpoint}/edit',
+    'delete-form' => '/admin/structure/webform_strawberryfield_lod/{webform_sbf_lod_endpoint}/delete',
+    'collection' => '/admin/structure/webform_strawberryfield_lod'],
+  admin_permission: 'administer site configuration',
+  config_export: [
+    'id',
+    'label',
+    'uuid',
+    'pluginid',
+    'pluginconfig',
+    'active'
+  ]
+)]
 class LoDendpointEntity extends ConfigEntityBase implements LoDendpointEntityInterface {
 
   /**

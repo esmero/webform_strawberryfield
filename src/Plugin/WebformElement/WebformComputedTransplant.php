@@ -40,7 +40,7 @@ class WebformComputedTransplant extends WebformComputedBase {
 
   public function prepare(
     array &$element,
-    WebformSubmissionInterface $webform_submission = NULL
+    ?WebformSubmissionInterface $webform_submission = NULL
   ) {
 
     // @TODO explore this method to act on submitted data v/s element behavior
@@ -81,7 +81,7 @@ class WebformComputedTransplant extends WebformComputedBase {
         }
       }
     }
-    $form['#validate'][] = [get_called_class(), 'validateForm'];
+    $form['#validate'][] = [static::class, 'validateForm'];
   }
 
 

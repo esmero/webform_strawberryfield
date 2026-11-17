@@ -9,6 +9,7 @@
 namespace Drupal\webform_strawberryfield\Plugin\EntityReferenceSelection;
 
 use Drupal\Core\DependencyInjection\DeprecatedServicePropertyTrait;
+use Drupal\Core\Entity\Attribute\EntityReferenceSelection;
 use Drupal\Core\Entity\EntityReferenceSelection\SelectionPluginBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
@@ -16,6 +17,7 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
 use Drupal\views\Views;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -26,15 +28,14 @@ use Drupal\views\Render\ViewsRenderPipelineMarkup;
 
 /**
  * Plugin implementation of the 'selection' entity_reference.
- *
- * @EntityReferenceSelection(
- *   id = "solr_views",
- *   label = @Translation("Views Solr: Filter by an entity reference view"),
- *   entity_types = {"node"},
- *   group = "solr_views",
- *   weight = 1
- * )
  */
+#[EntityReferenceSelection(
+  id: 'solr_views',
+  label: new TranslatableMarkup('Views Solr: Filter by an entity reference view'),
+  group: 'solr_views',
+  weight: 1,
+  entity_types: ['node']
+)]
 class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactoryPluginInterface {
 
   use DeprecatedServicePropertyTrait;
@@ -102,7 +103,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     EntityTypeManagerInterface $entity_type_manager,
     ModuleHandlerInterface $module_handler,
     AccountInterface $current_user,
-    RendererInterface $renderer = NULL
+    ?RendererInterface $renderer = NULL
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
@@ -170,7 +171,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
 
     $options = [];
     foreach ($displays as $data) {
-      list($view_id, $display_id) = $data;
+      [$view_id, $display_id] = $data;
       $view = $view_storage->load($view_id);
       $display = $view->get('display');
       $options[$view_id . ':' . $display_id] = $view_id . ' - ' . $display[$display_id]['display_title'];
@@ -182,7 +183,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     // ideal).
     $form['view']['#element_validate'] = [
       [
-        get_called_class(),
+        static::class,
         'settingsFormValidate',
       ],
     ];
@@ -357,10 +358,10 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
    *   The results.
    */
   protected function getDisplayExecutionResults(
-    string $match = NULL,
+    ?string $match = NULL,
     string $match_operator = 'CONTAINS',
     int $limit = 0,
-    array $ids = NULL
+    ?array $ids = NULL
   ): array {
     $display_name = $this->getConfiguration()['view']['display_name'];
     $arguments = $this->getConfiguration()['view']['arguments'];
@@ -459,7 +460,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
   ) {
     // Split view name and display name from the 'view_and_display' value.
     if (!empty($element['view_and_display']['#value'])) {
-      list($view, $display) = explode(
+      [$view, $display] = explode(
         ':',
         $element['view_and_display']['#value']
       );
@@ -481,7 +482,7 @@ class ViewsSolrSelection extends SelectionPluginBase implements ContainerFactory
     }
     else {
       // array_map() is called to trim whitespaces from the arguments.
-      $arguments = array_map('trim', explode(',', $arguments_string));
+      $arguments = array_map(trim(...), explode(',', $arguments_string));
     }
 
     $value = [

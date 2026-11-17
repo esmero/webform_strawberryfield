@@ -43,7 +43,7 @@ abstract class MetadataDateBase extends WebformElementBase {
   /**
    * {@inheritdoc}
    */
-  public function prepare(array &$element, WebformSubmissionInterface $webform_submission = NULL) {
+  public function prepare(array &$element, ?WebformSubmissionInterface $webform_submission = NULL) {
     // Don't used 'datetime_wrapper', instead use 'form_element' wrapper.
     // Note: Below code must be executed before parent::prepare().
     // @see \Drupal\Core\Datetime\Element\Datelist
@@ -96,15 +96,15 @@ abstract class MetadataDateBase extends WebformElementBase {
 
     $element['#attached']['library'][] = 'webform_strawberryfield/webform_strawberryfield.element.metadatadate';
 
-    $element['#after_build'][] = [get_class($this), 'afterBuild'];
+    $element['#after_build'][] = [static::class, 'afterBuild'];
   }
 
   /**
    * {@inheritdoc}
    */
-  protected function prepareElementValidateCallbacks(array &$element, WebformSubmissionInterface $webform_submission = NULL) {
-    $element['#element_validate'] = array_merge([[get_class($this), 'preValidateDate']], $element['#element_validate']);
-    $element['#element_validate'][] = [get_class($this), 'validateDate'];
+  protected function prepareElementValidateCallbacks(array &$element, ?WebformSubmissionInterface $webform_submission = NULL) {
+    $element['#element_validate'] = array_merge([[static::class, 'preValidateDate']], $element['#element_validate']);
+    $element['#element_validate'][] = [static::class, 'validateDate'];
     parent::prepareElementValidateCallbacks($element, $webform_submission);
   }
 
@@ -192,7 +192,7 @@ abstract class MetadataDateBase extends WebformElementBase {
       '#type' => 'checkboxes',
       '#title' => $this->t('Date days of the week'),
       '#options' => DateHelper::weekDaysAbbr(TRUE),
-      '#element_validate' => [['\Drupal\webform\Utility\WebformElementHelper', 'filterValues']],
+      '#element_validate' => [[\Drupal\webform\Utility\WebformElementHelper::class, 'filterValues']],
       '#description' => $this->t('Specifies the day(s) of the week. Please note, the date picker will disable unchecked days of the week.'),
       '#options_display' => 'side_by_side',
       '#required' => TRUE,
@@ -279,17 +279,11 @@ abstract class MetadataDateBase extends WebformElementBase {
    *   The type of date/time element which be either a 'date' or 'datetime'.
    */
   protected function getDateType(array $element) {
-    switch ($element['#type']) {
-      case 'datelist':
-        return (isset($element['#date_part_order']) && !in_array('hour', $element['#date_part_order'])) ? 'date' : 'datetime';
-
-      case 'datetime':
-        return 'datetime';
-
-      case 'date':
-      default:
-        return 'date';
-    }
+    return match ($element['#type']) {
+        'datelist' => (isset($element['#date_part_order']) && !in_array('hour', $element['#date_part_order'])) ? 'date' : 'datetime',
+        'datetime' => 'datetime',
+        default => 'date',
+    };
   }
 
   /**
@@ -386,8 +380,8 @@ abstract class MetadataDateBase extends WebformElementBase {
     // WORKAROUND:
     // Manually set the date object.
     $date_element_types = [
-      'datelist' => '\Drupal\Core\Datetime\Element\Datelist',
-      'datetime' => '\Drupal\Core\Datetime\Element\Datetime',
+      'datelist' => \Drupal\Core\Datetime\Element\Datelist::class,
+      'datetime' => \Drupal\Core\Datetime\Element\Datetime::class,
     ];
 
     if (isset($date_element_types[$element['#type']])) {
@@ -431,7 +425,7 @@ abstract class MetadataDateBase extends WebformElementBase {
       $min = !empty($element['#date_date_min']) ? strtotime($element['#date_date_min']) : strtotime('-10 years');
       $max = !empty($element['#date_date_max']) ? strtotime($element['#date_date_max']) : max($min, strtotime('+20 years') ?: PHP_INT_MAX);
     }
-    return static::formatDate($format, rand($min, $max));
+    return static::formatDate($format, random_int($min, $max));
   }
 
   /**

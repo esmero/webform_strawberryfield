@@ -37,7 +37,7 @@ class WebformEuropeana extends WebformCompositeBase {
       $vocab = $element['#vocab'];
     }
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformEuropeana';
+    $class = \Drupal\webform_strawberryfield\Element\WebformEuropeana::class;
     $elements['label'] = [
       '#type' => 'textfield',
       '#title' => t('Label'),

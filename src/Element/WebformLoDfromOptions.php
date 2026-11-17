@@ -30,7 +30,7 @@ class WebformLoDfromOptions extends WebformCompositeBase {
     $elements = [];
 
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformLoDfromOptions';
+    $class = \Drupal\webform_strawberryfield\Element\WebformLoDfromOptions::class;
     $elements['label'] = [
       '#type' => 'search',
       '#title' => t('Label'),

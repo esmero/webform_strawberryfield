@@ -8,24 +8,19 @@
 
 namespace Drupal\webform_strawberryfield\Plugin\Field\FieldFormatter;
 
+use Drupal\Core\Field\Attribute\FieldFormatter;
 use Drupal\Core\Field\FormatterBase;
 use Drupal\Core\Field\FieldItemListInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 
 /**
  * Simplistic Strawberry Field formatter.
- *
- * @FieldFormatter(
- *   id = "strawberry_configurable_formatter",
- *   label = @Translation("Strawberry Field Pretty Formatter"),
- *   class = "\Drupal\webform_strawberryfield\Plugin\Field\FieldFormatter\StrawberryConfigurableFormatter",
- *   field_types = {
- *     "strawberryfield_field"
- *   },
- *   quickedit = {
- *     "editor" = "plain_text"
- *   }
- * )
  */
+#[FieldFormatter(
+  id: 'strawberry_configurable_formatter',
+  label: new TranslatableMarkup('Strawberry Field Pretty Formatter'),
+  field_types: ['strawberryfield_field']
+)]
 class StrawberryConfigurableFormatter extends FormatterBase {
 
   /**

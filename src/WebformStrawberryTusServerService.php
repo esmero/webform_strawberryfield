@@ -84,14 +84,9 @@ class WebformStrawberryTusServerService {
   protected $eventDispatcher;
 
   /**
-   * @var \TusPhp\Cache\AbstractCache
-   */
-  private AbstractCache $tusCacheService;
-
-  /**
    * Constructs a new TusServer object.
    */
-  public function __construct(Token $token, FileUsageInterface $file_usage, EntityTypeManagerInterface $entity_type_manager, FileSystemInterface $file_system, ConfigFactoryInterface $config_factory, AccountProxyInterface $current_user, EventDispatcherInterface $event_dispatcher, AbstractCache $WebformStrawberryTusCacheService) {
+  public function __construct(Token $token, FileUsageInterface $file_usage, EntityTypeManagerInterface $entity_type_manager, FileSystemInterface $file_system, ConfigFactoryInterface $config_factory, AccountProxyInterface $current_user, EventDispatcherInterface $event_dispatcher, private readonly AbstractCache $tusCacheService) {
     $this->token = $token;
     $this->fileUsage = $file_usage;
     $this->entityTypeManager = $entity_type_manager;
@@ -100,7 +95,6 @@ class WebformStrawberryTusServerService {
     $this->tusCacheDir = $this->config->get('tus_upload_path') ?? 'private://webform_strawberryfield/tus/';
     $this->currentUser = $current_user;
     $this->eventDispatcher = $event_dispatcher;
-    $this->tusCacheService = $WebformStrawberryTusCacheService;
     if (!$this->fileSystem->prepareDirectory($this->tusCacheDir, FileSystemInterface::CREATE_DIRECTORY | FileSystemInterface::MODIFY_PERMISSIONS)) {
       throw new HttpException(500, sprintf('TUS Upload Path folder "%s" is not writable.', $this->tusCacheDir));
     }

@@ -88,7 +88,7 @@ class WebformScholarlyAgent extends WebformCompositeBase {
     // This god forsaken function gets called many many times
     // and it gets more and more data everytime!
     // Why? We may never know
-    $class = '\Drupal\webform_strawberryfield\Element\WebformScholarlyAgent';
+    $class = \Drupal\webform_strawberryfield\Element\WebformScholarlyAgent::class;
 
     $vocab_personal_name = 'names';
     $rdftype_personal_name = 'thing';
@@ -350,7 +350,7 @@ class WebformScholarlyAgent extends WebformCompositeBase {
 
     $element = parent::processWebformComposite($element, $form_state, $complete_form);
 
-    $class = '\Drupal\webform_strawberryfield\Element\WebformScholarlyAgent';
+    $class = \Drupal\webform_strawberryfield\Element\WebformScholarlyAgent::class;
 
     $unique_id = $element['#webform_id'] . implode('-', $element['#parents']);
 
@@ -515,11 +515,11 @@ class WebformScholarlyAgent extends WebformCompositeBase {
       // Transfer '#{composite_key}_{property}' from main element to composite
       // element but taking in account the new keys provided by the user
       foreach ($element as $property_key => $property_value) {
-        if ((strpos($property_key, '#' . $composite_key . '__') === 0)){
+        if ((str_starts_with($property_key, '#' . $composite_key . '__'))){
           $composite_property_key = str_replace('#' . $composite_key . '__', '#', $property_key);
           $composite_element[$composite_property_key] = $property_value;
         }
-        elseif (isset($key_mappings[$composite_key]) && (strpos($property_key, '#' . $key_mappings[$composite_key] . '__') === 0)) {
+        elseif (isset($key_mappings[$composite_key]) && (str_starts_with($property_key, '#' . $key_mappings[$composite_key] . '__'))) {
           $composite_property_key = str_replace('#' . $key_mappings[$composite_key]  . '__', '#', $property_key);
           $composite_element[$composite_property_key] = $property_value;
         }
@@ -541,7 +541,7 @@ class WebformScholarlyAgent extends WebformCompositeBase {
       }
 
       // Apply #select2, #choices, and #chosen to select elements.
-      if (isset($composite_element['#type']) && strpos($composite_element['#type'], 'select') !== FALSE) {
+      if (isset($composite_element['#type']) && str_contains($composite_element['#type'], 'select')) {
         $select_properties = [
           '#select2' => '#select2',
           '#choices' => '#choices',

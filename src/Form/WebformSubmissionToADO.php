@@ -66,7 +66,7 @@ class WebformSubmissionToADO extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, WebformSubmissionInterface $webform_submission = NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, ?WebformSubmissionInterface $webform_submission = NULL) {
     $this->webformSubmission = $webform_submission;
 
     // Apply variants to the webform.
