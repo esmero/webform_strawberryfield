@@ -9,6 +9,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Site\Settings;
+use GuzzleHttp\Exception\GuzzleException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -321,12 +322,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
-
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
+    $jsondata = $body ? json_decode($body, TRUE) : NULL;
     $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    if ($json_error == JSON_ERROR_NONE && $jsondata) {
       //LoC will always return at least one, the query string
       if (count($jsondata) > 1) {
         foreach ($jsondata[1] as $key => $label) {
@@ -369,13 +368,10 @@ class AuthAutocompleteController extends ControllerBase implements ContainerInje
 
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
-
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
+    $jsondata = $body ? json_decode($body, TRUE) : NULL;
     $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
-      //WIKIdata will give is an success key will always return at least one, the query string
+    if ($json_error == JSON_ERROR_NONE && $jsondata) {
       if (count($jsondata) > 0) {
         if (($jsondata['success'] ?? 0) == 1) {
           foreach (($jsondata['search'] ?? []) as $key => $item) {
@@ -583,6 +579,7 @@ SPARQL;
        */
 
       $jsonfail = FALSE;
+      $bodies = array_filter($bodies);
       foreach($bodies as $body) {
         $jsondata = json_decode($body, TRUE);
         $json_error = json_last_error();
@@ -659,11 +656,10 @@ SPARQL;
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
 
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE) ?? [];
+    $jsondata = $body ? json_decode($body, TRUE) : NULL;
     $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    if ($json_error == JSON_ERROR_NONE && $jsondata) {
       if (count($jsondata) > 0) {
         if (isset($jsondata['result']) && is_array($jsondata['result']) && count($jsondata['result']) >= 1) {
           foreach ($jsondata['result'] as $key => $item) {
@@ -715,7 +711,7 @@ SPARQL;
       'place',
       'timespan',
     ])) {
-      // Drop before trying to hit non existing vocab
+      // Drop before trying to hit not existing vocab
       $this->messenger()->addError(
         $this->t('@vocab for Europeana Entity Suggest autocomplete is not in in our allowed list.',
           [
@@ -739,9 +735,9 @@ SPARQL;
     $options['headers'] = ['Accept' => 'application/ld+json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
     $results = [];
-    $jsondata = json_decode($body, TRUE);
+    $jsondata = $body ? json_decode($body, TRUE) : NULL;
     $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    if ($json_error == JSON_ERROR_NONE && $jsondata) {
       /*
        {
       "@context": [
@@ -884,7 +880,6 @@ SPARQL;
     $results = [];
 
     foreach ($body_decoded as $row => $result) {
-      $label = '';
       if (!empty($result[2]) || !empty($result[1])) {
         $label = $result[2];
         $label = !(empty($result[1])) ? $label. ',' . $result[1] : $label;
@@ -955,12 +950,10 @@ SPARQL;
       ]
     ];
     $body = $this->getRemoteJsonData($remoteUrl, $options, 'PUT');
-
-    $jsondata = [];
     $results = [];
-    $jsondata = json_decode($body, TRUE);
+    $jsondata = $body ? json_decode($body, TRUE) : NULL;
     $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    if ($json_error == JSON_ERROR_NONE && $jsondata) {
       if (!empty($jsondata['results']) &&  ($jsondata['total'] ?? 0) >= 1) {
         foreach ($jsondata['results'] as $key => $entry) {
           $nameEntry = reset($entry['nameEntries']);
@@ -1050,9 +1043,11 @@ SPARQL;
     $options['headers'] = ['Accept' => 'application/json'];
     $body = $this->getRemoteJsonData($remoteUrl, $options);
     $results = [];
-    $jsondata = json_decode($body, TRUE);
+    $jsondata = $body ? json_decode($body, TRUE) : NULL;
     $json_error = json_last_error();
-    if ($json_error == JSON_ERROR_NONE) {
+    // Mesh returns empty/NULL on no match
+    // So only show the error message if JSON decoding actually failed
+    if ($json_error == JSON_ERROR_NONE && $jsondata) {
       if (count($jsondata) > 0) {
         foreach ($jsondata as $entry) {
           if (strtolower(trim($entry['label'] ?? '')) == strtolower($input)) {
@@ -1077,15 +1072,23 @@ SPARQL;
       }
       return $results;
     }
-    $this->messenger()->addError(
-      $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
-        [
-          '@url' => $remoteUrl,
-          '@jsonerror' => $json_error,
-        ]
-      )
-    );
-    return [];
+    if ($jsondata) {
+      $this->messenger()->addError(
+        $this->t('Looks like data fetched from @url is not in JSON format.<br> JSON says: @jsonerror <br>Please check your URL!',
+          [
+            '@url' => $remoteUrl,
+            '@jsonerror' => $json_error,
+          ]
+        )
+      );
+    }
+    else {
+      $results[] = [
+        'value' => NULL,
+        'label' => "Sorry no match from MeSH for {$vocab}",
+      ];
+    }
+    return $results;
   }
 
   /**
@@ -1101,7 +1104,7 @@ SPARQL;
       // No need to alarm. all good. If not URL just return.
       return NULL;
     }
-    if (!UrlHelper::isValid($remoteUrl, $absolute = TRUE)) {
+    if (!UrlHelper::isValid($remoteUrl, TRUE)) {
       $this->messenger()->addError(
         $this->t('We can not fetch Data from @$remoteUrl, check your URL',
           ['@$remoteUrl' => $remoteUrl]
@@ -1138,7 +1141,7 @@ SPARQL;
         return NULL;
       }
     }
-    catch (ClientException $exception) {
+    catch (ClientException|GuzzleException $exception) {
       $this->useCaches = FALSE;
       $responseMessage = $exception->getMessage();
       $this->messenger()->addError(
@@ -1164,8 +1167,7 @@ SPARQL;
       return NULL;
     }
 
-    $body = $request->getBody()->getContents();
-    return $body;
+    return $request->getBody()->getContents() ?? NULL;
   }
 
   /**
@@ -1217,11 +1219,9 @@ SPARQL;
     //"scope":"/read-public","orcid":null} &*/ or null/empt it wrong.
 
     $response = $this->getRemoteJsonData($remoteOrCIDAuthUrl, $options, 'POST');
-    $orcd_id_token_response = json_decode($response, TRUE);
-
+    $orcd_id_token_response = $response ? json_decode($response, TRUE) : NULL;
     $json_error = json_last_error();
-
-    if ($json_error != JSON_ERROR_NONE ||  !($orcd_id_token_response['access_token'] ?? NULL)) {
+    if (!$orcd_id_token_response || $json_error != JSON_ERROR_NONE ||  !($orcd_id_token_response['access_token'] ?? NULL)) {
       $this->getLogger('webform_strawberryfield')
         ->error('Your ORCID API Credentials are invalid. Please ask your System Admin to register/check at ORCID for a Developer Account and set them in your global settings (NO UI for secrets)',
           [
@@ -1232,7 +1232,7 @@ SPARQL;
     }
     if ($orcd_id_token_response['access_token'] ?? NULL) {
       $base64 = base64_encode(json_encode($orcd_id_token_response));
-      $base64 = \Drupal::state()->set('webform.orcid_token', $base64);
+      \Drupal::state()->set('webform.orcid_token', $base64);
       return $orcd_id_token_response['access_token'];
     }
     else {
