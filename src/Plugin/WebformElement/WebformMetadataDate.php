@@ -115,24 +115,19 @@ class WebformMetadataDate extends MetadataDateBase {
     $form = parent::form($form, $form_state);
     $form['date']['showfreeformalways'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Always show the free Form date input too'),
+      '#title' => $this->t('Always show the free Form date input'),
       '#description' => $this->t(
-        'If checked both Point and Range modes will also allow a non validated free form input'
+        'If checked both Point and Range modes will also allow a non validated free form input. If the source is already EDTF, then even if this option is not enabled, it will be shown to avoid obscuring data.'
       ),
       '#return_value' => TRUE,
     ];
     $form['date']['edtf_validateme'] = [
       '#type' => 'checkbox',
-      '#title' => $this->t('Validate freeform input date as EDTF'),
+      '#title' => $this->t('Validate free Form input date as EDTF'),
       '#description' => $this->t(
-        'Option to validate the freeform date as extended date/time format date (EDTF). See <a href="https://www.loc.gov/standards/datetime/">here</a>. This will also set the "date_type" subprorpertu value to <em>date_edtf</em>'
+        'Option to validate the freeform date (when present ot deduced from data) as extended date/time format date (EDTF). See <a href="https://www.loc.gov/standards/datetime/">here</a>. This will also set the "date_type" subproperty value to <em>date_edtf</em>'
       ),
       '#return_value' => TRUE,
-      '#states' => [
-        'visible' => [
-          ':input[name="properties[showfreeformalways]"]' => ['checked' => TRUE],
-        ],
-      ],
     ];
     $form['date']['edtf_only'] = [
       '#type' => 'checkbox',

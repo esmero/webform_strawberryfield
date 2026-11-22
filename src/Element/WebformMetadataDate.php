@@ -316,8 +316,8 @@ class WebformMetadataDate extends FormElement {
         [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_edtf']],
       ],
     ];
-
-    if (!isset($element['#showfreeformalways']) || (isset($element['#showfreeformalways']) && $element['#showfreeformalways'] == FALSE ) || $type == 'date_edtf') {
+    // Never hide if data drove the decisions of defining type as "date_edtf"
+    if ((!isset($element['#showfreeformalways']) || (isset($element['#showfreeformalways']) && $element['#showfreeformalways'] == FALSE )) && $type !== 'date_edtf') {
       $element['date_free']['#states'] = [
         'invisible' => [
           [':input[name="' . $name_prefix . '[date_type]"]' => ['value' => 'date_point']],
@@ -449,6 +449,8 @@ class WebformMetadataDate extends FormElement {
             [
               '@name' => $element['#title'],
             ]));
+        // Remove the invisible state actions if its invalidated. That way the ser will always see the error, even if it is hidden by design.
+        unset($element['date_free']['#states']['invisible']);
       }
       else {
         $element['#validated'] = TRUE;
