@@ -117,7 +117,7 @@ class WebformMetadataDate extends MetadataDateBase {
       '#type' => 'checkbox',
       '#title' => $this->t('Always show the free Form date input'),
       '#description' => $this->t(
-        'If checked both Point and Range modes will also allow a non validated free form input.If the source is already EDTF, then even if not enabled it will be shown.'
+        'If checked both Point and Range modes will also allow a non validated free form input. If the source is already EDTF, then even if this option is not enabled, it will be shown to avoid obscuring data.'
       ),
       '#return_value' => TRUE,
     ];
